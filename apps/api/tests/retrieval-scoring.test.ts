@@ -12,6 +12,10 @@ describe("retrieval helpers", () => {
     ]);
   });
 
+  it("normalizes common experience typos", () => {
+    expect(tokenizeQuery("baraa experiens?")).toEqual(["baraa", "experience"]);
+  });
+
   it("builds keyword highlight spans", () => {
     const highlights = buildHighlights("Hybrid search combines keyword search and fuzzy search.", [
       "search",

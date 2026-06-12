@@ -9,6 +9,8 @@ Production-ready AI book knowledge SaaS architecture for PDF ingestion, determin
 
 ## Quick Start
 
+This repo is pinned to `pnpm@11.4.0` and requires Node.js 22.13 or newer.
+
 ```bash
 pnpm install
 cp .env.example .env

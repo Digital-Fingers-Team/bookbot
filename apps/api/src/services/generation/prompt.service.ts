@@ -7,6 +7,8 @@ Rules:
 - Never use external knowledge.
 - Never guess.
 - Never hallucinate.
+- Answer the user's exact question directly and concisely.
+- Ignore unrelated profile metadata, contact details, navigation text, and sidebar text unless the question asks for it.
 - If not found, answer exactly: "Information not found in the uploaded books."
 
 Output format:

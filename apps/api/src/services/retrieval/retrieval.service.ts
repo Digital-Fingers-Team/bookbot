@@ -22,7 +22,8 @@ export async function retrieveRelevantChunks(question: string, limit = 8): Promi
     return [];
   }
 
-  const candidates = await findCandidates(question, keywords);
+  const searchQuestion = `${question} ${keywords.join(" ")}`;
+  const candidates = await findCandidates(searchQuestion, keywords);
   if (!candidates.length) {
     return [];
   }
@@ -39,7 +40,7 @@ export async function retrieveRelevantChunks(question: string, limit = 8): Promi
   });
 
   const fuseScores = new Map<string, number>();
-  for (const result of fuse.search(question)) {
+  for (const result of fuse.search(searchQuestion)) {
     fuseScores.set(String(result.item._id), 1 - (result.score ?? 1));
   }
 
@@ -47,7 +48,7 @@ export async function retrieveRelevantChunks(question: string, limit = 8): Promi
     .map((chunk) => {
       const id = String(chunk._id);
       const keywordScore = scoreKeywords(chunk.normalizedText, keywords);
-      const phraseScore = scorePhrases(chunk.normalizedText, question);
+      const phraseScore = scorePhrases(chunk.normalizedText, searchQuestion);
       const fuseScore = fuseScores.get(id) ?? 0;
       const score = Math.round((keywordScore * 0.55 + phraseScore * 0.2 + fuseScore * 0.25) * 100);
 

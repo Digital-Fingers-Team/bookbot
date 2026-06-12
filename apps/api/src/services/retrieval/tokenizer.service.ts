@@ -34,8 +34,23 @@ const STOPWORDS = new Set([
 ]);
 
 export function tokenizeQuery(question: string) {
-  return normalizeText(question)
+  const tokens = normalizeText(question)
     .split(/[^a-z0-9]+/i)
     .map((token) => token.trim())
+    .map(normalizeQueryToken)
     .filter((token) => token.length >= 3 && !STOPWORDS.has(token));
+
+  return Array.from(new Set(tokens));
+}
+
+function normalizeQueryToken(token: string) {
+  if (/^exper/i.test(token)) {
+    return "experience";
+  }
+
+  if (/^full.?stack$/i.test(token) || token === "fullstack") {
+    return "fullstack";
+  }
+
+  return token;
 }
