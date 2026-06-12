@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    linear-gradient(135deg, rgba(40, 123, 143, 0.10), transparent 36rem),
+    linear-gradient(315deg, rgba(182, 95, 59, 0.10), transparent 34rem),
+    #f7f6f2;
+  color: #101417;
+}
+
+.dark body {
+  background:
+    linear-gradient(135deg, rgba(40, 123, 143, 0.16), transparent 34rem),
+    linear-gradient(315deg, rgba(182, 95, 59, 0.12), transparent 32rem),
+    #101417;
+  color: #eef2ee;
+}
+
+::selection {
+  background: rgba(182, 95, 59, 0.32);
+}

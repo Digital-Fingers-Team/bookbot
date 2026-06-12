@@ -1,0 +1,20 @@
+{
+  "name": "bookbotd",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Production-ready AI book knowledge SaaS with deterministic RAG over uploaded PDFs.",
+  "packageManager": "pnpm@11.4.0",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "pnpm --filter @bookbot/api build && pnpm --filter @bookbot/web build",
+    "typecheck": "pnpm --filter @bookbot/api typecheck && pnpm --filter @bookbot/web typecheck",
+    "test": "pnpm --filter @bookbot/api test && pnpm --filter @bookbot/web test"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=11.4.0"
+  }
+}

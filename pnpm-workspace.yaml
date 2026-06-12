@@ -1,0 +1,7 @@
+packages:
+  - "apps/*"
+allowBuilds:
+  esbuild: true
+  sharp: true
+minimumReleaseAgeExclude:
+  - postcss-selector-parser@6.1.4
