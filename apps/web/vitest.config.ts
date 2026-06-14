@@ -6,7 +6,10 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
-    include: ["tests/**/*.test.tsx"]
+    include: ["tests/**/*.test.tsx"],
+    maxWorkers: 1,
+    minWorkers: 1,
+    pool: "threads"
   },
   resolve: {
     alias: {

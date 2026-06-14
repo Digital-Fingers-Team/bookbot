@@ -1,7 +1,7 @@
 "use client";
 
-import { type FormEvent, type ReactNode, useState } from "react";
-import { AlertCircle, BookOpen, Bot, ChevronDown, Loader2, Search, Send, Sparkles } from "lucide-react";
+import { type FormEvent, useState } from "react";
+import { AlertCircle, BookOpen, ChevronDown, Loader2, Search, Send, ShieldCheck } from "lucide-react";
 import { askQuestion, ApiClientError } from "@/lib/api";
 import type { ChatResponse } from "@/lib/types";
 import { EvidenceText } from "@/components/evidence-text";
@@ -42,131 +42,124 @@ export default function ChatPage() {
     <div className="space-y-8">
       <LibraryHero />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <section className="border border-line bg-white shadow-soft dark:border-white/10 dark:bg-white/8">
-          <SectionTitle title="اسأل الكتب المرفوعة" icon={<MessageIcon />} />
-          <div className="p-5 sm:p-6">
-            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-moss dark:text-sea">مساعد معرفي صارم</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-normal text-ink dark:text-white">إجابة من كتبك فقط</h1>
-          </div>
-          <div className="inline-flex items-center gap-2 rounded-md border border-line bg-paper px-3 py-2 text-xs font-medium text-ink/70 dark:border-white/10 dark:bg-ink/60 dark:text-white/70">
-            <Sparkles className="h-4 w-4 text-copper" />
-            بدون معرفة خارجية
-          </div>
-        </div>
+      <section className="overflow-hidden border border-line bg-white shadow-soft">
+        <SectionHeader title="Ask your uploaded books" icon={<ShieldCheck className="h-5 w-5" />} />
+        <div className="grid gap-8 p-5 lg:grid-cols-[minmax(0,1fr)_280px] lg:p-7">
+          <form onSubmit={submit} className="space-y-5">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-ink">Question</label>
+              <textarea
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                placeholder="Ask a factual question that can be answered from your uploaded PDFs."
+                className="min-h-40 w-full resize-y rounded-md border border-line bg-white p-4 text-base text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15"
+                maxLength={2000}
+              />
+            </div>
 
-        <form onSubmit={submit} className="space-y-4">
-          <textarea
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            placeholder="اكتب سؤالا يجب أن تكون إجابته موجودة داخل الكتب المرفوعة."
-            className="min-h-36 w-full resize-y rounded-md border border-line bg-paper p-4 text-base outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-ink/70 dark:text-white dark:placeholder:text-white/35"
-            maxLength={2000}
-          />
-
-          <div className="grid gap-3 sm:grid-cols-[1fr_180px_120px]">
-            <input
-              value={model}
-              onChange={(event) => setModel(event.target.value)}
-              placeholder="نموذج OpenRouter اختياري"
-              className="h-11 rounded-md border border-line bg-paper px-3 text-sm outline-none focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-ink/70 dark:text-white"
-            />
-            <label className="flex h-11 items-center gap-2 rounded-md border border-line bg-paper px-3 text-sm text-ink/70 dark:border-white/10 dark:bg-ink/70 dark:text-white/70">
-              المقاطع
-              <select
-                value={limit}
-                onChange={(event) => setLimit(Number(event.target.value))}
-                className="mr-auto bg-transparent font-semibold text-ink outline-none dark:text-white"
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_170px_130px]">
+              <input
+                value={model}
+                onChange={(event) => setModel(event.target.value)}
+                placeholder="Optional OpenRouter model"
+                className="h-11 rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15"
+              />
+              <label className="flex h-11 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm text-ink/70">
+                Top chunks
+                <select
+                  value={limit}
+                  onChange={(event) => setLimit(Number(event.target.value))}
+                  className="ml-auto bg-transparent font-semibold text-ink outline-none"
+                >
+                  {[5, 8, 10, 12, 15].map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="submit"
+                disabled={loading || !question.trim()}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-moss px-4 text-sm font-semibold text-white shadow-sm shadow-moss/20 transition hover:bg-[#064b26] disabled:cursor-not-allowed disabled:opacity-55"
               >
-                {[5, 8, 10, 12, 15].map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="submit"
-              disabled={loading || !question.trim()}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-moss px-4 text-sm font-semibold text-white shadow-sm shadow-moss/20 transition hover:bg-[#064b26] disabled:cursor-not-allowed disabled:opacity-55"
-            >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              اسأل
-            </button>
-          </div>
-        </form>
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Ask
+              </button>
+            </div>
 
-        {loading ? (
-          <div className="mt-6 flex items-center gap-3 rounded-md border border-sea/25 bg-sea/10 p-4 text-sm font-medium text-moss dark:text-sea">
-            <Search className="h-4 w-4 animate-pulse" />
-            جار البحث في الكتب...
-          </div>
-        ) : null}
+            {loading ? (
+              <div className="flex items-center gap-3 rounded-md border border-sea/25 bg-sea/10 p-4 text-sm font-medium text-moss">
+                <Search className="h-4 w-4 animate-pulse" />
+                Searching books...
+              </div>
+            ) : null}
 
-        {error ? (
-          <div className="mt-6 flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <p>{error}</p>
-          </div>
-        ) : null}
+            {error ? (
+              <div className="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>{error}</p>
+              </div>
+            ) : null}
+          </form>
 
-        {response ? <AnswerPanel response={response} /> : null}
-          </div>
-        </section>
+          <aside className="rounded-md border border-line bg-paper p-5">
+            <h2 className="text-base font-semibold text-moss">Strict RAG rules</h2>
+            <dl className="mt-4 space-y-4 text-sm">
+              <div>
+                <dt className="font-medium text-ink">Book-only context</dt>
+                <dd className="mt-1 text-ink/60">Only retrieved chunks from uploaded books are sent to the model.</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-ink">No guessing</dt>
+                <dd className="mt-1 text-ink/60">Unsupported questions return the not-found response.</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-ink">Evidence included</dt>
+                <dd className="mt-1 text-ink/60">Answers show sources, pages, relevance scores, and raw evidence.</dd>
+              </div>
+            </dl>
+          </aside>
+        </div>
+      </section>
 
-        <aside className="border border-line bg-white shadow-soft dark:border-white/10 dark:bg-white/8">
-          <SectionTitle title="ضوابط الإجابة" icon={<Bot className="h-5 w-5" />} />
-          <dl className="space-y-4 p-5 text-sm">
-          <div>
-            <dt className="font-medium text-ink dark:text-white">حدود الاسترجاع</dt>
-            <dd className="mt-1 text-ink/60 dark:text-white/60">يتم إرسال أفضل المقاطع المسترجعة فقط إلى النموذج.</dd>
-          </div>
-          <div>
-            <dt className="font-medium text-ink dark:text-white">عند عدم وجود دليل</dt>
-            <dd className="mt-1 text-ink/60 dark:text-white/60">يرجع النظام رسالة عدم العثور بدلا من التخمين.</dd>
-          </div>
-          <div>
-            <dt className="font-medium text-ink dark:text-white">الأدلة</dt>
-            <dd className="mt-1 text-ink/60 dark:text-white/60">كل إجابة تعرض المصادر والنصوص الخام ودرجات الصلة.</dd>
-          </div>
-        </dl>
-        </aside>
-      </div>
+      {response ? <AnswerPanel response={response} /> : null}
     </div>
   );
 }
 
 function LibraryHero() {
+  const books = [
+    ["Governance", "bg-[#e6c766]", "h-44"],
+    ["Leadership", "bg-white", "h-52"],
+    ["Digital", "bg-[#6aa66d]", "h-56"],
+    ["Security", "bg-[#234331] text-white", "h-48"],
+    ["Strategy", "bg-[#eee6d3]", "h-60"]
+  ];
+
   return (
-    <section className="relative overflow-hidden border-b-[18px] border-moss bg-white shadow-soft">
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.95),rgba(255,255,255,0.78)),repeating-linear-gradient(90deg,rgba(0,0,0,0.04)_0,rgba(0,0,0,0.04)_6px,transparent_6px,transparent_42px)]" />
-      <div className="relative grid min-h-[330px] items-end gap-8 px-6 py-10 lg:grid-cols-[1fr_0.95fr] lg:px-12">
-        <div className="pb-4 text-right">
-          <h1 className="text-4xl font-black leading-tight text-moss drop-shadow-sm sm:text-5xl lg:text-6xl">
-            مكتبة الكتب الذكية
+    <section className="relative overflow-hidden border-b-[16px] border-moss bg-white shadow-soft">
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.96),rgba(255,255,255,0.82)),repeating-linear-gradient(90deg,rgba(7,95,47,0.07)_0,rgba(7,95,47,0.07)_5px,transparent_5px,transparent_44px)]" />
+      <div className="relative grid min-h-[310px] items-end gap-8 px-6 py-10 lg:grid-cols-[1fr_0.95fr] lg:px-12">
+        <div className="pb-4">
+          <p className="text-sm font-semibold uppercase tracking-wide text-copper">AI Book Knowledge Library</p>
+          <h1 className="mt-3 text-4xl font-black leading-tight text-moss drop-shadow-sm sm:text-5xl lg:text-6xl">
+            Ask books. Get cited answers.
           </h1>
           <div className="my-5 h-1 w-full max-w-xl bg-copper" />
-          <p className="max-w-2xl text-2xl font-extrabold leading-relaxed text-copper sm:text-3xl">
-            إجابات موثقة من إصداراتك وكتبك المرفوعة فقط
+          <p className="max-w-2xl text-xl font-semibold leading-relaxed text-ink/75 sm:text-2xl">
+            Upload PDFs, search them with hybrid retrieval, and answer only from trusted book evidence.
           </p>
         </div>
         <div className="flex min-h-52 items-end justify-center gap-3">
-          {[
-            ["bg-[#e6c766]", "الحوكمة الذكية", "h-48"],
-            ["bg-white", "القيادة والإدارة", "h-56"],
-            ["bg-[#6aa66d]", "التحول الرقمي", "h-60"],
-            ["bg-[#234331]", "أمن المعلومات", "h-52"],
-            ["bg-[#eee6d3]", "سلطة العقل", "h-64"]
-          ].map(([color, title, height], index) => (
+          {books.map(([title, color, height], index) => (
             <div
               key={title}
               className={`relative w-24 ${height} ${color} flex shrink-0 flex-col justify-between border border-black/10 p-3 text-center shadow-[12px_14px_18px_rgba(0,0,0,0.22)]`}
               style={{ transform: `translateY(${index % 2 ? 12 : 0}px) skewY(-1deg)` }}
             >
               <BookOpen className="mx-auto h-7 w-7 text-moss" />
-              <span className="text-xs font-bold leading-5 text-ink">{title}</span>
+              <span className="text-xs font-bold leading-5">{title}</span>
               <span className="h-2 bg-moss/70" />
             </div>
           ))}
@@ -176,7 +169,7 @@ function LibraryHero() {
   );
 }
 
-function SectionTitle({ title, icon }: { title: string; icon: ReactNode }) {
+function SectionHeader({ title, icon }: { title: string; icon: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between bg-gradient-to-b from-[#74b66f] to-moss px-5 py-4 text-white">
       <h2 className="text-xl font-semibold">{title}</h2>
@@ -185,71 +178,63 @@ function SectionTitle({ title, icon }: { title: string; icon: ReactNode }) {
   );
 }
 
-function MessageIcon() {
-  return <Bot className="h-5 w-5" />;
-}
-
 function AnswerPanel({ response }: { response: ChatResponse }) {
   return (
-    <div className="mt-6 space-y-5">
-      <section className="rounded-md border border-line bg-paper p-4 dark:border-white/10 dark:bg-ink/60">
-        <h2 className="mb-3 text-sm font-semibold uppercase text-ink/55 dark:text-white/55">الإجابة</h2>
-        <p className="whitespace-pre-wrap text-base leading-7 text-ink dark:text-white">{response.answer}</p>
-      </section>
+    <section className="overflow-hidden border border-line bg-white shadow-soft">
+      <SectionHeader title="Answer and evidence" icon={<BookOpen className="h-5 w-5" />} />
+      <div className="space-y-5 p-5 lg:p-7">
+        <div className="rounded-md border border-line bg-paper p-4">
+          <h2 className="mb-3 text-sm font-semibold uppercase text-ink/55">Answer</h2>
+          <p className="whitespace-pre-wrap text-base leading-7 text-ink">{response.answer}</p>
+        </div>
 
-      <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase text-ink/55 dark:text-white/55">المصادر</h2>
-        {response.sources.length ? (
-          <div className="grid gap-3">
-            {response.sources.map((source, index) => (
-              <article
-                key={`${source.bookName}-${source.pageNumber}-${index}`}
-                className="rounded-md border border-line bg-white p-4 dark:border-white/10 dark:bg-white/6"
-              >
-                <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink dark:text-white">
-                  <span>{source.bookName}</span>
-                  <span className="rounded bg-moss/10 px-2 py-1 text-xs text-moss dark:bg-sea/15 dark:text-sea">
-                    صفحة {source.pageNumber}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm leading-6 text-ink/70 dark:text-white/65">{source.supportingText}</p>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p className="rounded-md border border-line bg-paper p-4 text-sm text-ink/60 dark:border-white/10 dark:bg-ink/60 dark:text-white/60">
-            لم يتم العثور على مصادر داعمة.
-          </p>
-        )}
-      </section>
+        <div>
+          <h2 className="mb-3 text-sm font-semibold uppercase text-ink/55">Sources</h2>
+          {response.sources.length ? (
+            <div className="grid gap-3">
+              {response.sources.map((source, index) => (
+                <article key={`${source.bookName}-${source.pageNumber}-${index}`} className="rounded-md border border-line bg-white p-4">
+                  <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink">
+                    <span>{source.bookName}</span>
+                    <span className="rounded bg-moss/10 px-2 py-1 text-xs text-moss">Page {source.pageNumber}</span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-ink/70">{source.supportingText}</p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-md border border-line bg-paper p-4 text-sm text-ink/60">No supporting sources were found.</p>
+          )}
+        </div>
 
-      {response.evidence.length ? (
-        <details className="rounded-md border border-line bg-white dark:border-white/10 dark:bg-white/6">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink dark:text-white">
-            عرض الأدلة
-            <ChevronDown className="h-4 w-4" />
-          </summary>
-          <div className="space-y-3 border-t border-line p-4 dark:border-white/10">
-            {response.evidence.map((chunk) => (
-              <article key={chunk.id} className="rounded-md border border-line bg-paper p-4 dark:border-white/10 dark:bg-ink/60">
-                <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase text-ink/55 dark:text-white/55">
-                  <span>{chunk.bookName}</span>
-                  <span>صفحة {chunk.pageNumber}</span>
-                  <span>الدرجة {chunk.score}</span>
-                </div>
-                <p className="text-sm leading-6 text-ink/75 dark:text-white/70">
-                  <EvidenceText text={chunk.chunkText} highlights={chunk.highlights} />
-                </p>
-              </article>
-            ))}
-          </div>
-        </details>
-      ) : null}
+        {response.evidence.length ? (
+          <details className="rounded-md border border-line bg-white">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink">
+              Show Evidence
+              <ChevronDown className="h-4 w-4" />
+            </summary>
+            <div className="space-y-3 border-t border-line p-4">
+              {response.evidence.map((chunk) => (
+                <article key={chunk.id} className="rounded-md border border-line bg-paper p-4">
+                  <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase text-ink/55">
+                    <span>{chunk.bookName}</span>
+                    <span>Page {chunk.pageNumber}</span>
+                    <span>Score {chunk.score}</span>
+                  </div>
+                  <p className="text-sm leading-6 text-ink/75">
+                    <EvidenceText text={chunk.chunkText} highlights={chunk.highlights} />
+                  </p>
+                </article>
+              ))}
+            </div>
+          </details>
+        ) : null}
 
-      <p className="text-xs text-ink/50 dark:text-white/45">
-        تم استرجاع {response.usage.retrievedChunks} مقاطع
-        {response.usage.model ? ` باستخدام ${response.usage.model}` : ""}.
-      </p>
-    </div>
+        <p className="text-xs text-ink/50">
+          Retrieved {response.usage.retrievedChunks} chunks
+          {response.usage.model ? ` with ${response.usage.model}` : ""}.
+        </p>
+      </div>
+    </section>
   );
 }

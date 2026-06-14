@@ -24,7 +24,7 @@ export default function UploadPage() {
     }
 
     if (nextFile.type !== "application/pdf" && !nextFile.name.toLowerCase().endsWith(".pdf")) {
-      setError("يرجى اختيار ملف PDF.");
+      setError("Please choose a PDF file.");
       setFile(null);
       return;
     }
@@ -62,14 +62,14 @@ export default function UploadPage() {
     <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       <section className="border border-line bg-white shadow-soft dark:border-white/10 dark:bg-white/8">
         <div className="flex items-center justify-between bg-gradient-to-b from-[#74b66f] to-moss px-5 py-4 text-white">
-          <h1 className="text-xl font-semibold">رفع كتاب جديد</h1>
+          <h1 className="text-xl font-semibold">Upload a new book</h1>
           <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-moss/45 shadow-inner">
             <UploadCloud className="h-5 w-5" />
           </span>
         </div>
         <div className="p-5 sm:p-6">
           <p className="mb-5 text-sm leading-7 text-ink/65 dark:text-white/65">
-            ارفع ملف PDF ليتم استخراج النص وتقسيمه إلى مقاطع قابلة للبحث مع حفظ رقم الصفحة والمصدر.
+            Upload a PDF so BookBot can extract text, split it into searchable chunks, and preserve source pages.
           </p>
 
         <label
@@ -84,8 +84,8 @@ export default function UploadPage() {
           }`}
         >
           <UploadCloud className="h-10 w-10 text-moss dark:text-sea" />
-          <span className="mt-4 text-base font-semibold text-ink dark:text-white">اسحب ملف PDF أو اختر ملفا</span>
-          <span className="mt-2 text-sm text-ink/55 dark:text-white/55">الكتب النصية تعطي أفضل نتائج للمصادر والصفحات.</span>
+          <span className="mt-4 text-base font-semibold text-ink dark:text-white">Drop a PDF or choose a file</span>
+          <span className="mt-2 text-sm text-ink/55 dark:text-white/55">Text-based books work best for page citations.</span>
           <input
             type="file"
             accept="application/pdf,.pdf"
@@ -107,7 +107,7 @@ export default function UploadPage() {
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-moss px-4 text-sm font-semibold text-white shadow-sm shadow-moss/20 transition hover:bg-[#064b26] disabled:cursor-not-allowed disabled:opacity-55"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
-              معالجة الكتاب
+              Process book
             </button>
           </div>
         ) : null}
@@ -123,8 +123,8 @@ export default function UploadPage() {
           <div className="mt-4 flex items-start gap-3 rounded-md border border-moss/30 bg-moss/10 p-4 text-sm text-moss dark:text-white">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
             <p>
-              تمت إضافة <span className="font-semibold">{result.title}</span> في {result.chunkCount} مقاطع عبر{" "}
-              {result.pageCount} صفحات.
+              <span className="font-semibold">{result.title}</span> was added as {result.chunkCount} chunks across{" "}
+              {result.pageCount} pages.
             </p>
           </div>
         ) : null}
@@ -134,8 +134,8 @@ export default function UploadPage() {
       <aside className="border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-white/8">
         <AdminKeyField />
         <div className="mt-6 space-y-4 text-sm text-ink/65 dark:text-white/65">
-          <p>يتم تقسيم الكتب حسب الصفحات وحفظ بيانات المصدر لكل مقطع.</p>
-          <p>لا يتم إرسال كامل الكتاب إلى OpenRouter، بل المقاطع المسترجعة فقط.</p>
+          <p>Uploaded PDFs are split by page and stored with source metadata for every chunk.</p>
+          <p>The full book is never sent to OpenRouter; only retrieved evidence chunks are used.</p>
         </div>
       </aside>
     </div>

@@ -8,14 +8,13 @@ export const metadata: Metadata = {
 };
 
 const themeScript = `
-  const saved = localStorage.getItem("bookbot-theme");
-  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  if (saved === "dark" || (!saved && prefersDark)) document.documentElement.classList.add("dark");
+  document.documentElement.classList.remove("dark");
+  localStorage.setItem("bookbot-theme", "light");
 `;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ar" dir="rtl" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen antialiased">
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <Navigation />

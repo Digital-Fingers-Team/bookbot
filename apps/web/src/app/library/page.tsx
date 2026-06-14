@@ -32,7 +32,7 @@ export default function LibraryPage() {
       setBooks(bookResult.books);
       setStats(statsResult);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "تعذر تحميل المكتبة.");
+      setError(err instanceof ApiClientError ? err.message : "Could not load the library.");
     } finally {
       setLoading(false);
     }
@@ -43,7 +43,7 @@ export default function LibraryPage() {
   }, [refresh]);
 
   async function removeBook(book: Book) {
-    if (!window.confirm(`حذف "${book.title}" وكل المقاطع التابعة له؟`)) {
+    if (!window.confirm(`Delete "${book.title}" and all of its chunks?`)) {
       return;
     }
 
@@ -54,7 +54,7 @@ export default function LibraryPage() {
       await deleteBook(book.id, adminKey);
       await refresh();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "تعذر حذف هذا الكتاب.");
+      setError(err instanceof ApiClientError ? err.message : "Could not delete this book.");
     } finally {
       setDeletingId("");
     }
@@ -65,8 +65,8 @@ export default function LibraryPage() {
       <section className="border border-line bg-white shadow-soft dark:border-white/10 dark:bg-white/8">
         <div className="flex items-center justify-between bg-gradient-to-b from-[#74b66f] to-moss px-5 py-4 text-white">
           <div>
-            <p className="text-xs font-semibold text-white/80">إدارة المحتوى</p>
-            <h1 className="mt-1 text-xl font-semibold">مكتبتي</h1>
+            <p className="text-xs font-semibold text-white/80">Content management</p>
+            <h1 className="mt-1 text-xl font-semibold">Library</h1>
           </div>
           <button
             type="button"
@@ -74,7 +74,7 @@ export default function LibraryPage() {
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-moss/45 px-4 text-sm font-semibold text-white shadow-inner transition hover:bg-moss/65"
           >
             <RefreshCw className="h-4 w-4" />
-            تحديث
+            Refresh
           </button>
         </div>
 
@@ -89,15 +89,15 @@ export default function LibraryPage() {
           {loading ? (
             <div className="flex min-h-56 items-center justify-center rounded-md border border-line bg-paper text-sm text-ink/60 dark:border-white/10 dark:bg-ink/60 dark:text-white/60">
               <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-              جار تحميل المكتبة...
+              Loading library...
             </div>
           ) : books.length ? (
             <div className="overflow-hidden rounded-md border border-line dark:border-white/10">
               <div className="grid grid-cols-[minmax(0,1fr)_110px_110px_64px] gap-3 border-b border-line bg-paper px-4 py-3 text-xs font-semibold uppercase text-ink/55 dark:border-white/10 dark:bg-ink/60 dark:text-white/55">
-                <span>الكتاب</span>
-                <span>الصفحات</span>
-                <span>المقاطع</span>
-                <span className="text-left">حذف</span>
+                <span>Book</span>
+                <span>Pages</span>
+                <span>Chunks</span>
+                <span className="text-left">Delete</span>
               </div>
               {books.map((book) => (
                 <div
@@ -107,7 +107,7 @@ export default function LibraryPage() {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-ink dark:text-white">{book.title}</p>
                     <p className="mt-1 truncate text-xs text-ink/50 dark:text-white/45">
-                      {book.originalFileName} · {new Date(book.createdAt).toLocaleDateString("ar-EG")}
+                      {book.originalFileName} - {new Date(book.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                   <span className="text-sm text-ink/65 dark:text-white/65">{book.pageCount}</span>
@@ -117,8 +117,8 @@ export default function LibraryPage() {
                     onClick={() => removeBook(book)}
                     disabled={deletingId === book.id}
                     className="mr-auto inline-flex h-9 w-9 items-center justify-center rounded-md border border-line text-red-700 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10"
-                    aria-label={`حذف ${book.title}`}
-                    title={`حذف ${book.title}`}
+                    aria-label={`Delete ${book.title}`}
+                    title={`Delete ${book.title}`}
                   >
                     {deletingId === book.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                   </button>
@@ -128,8 +128,8 @@ export default function LibraryPage() {
           ) : (
             <div className="flex min-h-56 flex-col items-center justify-center rounded-md border border-line bg-paper p-8 text-center dark:border-white/10 dark:bg-ink/60">
               <BookOpenText className="h-9 w-9 text-ink/35 dark:text-white/35" />
-              <p className="mt-3 text-sm font-semibold text-ink dark:text-white">لا توجد كتب مرفوعة بعد</p>
-              <p className="mt-1 text-sm text-ink/55 dark:text-white/55">ارفع ملف PDF لبدء بناء قاعدة المعرفة.</p>
+              <p className="mt-3 text-sm font-semibold text-ink dark:text-white">No books uploaded yet</p>
+              <p className="mt-1 text-sm text-ink/55 dark:text-white/55">Upload a PDF to start building the knowledge base.</p>
             </div>
           )}
         </div>
@@ -138,16 +138,16 @@ export default function LibraryPage() {
       <aside className="space-y-5 border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-white/8">
         <AdminKeyField />
         <div className="grid grid-cols-3 gap-3">
-          <Stat label="كتب" value={stats?.totalBooks ?? books.length} />
-          <Stat label="صفحات" value={stats?.totalPages ?? books.reduce((total, book) => total + book.pageCount, 0)} />
-          <Stat label="مقاطع" value={stats?.totalChunks ?? books.reduce((total, book) => total + book.chunkCount, 0)} />
+          <Stat label="Books" value={stats?.totalBooks ?? books.length} />
+          <Stat label="Pages" value={stats?.totalPages ?? books.reduce((total, book) => total + book.pageCount, 0)} />
+          <Stat label="Chunks" value={stats?.totalChunks ?? books.reduce((total, book) => total + book.chunkCount, 0)} />
         </div>
         <div className="rounded-md border border-line bg-paper p-4 dark:border-white/10 dark:bg-ink/60">
-          <h2 className="text-sm font-semibold text-ink dark:text-white">مؤشرات الاستخدام</h2>
+          <h2 className="text-sm font-semibold text-ink dark:text-white">Usage metrics</h2>
           <p className="mt-2 text-sm text-ink/60 dark:text-white/60">
             {stats
-              ? `${stats.usage.chat?.total ?? 0} أسئلة و ${stats.usage.upload?.total ?? 0} عمليات رفع مسجلة.`
-              : "أدخل مفتاح الإدارة لعرض مؤشرات الاستخدام."}
+              ? `${stats.usage.chat?.total ?? 0} chat requests and ${stats.usage.upload?.total ?? 0} uploads tracked.`
+              : "Enter an admin key to view protected usage metrics."}
           </p>
         </div>
       </aside>
