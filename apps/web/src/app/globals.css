@@ -13,18 +13,18 @@
 body {
   min-height: 100vh;
   background:
-    linear-gradient(180deg, rgba(37, 99, 235, 0.06), rgba(8, 145, 178, 0.03) 34rem, transparent 52rem),
-    #f8fafc;
-  color: #0f172a;
+    linear-gradient(180deg, rgba(7, 95, 47, 0.045), transparent 20rem),
+    #faf9f4;
+  color: #263238;
 }
 
 .dark body {
   background:
-    linear-gradient(180deg, rgba(37, 99, 235, 0.14), rgba(8, 145, 178, 0.08) 32rem, transparent 52rem),
-    #0f172a;
-  color: #f8fafc;
+    linear-gradient(180deg, rgba(79, 154, 95, 0.14), transparent 24rem),
+    #162019;
+  color: #faf9f4;
 }
 
 ::selection {
-  background: rgba(37, 99, 235, 0.24);
+  background: rgba(245, 160, 0, 0.32);
 }

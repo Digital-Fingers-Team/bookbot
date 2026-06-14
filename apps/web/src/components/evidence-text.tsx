@@ -16,7 +16,7 @@ export function EvidenceText({ text, highlights }: { text: string; highlights: H
     parts.push(
       <mark
         key={`${highlight.start}-${highlight.end}`}
-        className="rounded bg-moss/15 px-0.5 text-inherit ring-1 ring-moss/20 dark:bg-sea/25 dark:ring-sea/30"
+        className="rounded bg-copper/20 px-0.5 text-inherit ring-1 ring-copper/25 dark:bg-copper/25 dark:ring-copper/35"
       >
         {text.slice(highlight.start, highlight.end)}
       </mark>

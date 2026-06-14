@@ -24,7 +24,7 @@ export default function UploadPage() {
     }
 
     if (nextFile.type !== "application/pdf" && !nextFile.name.toLowerCase().endsWith(".pdf")) {
-      setError("Please choose a PDF file.");
+      setError("يرجى اختيار ملف PDF.");
       setFile(null);
       return;
     }
@@ -60,11 +60,17 @@ export default function UploadPage() {
 
   return (
     <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <section className="rounded-md border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-white/8 sm:p-6">
-        <div className="mb-5">
-          <p className="text-sm font-semibold text-moss dark:text-sea">Ingestion layer</p>
-          <h1 className="mt-1 text-2xl font-semibold text-ink dark:text-white">Upload PDF books</h1>
+      <section className="border border-line bg-white shadow-soft dark:border-white/10 dark:bg-white/8">
+        <div className="flex items-center justify-between bg-gradient-to-b from-[#74b66f] to-moss px-5 py-4 text-white">
+          <h1 className="text-xl font-semibold">رفع كتاب جديد</h1>
+          <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-moss/45 shadow-inner">
+            <UploadCloud className="h-5 w-5" />
+          </span>
         </div>
+        <div className="p-5 sm:p-6">
+          <p className="mb-5 text-sm leading-7 text-ink/65 dark:text-white/65">
+            ارفع ملف PDF ليتم استخراج النص وتقسيمه إلى مقاطع قابلة للبحث مع حفظ رقم الصفحة والمصدر.
+          </p>
 
         <label
           onDragEnter={() => setIsDragging(true)}
@@ -73,13 +79,13 @@ export default function UploadPage() {
           onDrop={onDrop}
           className={`flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed p-8 text-center transition ${
             isDragging
-              ? "border-sea bg-sea/10"
-              : "border-line bg-paper hover:border-sea dark:border-white/10 dark:bg-ink/60"
+              ? "border-moss bg-moss/10"
+              : "border-line bg-paper hover:border-moss dark:border-white/10 dark:bg-ink/60"
           }`}
         >
           <UploadCloud className="h-10 w-10 text-moss dark:text-sea" />
-          <span className="mt-4 text-base font-semibold text-ink dark:text-white">Drop a PDF or choose a file</span>
-          <span className="mt-2 text-sm text-ink/55 dark:text-white/55">Text-based books work best for page citations.</span>
+          <span className="mt-4 text-base font-semibold text-ink dark:text-white">اسحب ملف PDF أو اختر ملفا</span>
+          <span className="mt-2 text-sm text-ink/55 dark:text-white/55">الكتب النصية تعطي أفضل نتائج للمصادر والصفحات.</span>
           <input
             type="file"
             accept="application/pdf,.pdf"
@@ -91,23 +97,23 @@ export default function UploadPage() {
         {file ? (
           <div className="mt-4 flex flex-col gap-3 rounded-md border border-line bg-paper p-4 dark:border-white/10 dark:bg-ink/60 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-3">
-              <FileText className="h-5 w-5 shrink-0 text-sea" />
+              <FileText className="h-5 w-5 shrink-0 text-moss dark:text-sea" />
               <span className="truncate text-sm font-medium text-ink dark:text-white">{file.name}</span>
             </div>
             <button
               type="button"
               onClick={submit}
               disabled={loading}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-moss px-4 text-sm font-semibold text-white shadow-sm shadow-moss/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-55"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-moss px-4 text-sm font-semibold text-white shadow-sm shadow-moss/20 transition hover:bg-[#064b26] disabled:cursor-not-allowed disabled:opacity-55"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
-              Process book
+              معالجة الكتاب
             </button>
           </div>
         ) : null}
 
         {error ? (
-          <div className="mt-4 flex items-start gap-3 rounded-md border border-copper/30 bg-copper/10 p-4 text-sm text-copper">
+          <div className="mt-4 flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <p>{error}</p>
           </div>
@@ -117,18 +123,19 @@ export default function UploadPage() {
           <div className="mt-4 flex items-start gap-3 rounded-md border border-moss/30 bg-moss/10 p-4 text-sm text-moss dark:text-white">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
             <p>
-              <span className="font-semibold">{result.title}</span> was ingested into {result.chunkCount} chunks across{" "}
-              {result.pageCount} pages.
+              تمت إضافة <span className="font-semibold">{result.title}</span> في {result.chunkCount} مقاطع عبر{" "}
+              {result.pageCount} صفحات.
             </p>
           </div>
         ) : null}
+        </div>
       </section>
 
-      <aside className="rounded-md border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-white/8">
+      <aside className="border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-white/8">
         <AdminKeyField />
         <div className="mt-6 space-y-4 text-sm text-ink/65 dark:text-white/65">
-          <p>Uploaded PDFs are split per page into bounded chunks and stored with book/page metadata.</p>
-          <p>Full book text is never sent to OpenRouter; only retrieved evidence chunks are used during chat.</p>
+          <p>يتم تقسيم الكتب حسب الصفحات وحفظ بيانات المصدر لكل مقطع.</p>
+          <p>لا يتم إرسال كامل الكتاب إلى OpenRouter، بل المقاطع المسترجعة فقط.</p>
         </div>
       </aside>
     </div>

@@ -11,6 +11,6 @@ describe("UploadPage", () => {
     const file = new File(["not a pdf"], "notes.txt", { type: "text/plain" });
     await userEvent.upload(input, file, { applyAccept: false });
 
-    expect(await screen.findByText("Please choose a PDF file.")).toBeTruthy();
+    expect(await screen.findByText("يرجى اختيار ملف PDF.")).toBeTruthy();
   });
 });

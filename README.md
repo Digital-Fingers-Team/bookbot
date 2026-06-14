@@ -9,7 +9,7 @@ Production-ready AI book knowledge SaaS architecture for PDF ingestion, determin
 
 ## Quick Start
 
-This repo is pinned to `pnpm@11.4.0` and requires Node.js 22.13 or newer.
+This repo is pinned to `pnpm@11.4.0` and requires Node.js 22.13 or newer. Railpack is explicitly configured to install Node 22.
 
 ```bash
 pnpm install
