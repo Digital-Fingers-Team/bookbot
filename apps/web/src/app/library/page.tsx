@@ -65,13 +65,13 @@ export default function LibraryPage() {
       <section className="rounded-md border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-white/8 sm:p-6">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-moss dark:text-copper">Library</p>
+            <p className="text-sm font-semibold text-moss dark:text-sea">Library</p>
             <h1 className="mt-1 text-2xl font-semibold text-ink dark:text-white">Manage uploaded books</h1>
           </div>
           <button
             type="button"
             onClick={refresh}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-paper px-4 text-sm font-semibold text-ink transition hover:border-sea hover:text-sea dark:border-white/10 dark:bg-ink/60 dark:text-white"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-paper px-4 text-sm font-semibold text-ink transition hover:border-moss hover:text-moss dark:border-white/10 dark:bg-ink/60 dark:text-white dark:hover:border-sea dark:hover:text-sea"
           >
             <RefreshCw className="h-4 w-4" />
             Refresh

@@ -6,15 +6,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#101417",
-        paper: "#f7f6f2",
-        line: "#d9ded8",
-        moss: "#3e6652",
-        copper: "#b65f3b",
-        sea: "#287b8f"
+        ink: "#0f172a",
+        paper: "#f8fafc",
+        line: "#dbe3ef",
+        moss: "#2563eb",
+        copper: "#dc2626",
+        sea: "#0891b2"
       },
       boxShadow: {
-        soft: "0 18px 55px rgba(16, 20, 23, 0.10)"
+        soft: "0 18px 45px rgba(15, 23, 42, 0.08)"
       }
     }
   },

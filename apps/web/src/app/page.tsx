@@ -43,11 +43,11 @@ export default function ChatPage() {
       <section className="rounded-md border border-line bg-white p-4 shadow-soft dark:border-white/10 dark:bg-white/8 sm:p-6">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-moss dark:text-copper">Book-only RAG chat</p>
+            <p className="text-sm font-semibold text-moss dark:text-sea">Book-only RAG chat</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-normal text-ink dark:text-white">Ask your uploaded books</h1>
           </div>
           <div className="inline-flex items-center gap-2 rounded-md border border-line bg-paper px-3 py-2 text-xs font-medium text-ink/70 dark:border-white/10 dark:bg-ink/60 dark:text-white/70">
-            <Sparkles className="h-4 w-4 text-copper" />
+            <Sparkles className="h-4 w-4 text-sea" />
             External knowledge blocked
           </div>
         </div>
@@ -85,7 +85,7 @@ export default function ChatPage() {
             <button
               type="submit"
               disabled={loading || !question.trim()}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-moss px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-55"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-moss px-4 text-sm font-semibold text-white shadow-sm shadow-moss/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-55"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               Ask
@@ -112,7 +112,7 @@ export default function ChatPage() {
 
       <aside className="rounded-md border border-line bg-white p-4 shadow-soft dark:border-white/10 dark:bg-white/8 sm:p-5">
         <div className="flex items-center gap-2">
-          <Bot className="h-5 w-5 text-moss dark:text-copper" />
+          <Bot className="h-5 w-5 text-moss dark:text-sea" />
           <h2 className="text-base font-semibold text-ink dark:text-white">Runtime guardrails</h2>
         </div>
         <dl className="mt-5 space-y-4 text-sm">
@@ -153,7 +153,7 @@ function AnswerPanel({ response }: { response: ChatResponse }) {
               >
                 <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink dark:text-white">
                   <span>{source.bookName}</span>
-                  <span className="rounded bg-moss/10 px-2 py-1 text-xs text-moss dark:bg-copper/15 dark:text-copper">
+                  <span className="rounded bg-moss/10 px-2 py-1 text-xs text-moss dark:bg-sea/15 dark:text-sea">
                     Page {source.pageNumber}
                   </span>
                 </div>

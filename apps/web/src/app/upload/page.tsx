@@ -62,7 +62,7 @@ export default function UploadPage() {
     <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       <section className="rounded-md border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-white/8 sm:p-6">
         <div className="mb-5">
-          <p className="text-sm font-semibold text-moss dark:text-copper">Ingestion layer</p>
+          <p className="text-sm font-semibold text-moss dark:text-sea">Ingestion layer</p>
           <h1 className="mt-1 text-2xl font-semibold text-ink dark:text-white">Upload PDF books</h1>
         </div>
 
@@ -77,7 +77,7 @@ export default function UploadPage() {
               : "border-line bg-paper hover:border-sea dark:border-white/10 dark:bg-ink/60"
           }`}
         >
-          <UploadCloud className="h-10 w-10 text-moss dark:text-copper" />
+          <UploadCloud className="h-10 w-10 text-moss dark:text-sea" />
           <span className="mt-4 text-base font-semibold text-ink dark:text-white">Drop a PDF or choose a file</span>
           <span className="mt-2 text-sm text-ink/55 dark:text-white/55">Text-based books work best for page citations.</span>
           <input
@@ -98,7 +98,7 @@ export default function UploadPage() {
               type="button"
               onClick={submit}
               disabled={loading}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-moss px-4 text-sm font-semibold text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-55"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-moss px-4 text-sm font-semibold text-white shadow-sm shadow-moss/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-55"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
               Process book

@@ -3,7 +3,7 @@ import "./globals.css";
 import { Navigation } from "@/components/navigation";
 
 export const metadata: Metadata = {
-  title: "BookBotD",
+  title: "BookBot",
   description: "Strict RAG knowledge system for uploaded books."
 };
 
