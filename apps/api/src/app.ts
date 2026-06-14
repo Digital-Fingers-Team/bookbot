@@ -4,6 +4,7 @@ import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import morgan from "morgan";
 import { env } from "./config/env.js";
+import { authRouter } from "./routes/auth.routes.js";
 import { booksRouter } from "./routes/books.routes.js";
 import { chatRouter } from "./routes/chat.routes.js";
 import { statsRouter } from "./routes/stats.routes.js";
@@ -35,6 +36,7 @@ export function createApp(): Express {
     res.json({ status: "ok" });
   });
 
+  app.use("/api/auth", authRouter);
   app.use("/api/upload", uploadRouter);
   app.use("/api/chat", chatRouter);
   app.use("/api/books", booksRouter);

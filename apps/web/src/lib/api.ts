@@ -1,4 +1,4 @@
-import type { ApiErrorResponse, Book, ChatResponse, Stats } from "./types";
+import type { ApiErrorResponse, AuthSession, Book, ChatResponse, Stats, User } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -15,6 +15,7 @@ export class ApiClientError extends Error {
 
 type RequestOptions = {
   adminKey?: string;
+  token?: string;
   body?: unknown;
   method?: string;
 };
@@ -28,6 +29,10 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (options.adminKey) {
     headers.set("x-admin-key", options.adminKey);
+  }
+
+  if (options.token) {
+    headers.set("Authorization", `Bearer ${options.token}`);
   }
 
   const response = await fetch(`${API_URL}${path}`, {
@@ -56,13 +61,34 @@ export function askQuestion(input: { question: string; limit?: number; model?: s
   });
 }
 
-export async function uploadPdf(file: File, adminKey?: string) {
+export function login(input: { email: string; password: string }) {
+  return request<AuthSession>("/api/auth/login", {
+    method: "POST",
+    body: input
+  });
+}
+
+export function register(input: { name: string; email: string; password: string }) {
+  return request<AuthSession>("/api/auth/register", {
+    method: "POST",
+    body: input
+  });
+}
+
+export function me(token: string) {
+  return request<{ user: User }>("/api/auth/me", { token });
+}
+
+export async function uploadPdf(file: File, token?: string, adminKey?: string) {
   const formData = new FormData();
   formData.append("file", file);
 
   const headers = new Headers();
   if (adminKey) {
     headers.set("x-admin-key", adminKey);
+  }
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
   const response = await fetch(`${API_URL}/api/upload`, {
@@ -93,13 +119,14 @@ export function listBooks() {
   return request<{ books: Book[] }>("/api/books");
 }
 
-export function deleteBook(id: string, adminKey?: string) {
+export function deleteBook(id: string, token?: string, adminKey?: string) {
   return request<{ deleted: true }>(`/api/books/${id}`, {
     method: "DELETE",
+    token,
     adminKey
   });
 }
 
-export function getStats(adminKey?: string) {
-  return request<Stats>("/api/stats", { adminKey });
+export function getStats(token?: string, adminKey?: string) {
+  return request<Stats>("/api/stats", { token, adminKey });
 }

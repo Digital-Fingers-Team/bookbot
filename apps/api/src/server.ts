@@ -1,9 +1,11 @@
 import { createApp } from "./app.js";
 import { connectDatabase } from "./config/database.js";
 import { env } from "./config/env.js";
+import { seedDefaultAdmin } from "./services/auth/auth.service.js";
 
 async function bootstrap() {
   await connectDatabase();
+  await seedDefaultAdmin();
   const app = createApp();
 
   app.listen(env.PORT, () => {

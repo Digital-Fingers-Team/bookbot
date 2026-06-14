@@ -8,7 +8,6 @@ export default defineConfig({
     environment: "jsdom",
     include: ["tests/**/*.test.tsx"],
     maxWorkers: 1,
-    minWorkers: 1,
     pool: "threads"
   },
   resolve: {

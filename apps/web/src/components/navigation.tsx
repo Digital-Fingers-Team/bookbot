@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { BookOpenText, Home, Library, MessageSquareText, Search, UploadCloud } from "lucide-react";
 import { clsx } from "clsx";
 import { ThemeToggle } from "./theme-toggle";
+import { useAuth } from "./auth-provider";
 
 const navItems = [
   { href: "/", label: "Ask Books", icon: MessageSquareText },
@@ -14,13 +15,32 @@ const navItems = [
 
 export function Navigation() {
   const pathname = usePathname();
+  const { user, logout, loading } = useAuth();
 
   return (
     <header className="bg-white shadow-sm dark:bg-ink">
       <div className="border-b border-line bg-[#eceae2] text-sm text-ink/70 dark:border-white/10 dark:bg-white/5 dark:text-white/70">
-        <div className="mx-auto flex w-full max-w-7xl justify-end gap-8 px-4 py-2 sm:px-6 lg:px-8">
-          <span>Register</span>
-          <span>Sign in</span>
+        <div className="mx-auto flex w-full max-w-7xl justify-end gap-5 px-4 py-2 sm:px-6 lg:px-8">
+          {loading ? (
+            <span>Loading account...</span>
+          ) : user ? (
+            <>
+              <span className="font-medium text-moss">{user.name}</span>
+              <span className="rounded bg-moss/10 px-2 text-xs font-semibold uppercase text-moss">{user.role}</span>
+              <button type="button" onClick={logout} className="transition hover:text-moss">
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/register" className="transition hover:text-moss">
+                Create account
+              </Link>
+              <Link href="/login" className="transition hover:text-moss">
+                Sign in
+              </Link>
+            </>
+          )}
         </div>
       </div>
 
