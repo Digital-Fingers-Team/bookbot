@@ -9,8 +9,13 @@ export const metadata: Metadata = {
 };
 
 const themeScript = `
-  document.documentElement.classList.remove("dark");
-  localStorage.setItem("bookbot-theme", "light");
+  try {
+    const saved = localStorage.getItem("bookbot-theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.classList.toggle("dark", saved ? saved === "dark" : prefersDark);
+  } catch {
+    document.documentElement.classList.remove("dark");
+  }
 `;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

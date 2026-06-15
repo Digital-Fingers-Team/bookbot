@@ -1,13 +1,13 @@
 "use client";
 
 import { ChangeEvent, DragEvent, useState } from "react";
+import Link from "next/link";
 import { AlertCircle, CheckCircle2, FileText, Loader2, UploadCloud } from "lucide-react";
-import { AdminKeyField } from "@/components/admin-key-field";
-import { useAdminKey } from "@/hooks/use-admin-key";
+import { useAuth } from "@/components/auth-provider";
 import { ApiClientError, uploadPdf } from "@/lib/api";
 
 export default function UploadPage() {
-  const { adminKey } = useAdminKey();
+  const { token, user, isAdmin, loading: authLoading } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -17,6 +17,12 @@ export default function UploadPage() {
   function chooseFile(nextFile: File | null) {
     setError("");
     setResult(null);
+
+    if (!isAdmin) {
+      setError("Admin access is required to upload books.");
+      setFile(null);
+      return;
+    }
 
     if (!nextFile) {
       setFile(null);
@@ -33,7 +39,7 @@ export default function UploadPage() {
   }
 
   async function submit() {
-    if (!file || loading) {
+    if (!file || loading || !isAdmin) {
       return;
     }
 
@@ -42,7 +48,7 @@ export default function UploadPage() {
     setResult(null);
 
     try {
-      const uploaded = await uploadPdf(file, adminKey);
+      const uploaded = await uploadPdf(file, token);
       setResult(uploaded);
       setFile(null);
     } catch (err) {
@@ -72,27 +78,36 @@ export default function UploadPage() {
             Upload a PDF so BookBot can extract text, split it into searchable chunks, and preserve source pages.
           </p>
 
-        <label
-          onDragEnter={() => setIsDragging(true)}
-          onDragLeave={() => setIsDragging(false)}
-          onDragOver={(event) => event.preventDefault()}
-          onDrop={onDrop}
-          className={`flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed p-8 text-center transition ${
-            isDragging
-              ? "border-moss bg-moss/10"
-              : "border-line bg-paper hover:border-moss dark:border-white/10 dark:bg-ink/60"
-          }`}
-        >
-          <UploadCloud className="h-10 w-10 text-moss dark:text-sea" />
-          <span className="mt-4 text-base font-semibold text-ink dark:text-white">Drop a PDF or choose a file</span>
-          <span className="mt-2 text-sm text-ink/55 dark:text-white/55">Text-based books work best for page citations.</span>
-          <input
-            type="file"
-            accept="application/pdf,.pdf"
-            className="sr-only"
-            onChange={(event: ChangeEvent<HTMLInputElement>) => chooseFile(event.target.files?.item(0) ?? null)}
-          />
-        </label>
+          {!authLoading && !isAdmin ? (
+            <div className="mb-5 rounded-md border border-copper/30 bg-copper/10 p-4 text-sm leading-6 text-ink dark:text-white">
+              {user ? "Your account can ask questions, but only admins can upload books." : "Sign in as an admin to upload books."}
+            </div>
+          ) : null}
+
+          <label
+            onDragEnter={() => setIsDragging(true)}
+            onDragLeave={() => setIsDragging(false)}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={onDrop}
+            className={`flex min-h-64 flex-col items-center justify-center rounded-md border border-dashed p-8 text-center transition ${
+              !isAdmin ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+            } ${
+              isDragging
+                ? "border-moss bg-moss/10"
+                : "border-line bg-paper hover:border-moss dark:border-white/10 dark:bg-ink/60"
+            }`}
+          >
+            <UploadCloud className="h-10 w-10 text-moss dark:text-sea" />
+            <span className="mt-4 text-base font-semibold text-ink dark:text-white">Drop a PDF or choose a file</span>
+            <span className="mt-2 text-sm text-ink/55 dark:text-white/55">Text-based books work best for page citations.</span>
+            <input
+              type="file"
+              accept="application/pdf,.pdf"
+              className="sr-only"
+              disabled={!isAdmin}
+              onChange={(event: ChangeEvent<HTMLInputElement>) => chooseFile(event.target.files?.item(0) ?? null)}
+            />
+          </label>
 
         {file ? (
           <div className="mt-4 flex flex-col gap-3 rounded-md border border-line bg-paper p-4 dark:border-white/10 dark:bg-ink/60 sm:flex-row sm:items-center sm:justify-between">
@@ -103,7 +118,7 @@ export default function UploadPage() {
             <button
               type="button"
               onClick={submit}
-              disabled={loading}
+              disabled={loading || !isAdmin}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-moss px-4 text-sm font-semibold text-white shadow-sm shadow-moss/20 transition hover:bg-[#064b26] disabled:cursor-not-allowed disabled:opacity-55"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
@@ -132,7 +147,24 @@ export default function UploadPage() {
       </section>
 
       <aside className="border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-white/8">
-        <AdminKeyField />
+        <h2 className="text-base font-semibold text-ink dark:text-white">Access</h2>
+        {authLoading ? (
+          <p className="mt-3 text-sm text-ink/60 dark:text-white/60">Checking your session...</p>
+        ) : isAdmin ? (
+          <div className="mt-3 rounded-md border border-moss/20 bg-moss/10 p-4 text-sm text-moss dark:border-sea/25 dark:bg-sea/10 dark:text-sea">
+            Signed in as admin. Uploads will be attached to the shared BookBot library.
+          </div>
+        ) : (
+          <div className="mt-3 space-y-3 text-sm text-ink/65 dark:text-white/65">
+            <p>Admin access is required for ingestion because uploads change the production knowledge base.</p>
+            <Link
+              href="/login?next=/upload"
+              className="inline-flex h-10 items-center justify-center rounded-md bg-moss px-4 font-semibold text-white transition hover:bg-[#064b26]"
+            >
+              Sign in as admin
+            </Link>
+          </div>
+        )}
         <div className="mt-6 space-y-4 text-sm text-ink/65 dark:text-white/65">
           <p>Uploaded PDFs are split by page and stored with source metadata for every chunk.</p>
           <p>The full book is never sent to OpenRouter; only retrieved evidence chunks are used.</p>

@@ -9,7 +9,7 @@ async function bootstrap() {
   const app = createApp();
 
   app.listen(env.PORT, () => {
-    console.log(`BookBotD API listening on http://localhost:${env.PORT}`);
+    console.log(`BookBot API listening on http://localhost:${env.PORT}`);
   });
 }
 

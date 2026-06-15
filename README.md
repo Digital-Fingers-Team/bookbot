@@ -1,4 +1,4 @@
-# BookBotD
+# BookBot
 
 Production-ready AI book knowledge SaaS architecture for PDF ingestion, deterministic hybrid retrieval, and strict RAG generation through OpenRouter.
 
@@ -9,7 +9,7 @@ Production-ready AI book knowledge SaaS architecture for PDF ingestion, determin
 
 ## Quick Start
 
-This repo is pinned to `pnpm@11.4.0` and requires Node.js 22.13 or newer. Railpack is explicitly configured to install Node 22.
+This repo is pinned to `pnpm@10.34.3` and supports Node.js 20.20.0 or newer. Railpack is configured for Node 20 so managed builders do not try to run pnpm 11 on Node 20.
 
 ```bash
 pnpm install
@@ -24,7 +24,10 @@ Run MongoDB locally or update `MONGODB_URI`. The API defaults to port `4000`; th
 - `MONGODB_URI` - MongoDB connection string.
 - `OPENROUTER_API_KEY` - OpenRouter API key.
 - `OPENROUTER_MODEL` - Default model ID.
-- `ADMIN_API_KEY` - Optional single-tenant admin key for upload/delete/stats.
+- `AUTH_JWT_SECRET` - Secret used to sign BookBot login sessions.
+- `DEFAULT_ADMIN_EMAIL` - Seeded admin email, defaults to `admin@example.com`.
+- `DEFAULT_ADMIN_PASSWORD` - Seeded admin password, defaults to `admin123`.
+- `ADMIN_API_KEY` - Optional API-only fallback key for upload/delete/stats automation.
 - `CLIENT_ORIGIN` - CORS origin for the frontend.
 - `NEXT_PUBLIC_API_URL` - Browser-facing API URL.
 

@@ -1,0 +1,10 @@
+
+> @bookbot/web@1.0.0 dev F:\baraa\bookbotD\apps\web
+> next dev
+
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://172.28.16.1:3000
+✓ Ready in 8.7s
+Creating turbopack project { dir: 'F:\\baraa\\bookbotD\\apps\\web', testMode: true }
+

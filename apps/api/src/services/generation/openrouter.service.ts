@@ -32,8 +32,8 @@ export async function generateAnswer(input: {
       headers: {
         Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://bookbotd.local",
-        "X-Title": "BookBotD"
+        "HTTP-Referer": "https://bookbot.local",
+        "X-Title": "BookBot"
       },
       body: JSON.stringify({
         model,

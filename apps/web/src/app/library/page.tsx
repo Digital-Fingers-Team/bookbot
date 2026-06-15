@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { AlertCircle, BookOpenText, Loader2, RefreshCw, Trash2 } from "lucide-react";
-import { AdminKeyField } from "@/components/admin-key-field";
-import { useAdminKey } from "@/hooks/use-admin-key";
+import { useAuth } from "@/components/auth-provider";
 import { ApiClientError, deleteBook, getStats, listBooks } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
 
 export default function LibraryPage() {
-  const { adminKey } = useAdminKey();
+  const { token, user, isAdmin, loading: authLoading } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -20,15 +20,7 @@ export default function LibraryPage() {
     setError("");
 
     try {
-      const [bookResult, statsResult] = await Promise.all([
-        listBooks(),
-        getStats(adminKey).catch((err) => {
-          if (err instanceof ApiClientError && err.status === 401) {
-            return null;
-          }
-          throw err;
-        })
-      ]);
+      const [bookResult, statsResult] = await Promise.all([listBooks(), isAdmin ? getStats(token) : Promise.resolve(null)]);
       setBooks(bookResult.books);
       setStats(statsResult);
     } catch (err) {
@@ -36,7 +28,7 @@ export default function LibraryPage() {
     } finally {
       setLoading(false);
     }
-  }, [adminKey]);
+  }, [isAdmin, token]);
 
   useEffect(() => {
     refresh();
@@ -51,7 +43,7 @@ export default function LibraryPage() {
     setError("");
 
     try {
-      await deleteBook(book.id, adminKey);
+      await deleteBook(book.id, token);
       await refresh();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Could not delete this book.");
@@ -88,7 +80,7 @@ export default function LibraryPage() {
 
           {loading ? (
             <div className="flex min-h-56 items-center justify-center rounded-md border border-line bg-paper text-sm text-ink/60 dark:border-white/10 dark:bg-ink/60 dark:text-white/60">
-              <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Loading library...
             </div>
           ) : books.length ? (
@@ -112,16 +104,20 @@ export default function LibraryPage() {
                   </div>
                   <span className="text-sm text-ink/65 dark:text-white/65">{book.pageCount}</span>
                   <span className="text-sm text-ink/65 dark:text-white/65">{book.chunkCount}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeBook(book)}
-                    disabled={deletingId === book.id}
-                    className="mr-auto inline-flex h-9 w-9 items-center justify-center rounded-md border border-line text-red-700 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10"
-                    aria-label={`Delete ${book.title}`}
-                    title={`Delete ${book.title}`}
-                  >
-                    {deletingId === book.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                  </button>
+                  {isAdmin ? (
+                    <button
+                      type="button"
+                      onClick={() => removeBook(book)}
+                      disabled={deletingId === book.id}
+                      className="mr-auto inline-flex h-9 w-9 items-center justify-center rounded-md border border-line text-red-700 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10"
+                      aria-label={`Delete ${book.title}`}
+                      title={`Delete ${book.title}`}
+                    >
+                      {deletingId === book.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    </button>
+                  ) : (
+                    <span className="text-xs text-ink/40 dark:text-white/40">Admin</span>
+                  )}
                 </div>
               ))}
             </div>
@@ -136,7 +132,28 @@ export default function LibraryPage() {
       </section>
 
       <aside className="space-y-5 border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-white/8">
-        <AdminKeyField />
+        <div>
+          <h2 className="text-base font-semibold text-ink dark:text-white">Access</h2>
+          {authLoading ? (
+            <p className="mt-2 text-sm text-ink/60 dark:text-white/60">Checking your session...</p>
+          ) : isAdmin ? (
+            <p className="mt-2 rounded-md border border-moss/20 bg-moss/10 p-3 text-sm text-moss dark:border-sea/25 dark:bg-sea/10 dark:text-sea">
+              Signed in as admin. You can delete books and view usage metrics.
+            </p>
+          ) : (
+            <div className="mt-2 space-y-3 text-sm text-ink/65 dark:text-white/65">
+              <p>
+                {user ? "You can browse the library. Admin access is required for deletion and stats." : "Sign in as admin to manage books and view stats."}
+              </p>
+              <Link
+                href="/login?next=/library"
+                className="inline-flex h-10 items-center justify-center rounded-md bg-moss px-4 font-semibold text-white transition hover:bg-[#064b26]"
+              >
+                Sign in as admin
+              </Link>
+            </div>
+          )}
+        </div>
         <div className="grid grid-cols-3 gap-3">
           <Stat label="Books" value={stats?.totalBooks ?? books.length} />
           <Stat label="Pages" value={stats?.totalPages ?? books.reduce((total, book) => total + book.pageCount, 0)} />
@@ -147,7 +164,7 @@ export default function LibraryPage() {
           <p className="mt-2 text-sm text-ink/60 dark:text-white/60">
             {stats
               ? `${stats.usage.chat?.total ?? 0} chat requests and ${stats.usage.upload?.total ?? 0} uploads tracked.`
-              : "Enter an admin key to view protected usage metrics."}
+              : "Admin sign-in is required to view protected usage metrics."}
           </p>
         </div>
       </aside>
