@@ -7,15 +7,17 @@ import { clsx } from "clsx";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuth } from "./auth-provider";
 
-const navItems = [
+const baseNavItems = [
   { href: "/", label: "Ask Books", icon: MessageSquareText },
-  { href: "/upload", label: "Upload", icon: UploadCloud },
   { href: "/library", label: "Library", icon: Library }
 ];
 
+const adminNavItems = [{ href: "/upload", label: "Upload", icon: UploadCloud }];
+
 export function Navigation() {
   const pathname = usePathname();
-  const { user, logout, loading } = useAuth();
+  const { user, logout, loading, isAdmin } = useAuth();
+  const navItems = isAdmin ? [...baseNavItems.slice(0, 1), ...adminNavItems, ...baseNavItems.slice(1)] : baseNavItems;
 
   return (
     <header className="bg-white shadow-sm dark:bg-ink">

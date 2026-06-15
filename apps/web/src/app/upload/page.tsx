@@ -18,12 +18,6 @@ export default function UploadPage() {
     setError("");
     setResult(null);
 
-    if (!isAdmin) {
-      setError("Admin access is required to upload books.");
-      setFile(null);
-      return;
-    }
-
     if (!nextFile) {
       setFile(null);
       return;
@@ -64,6 +58,21 @@ export default function UploadPage() {
     chooseFile(event.dataTransfer.files.item(0));
   }
 
+  if (authLoading) {
+    return (
+      <div className="mx-auto max-w-xl border border-line bg-white p-6 shadow-soft dark:border-white/10 dark:bg-white/8">
+        <div className="flex items-center gap-3 text-sm font-medium text-ink/65 dark:text-white/65">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Checking admin access...
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return <AdminOnlyUpload userName={user?.name} />;
+  }
+
   return (
     <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       <section className="border border-line bg-white shadow-soft dark:border-white/10 dark:bg-white/8">
@@ -78,20 +87,12 @@ export default function UploadPage() {
             Upload a PDF so BookBot can extract text, split it into searchable chunks, and preserve source pages.
           </p>
 
-          {!authLoading && !isAdmin ? (
-            <div className="mb-5 rounded-md border border-copper/30 bg-copper/10 p-4 text-sm leading-6 text-ink dark:text-white">
-              {user ? "Your account can ask questions, but only admins can upload books." : "Sign in as an admin to upload books."}
-            </div>
-          ) : null}
-
           <label
             onDragEnter={() => setIsDragging(true)}
             onDragLeave={() => setIsDragging(false)}
             onDragOver={(event) => event.preventDefault()}
             onDrop={onDrop}
-            className={`flex min-h-64 flex-col items-center justify-center rounded-md border border-dashed p-8 text-center transition ${
-              !isAdmin ? "cursor-not-allowed opacity-60" : "cursor-pointer"
-            } ${
+            className={`flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed p-8 text-center transition ${
               isDragging
                 ? "border-moss bg-moss/10"
                 : "border-line bg-paper hover:border-moss dark:border-white/10 dark:bg-ink/60"
@@ -104,7 +105,6 @@ export default function UploadPage() {
               type="file"
               accept="application/pdf,.pdf"
               className="sr-only"
-              disabled={!isAdmin}
               onChange={(event: ChangeEvent<HTMLInputElement>) => chooseFile(event.target.files?.item(0) ?? null)}
             />
           </label>
@@ -118,7 +118,7 @@ export default function UploadPage() {
             <button
               type="button"
               onClick={submit}
-              disabled={loading || !isAdmin}
+              disabled={loading}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-moss px-4 text-sm font-semibold text-white shadow-sm shadow-moss/20 transition hover:bg-[#064b26] disabled:cursor-not-allowed disabled:opacity-55"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
@@ -148,28 +148,48 @@ export default function UploadPage() {
 
       <aside className="border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-white/8">
         <h2 className="text-base font-semibold text-ink dark:text-white">Access</h2>
-        {authLoading ? (
-          <p className="mt-3 text-sm text-ink/60 dark:text-white/60">Checking your session...</p>
-        ) : isAdmin ? (
-          <div className="mt-3 rounded-md border border-moss/20 bg-moss/10 p-4 text-sm text-moss dark:border-sea/25 dark:bg-sea/10 dark:text-sea">
-            Signed in as admin. Uploads will be attached to the shared BookBot library.
-          </div>
-        ) : (
-          <div className="mt-3 space-y-3 text-sm text-ink/65 dark:text-white/65">
-            <p>Admin access is required for ingestion because uploads change the production knowledge base.</p>
-            <Link
-              href="/login?next=/upload"
-              className="inline-flex h-10 items-center justify-center rounded-md bg-moss px-4 font-semibold text-white transition hover:bg-[#064b26]"
-            >
-              Sign in as admin
-            </Link>
-          </div>
-        )}
+        <div className="mt-3 rounded-md border border-moss/20 bg-moss/10 p-4 text-sm text-moss dark:border-sea/25 dark:bg-sea/10 dark:text-sea">
+          Signed in as admin. Uploads will be attached to the shared BookBot library.
+        </div>
         <div className="mt-6 space-y-4 text-sm text-ink/65 dark:text-white/65">
           <p>Uploaded PDFs are split by page and stored with source metadata for every chunk.</p>
           <p>The full book is never sent to OpenRouter; only retrieved evidence chunks are used.</p>
         </div>
       </aside>
+    </div>
+  );
+}
+
+function AdminOnlyUpload({ userName }: { userName?: string }) {
+  return (
+    <div className="mx-auto max-w-2xl overflow-hidden border border-line bg-white shadow-soft dark:border-white/10 dark:bg-white/8">
+      <div className="flex items-center justify-between bg-moss px-5 py-4 text-white">
+        <h1 className="text-xl font-semibold">Admin upload only</h1>
+        <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/15">
+          <UploadCloud className="h-5 w-5" />
+        </span>
+      </div>
+      <div className="space-y-4 p-6">
+        <p className="text-sm leading-7 text-ink/70 dark:text-white/70">
+          {userName
+            ? `${userName}, your account can ask questions and view the library, but only admins can upload books.`
+            : "Please sign in as an admin to upload books."}
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href="/login?next=/upload"
+            className="inline-flex h-10 items-center justify-center rounded-md bg-moss px-4 text-sm font-semibold text-white transition hover:bg-[#064b26]"
+          >
+            Sign in as admin
+          </Link>
+          <Link
+            href="/"
+            className="inline-flex h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-semibold text-ink transition hover:border-moss hover:text-moss dark:border-white/10 dark:bg-ink/70 dark:text-white"
+          >
+            Back to chat
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
