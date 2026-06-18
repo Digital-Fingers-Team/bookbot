@@ -47,48 +47,50 @@ export default function ChatPage() {
       <section className="overflow-hidden border border-line bg-white shadow-soft dark:border-white/10 dark:bg-ink/85">
         <SectionHeader title="Ask your uploaded books" icon={<ShieldCheck className="h-5 w-5" />} />
         <div className="grid gap-8 p-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:p-7">
-          <form onSubmit={submit} className="space-y-5">
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-ink dark:text-white">Question</label>
-              <textarea
-                value={question}
-                onChange={(event) => setQuestion(event.target.value)}
-                placeholder="Ask about a fact, page, topic, name, or quote from your books."
-                className="min-h-44 w-full resize-y rounded-md border border-line bg-white p-4 text-base leading-7 text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-[#111a14] dark:text-white dark:placeholder:text-white/35"
-                maxLength={2000}
-              />
-            </div>
+          <div className="space-y-5">
+            <form onSubmit={submit} className="space-y-5">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-ink dark:text-white">Question</label>
+                <textarea
+                  value={question}
+                  onChange={(event) => setQuestion(event.target.value)}
+                  placeholder="Ask about a fact, page, topic, name, or quote from your books."
+                  className="min-h-44 w-full resize-y rounded-md border border-line bg-white p-4 text-base leading-7 text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-[#111a14] dark:text-white dark:placeholder:text-white/35"
+                  maxLength={2000}
+                />
+              </div>
 
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_170px_130px]">
-              <input
-                value={model}
-                onChange={(event) => setModel(event.target.value)}
-                placeholder="Optional OpenRouter model"
-                className="h-11 rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-[#111a14] dark:text-white"
-              />
-              <label className="flex h-11 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm text-ink/70 dark:border-white/10 dark:bg-[#111a14] dark:text-white/70">
-                Top chunks
-                <select
-                  value={limit}
-                  onChange={(event) => setLimit(Number(event.target.value))}
-                  className="ml-auto bg-transparent font-semibold text-ink outline-none dark:text-white"
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_170px_130px]">
+                <input
+                  value={model}
+                  onChange={(event) => setModel(event.target.value)}
+                  placeholder="Optional OpenRouter model"
+                  className="h-11 rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-[#111a14] dark:text-white"
+                />
+                <label className="flex h-11 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm text-ink/70 dark:border-white/10 dark:bg-[#111a14] dark:text-white/70">
+                  Top chunks
+                  <select
+                    value={limit}
+                    onChange={(event) => setLimit(Number(event.target.value))}
+                    className="ml-auto bg-transparent font-semibold text-ink outline-none dark:text-white"
+                  >
+                    {[5, 8, 10, 12, 15].map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="submit"
+                  disabled={loading || !question.trim()}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-moss px-4 text-sm font-semibold text-white shadow-sm shadow-moss/20 transition hover:bg-[#064b26] disabled:cursor-not-allowed disabled:opacity-55"
                 >
-                  {[5, 8, 10, 12, 15].map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="submit"
-                disabled={loading || !question.trim()}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-moss px-4 text-sm font-semibold text-white shadow-sm shadow-moss/20 transition hover:bg-[#064b26] disabled:cursor-not-allowed disabled:opacity-55"
-              >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                Ask
-              </button>
-            </div>
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  Ask
+                </button>
+              </div>
+            </form>
 
             {loading ? (
               <div className="flex items-center gap-3 rounded-md border border-sea/25 bg-sea/10 p-4 text-sm font-medium text-moss dark:text-sea">
@@ -103,7 +105,9 @@ export default function ChatPage() {
                 <p>{error}</p>
               </div>
             ) : null}
-          </form>
+
+            {response ? <AnswerPanel response={response} /> : null}
+          </div>
 
           <aside className="rounded-md border border-line bg-paper p-5 dark:border-white/10 dark:bg-white/5">
             <div className="flex items-center gap-3">
@@ -130,7 +134,6 @@ export default function ChatPage() {
         </div>
       </section>
 
-      {response ? <AnswerPanel response={response} /> : null}
     </div>
   );
 }
@@ -189,9 +192,14 @@ function AnswerPanel({ response }: { response: ChatResponse }) {
   const notFound = response.usage.retrievedChunks === 0 || /information not found/i.test(response.answer);
 
   return (
-    <section className="overflow-hidden border border-line bg-white shadow-soft dark:border-white/10 dark:bg-ink/85">
-      <SectionHeader title={notFound ? "No matching evidence" : "Answer and evidence"} icon={<BookOpen className="h-5 w-5" />} />
-      <div className="space-y-5 p-5 lg:p-7">
+    <div className="overflow-hidden rounded-md border border-line bg-white dark:border-white/10 dark:bg-[#111a14]">
+      <div className="flex items-center justify-between border-b border-line bg-paper px-4 py-3 dark:border-white/10 dark:bg-white/5">
+        <h2 className="text-sm font-semibold uppercase text-ink/55 dark:text-white/55">
+          {notFound ? "No matching evidence" : "Answer and evidence"}
+        </h2>
+        <BookOpen className="h-4 w-4 text-moss dark:text-sea" />
+      </div>
+      <div className="space-y-5 p-4">
         <div className="rounded-md border border-line bg-paper p-5 dark:border-white/10 dark:bg-white/5">
           <h2 className="mb-3 text-sm font-semibold uppercase text-ink/55 dark:text-white/55">
             {notFound ? "What happened" : "Answer"}
@@ -250,6 +258,6 @@ function AnswerPanel({ response }: { response: ChatResponse }) {
           {response.usage.model ? ` with ${response.usage.model}` : ""}.
         </p>
       </div>
-    </section>
+    </div>
   );
 }
