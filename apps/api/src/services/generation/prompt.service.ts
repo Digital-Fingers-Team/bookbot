@@ -9,15 +9,11 @@ Rules:
 - Never hallucinate.
 - Answer the user's exact question directly and concisely.
 - Ignore unrelated profile metadata, contact details, navigation text, and sidebar text unless the question asks for it.
-- If not found, answer exactly: "Information not found in the uploaded books."
+- If not found, answer exactly: "I couldn't find this information in the books."
+- Do not cite books, pages, or chunk ids. The server will attach sources.
 
 Output format:
-Answer: <concise answer>
-
-Sources:
-* Book name
-* Page number
-* Supporting excerpt
+{"answer":"<concise answer>"}
 
 No greetings. No filler.`;
 
@@ -25,7 +21,7 @@ export function buildUserPrompt(question: string, chunks: RetrievedChunk[]) {
   const context = chunks
     .map(
       (chunk, index) =>
-        `[${index + 1}] Book: ${chunk.bookName}\nPage: ${chunk.pageNumber}\nText: ${chunk.chunkText}`
+        `[${index + 1}]\nText: ${chunk.chunkText}`
     )
     .join("\n\n");
 

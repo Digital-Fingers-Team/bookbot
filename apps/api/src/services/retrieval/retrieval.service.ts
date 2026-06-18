@@ -1,174 +1,110 @@
-import Fuse from "fuse.js";
+import { env } from "../../config/env.js";
+import { embeddingVersion } from "../../config/rag.js";
 import { Chunk } from "../../models/chunk.model.js";
 import type { RetrievedChunk } from "../../types/rag.js";
-import { escapeRegExp, normalizeText } from "../../utils/text.js";
-import { buildHighlights } from "./highlight.service.js";
-import { tokenizeQuery } from "./tokenizer.service.js";
+import { ApiError } from "../../utils/api-error.js";
+import { embedText } from "../embeddings/openai-embedding.service.js";
+import { createReranker, type Reranker } from "./reranker.service.js";
 
-type LeanChunk = {
+type VectorChunk = {
   _id: unknown;
   bookId: unknown;
   bookName: string;
   pageNumber: number;
+  chunkIndex: number;
   chunkText: string;
   normalizedText: string;
+  score?: number;
 };
 
-export async function retrieveRelevantChunks(question: string, limit = 8): Promise<RetrievedChunk[]> {
-  const boundedLimit = Math.min(Math.max(limit, 5), 15);
-  const keywords = tokenizeQuery(question);
+export type RetrievalResult = {
+  chunks: RetrievedChunk[];
+  vectorCandidateCount: number;
+};
 
-  if (!keywords.length) {
-    return [];
-  }
+export async function retrieveRelevantChunks(
+  question: string,
+  topK = 15,
+  reranker: Reranker = createReranker()
+): Promise<RetrievalResult> {
+  const boundedTopK = boundTopK(topK);
+  const queryVector = await embedText(question);
+  const candidateLimit = Math.min(Math.max(50, boundedTopK * 4), env.VECTOR_CANDIDATE_MAX);
+  const numCandidates = candidateLimit * env.VECTOR_NUM_CANDIDATES_MULTIPLIER;
+  const candidates = await vectorSearch(queryVector, candidateLimit, numCandidates);
 
-  const searchQuestion = `${question} ${keywords.join(" ")}`;
-  const candidates = await findCandidates(searchQuestion, keywords);
   if (!candidates.length) {
-    return [];
+    return {
+      chunks: [],
+      vectorCandidateCount: 0
+    };
   }
 
-  const fuse = new Fuse(candidates, {
-    keys: [
-      { name: "chunkText", weight: 0.9 },
-      { name: "bookName", weight: 0.1 }
-    ],
-    includeScore: true,
-    threshold: 0.45,
-    ignoreLocation: true,
-    minMatchCharLength: 3
+  const chunks = await reranker.rerank({
+    question,
+    topK: boundedTopK,
+    candidates: candidates.map(toRetrievedChunk)
   });
 
-  const fuseScores = new Map<string, number>();
-  for (const result of fuse.search(searchQuestion)) {
-    fuseScores.set(String(result.item._id), 1 - (result.score ?? 1));
-  }
-
-  return candidates
-    .map((chunk) => {
-      const id = String(chunk._id);
-      const keywordScore = scoreKeywords(chunk.normalizedText, keywords);
-      const phraseScore = scorePhrases(chunk.normalizedText, searchQuestion);
-      const fuseScore = fuseScores.get(id) ?? 0;
-      const score = Math.round((keywordScore * 0.55 + phraseScore * 0.2 + fuseScore * 0.25) * 100);
-
-      return {
-        id,
-        bookId: String(chunk.bookId),
-        bookName: chunk.bookName,
-        pageNumber: chunk.pageNumber,
-        chunkText: chunk.chunkText,
-        score,
-        highlights: buildHighlights(chunk.chunkText, keywords)
-      };
-    })
-    .filter((chunk) => chunk.score >= 12)
-    .sort((a, b) => b.score - a.score || a.pageNumber - b.pageNumber)
-    .slice(0, boundedLimit);
-}
-
-async function findCandidates(question: string, keywords: string[]): Promise<LeanChunk[]> {
-  const projection = {
-    bookId: 1,
-    bookName: 1,
-    pageNumber: 1,
-    chunkText: 1,
-    normalizedText: 1,
-    score: { $meta: "textScore" }
+  return {
+    chunks,
+    vectorCandidateCount: candidates.length
   };
+}
 
+async function vectorSearch(queryVector: number[], limit: number, numCandidates: number): Promise<VectorChunk[]> {
   try {
-    const textCandidates = await Chunk.find(
-      { $text: { $search: question } },
-      projection,
-      { lean: true }
-    )
-      .sort({ score: { $meta: "textScore" } })
-      .limit(250);
-
-    if (textCandidates.length >= 40) {
-      return textCandidates as LeanChunk[];
-    }
-
-    const fallback = await regexCandidates(keywords, 250 - textCandidates.length);
-    return dedupe([...textCandidates, ...fallback] as LeanChunk[]);
+    return (await Chunk.aggregate([
+      {
+        $vectorSearch: {
+          index: env.ATLAS_VECTOR_INDEX_NAME,
+          path: "embedding",
+          queryVector,
+          numCandidates,
+          limit,
+          filter: {
+            embeddingModel: env.OPENAI_EMBEDDING_MODEL,
+            embeddingVersion: embeddingVersion()
+          }
+        }
+      },
+      {
+        $project: {
+          bookId: 1,
+          bookName: 1,
+          pageNumber: 1,
+          chunkIndex: 1,
+          chunkText: 1,
+          normalizedText: 1,
+          score: { $meta: "vectorSearchScore" }
+        }
+      }
+    ])) as VectorChunk[];
   } catch {
-    return regexCandidates(keywords, 250);
+    throw new ApiError(
+      503,
+      "VECTOR_SEARCH_UNAVAILABLE",
+      "Vector search is not available. Configure MongoDB Atlas Vector Search and create the chunk embedding index."
+    );
   }
 }
 
-async function regexCandidates(keywords: string[], limit: number): Promise<LeanChunk[]> {
-  if (limit <= 0) {
-    return [];
-  }
+function toRetrievedChunk(chunk: VectorChunk): RetrievedChunk {
+  const vectorScore = typeof chunk.score === "number" ? chunk.score : 0;
 
-  const important = keywords.slice(0, 8);
-  const regexes = important.map((keyword) => new RegExp(escapeRegExp(keyword), "i"));
-
-  return Chunk.find(
-    {
-      $or: [
-        { normalizedText: { $in: regexes } },
-        { chunkText: { $in: regexes } },
-        { bookName: { $in: regexes } }
-      ]
-    },
-    {
-      bookId: 1,
-      bookName: 1,
-      pageNumber: 1,
-      chunkText: 1,
-      normalizedText: 1
-    },
-    { lean: true }
-  ).limit(limit);
+  return {
+    id: String(chunk._id),
+    bookId: String(chunk.bookId),
+    bookName: chunk.bookName,
+    pageNumber: chunk.pageNumber,
+    chunkIndex: chunk.chunkIndex,
+    chunkText: chunk.chunkText,
+    score: vectorScore,
+    vectorScore,
+    highlights: []
+  };
 }
 
-function dedupe(chunks: LeanChunk[]) {
-  const seen = new Set<string>();
-  return chunks.filter((chunk) => {
-    const id = String(chunk._id);
-    if (seen.has(id)) {
-      return false;
-    }
-    seen.add(id);
-    return true;
-  });
-}
-
-function scoreKeywords(text: string, keywords: string[]) {
-  let hits = 0;
-  let weightedHits = 0;
-
-  for (const keyword of keywords) {
-    const count = countOccurrences(text, keyword);
-    if (count > 0) {
-      hits += 1;
-      weightedHits += Math.min(count, 5);
-    }
-  }
-
-  const coverage = hits / keywords.length;
-  const density = Math.min(weightedHits / Math.max(keywords.length * 2, 1), 1);
-  return coverage * 0.7 + density * 0.3;
-}
-
-function scorePhrases(text: string, question: string) {
-  const normalizedQuestion = normalizeText(question);
-  const phrases = normalizedQuestion
-    .split(/[?.,;:!]/)
-    .map((part) => part.trim())
-    .filter((part) => part.length >= 12);
-
-  if (!phrases.length) {
-    return 0;
-  }
-
-  const phraseHits = phrases.filter((phrase) => text.includes(phrase)).length;
-  return phraseHits / phrases.length;
-}
-
-function countOccurrences(text: string, keyword: string) {
-  const matches = text.match(new RegExp(escapeRegExp(keyword), "g"));
-  return matches?.length ?? 0;
+function boundTopK(topK: number) {
+  return Math.min(Math.max(topK, 1), 75);
 }

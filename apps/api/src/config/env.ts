@@ -17,8 +17,18 @@ const schema = z.object({
   AUTH_JWT_SECRET: z.string().min(16).default("change-me-bookbot-auth-secret"),
   DEFAULT_ADMIN_EMAIL: z.string().email().default("admin@example.com"),
   DEFAULT_ADMIN_PASSWORD: z.string().min(6).default("admin123"),
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_EMBEDDING_MODEL: z.string().default("text-embedding-3-small"),
+  OPENAI_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(1536),
+  ATLAS_VECTOR_INDEX_NAME: z.string().default("chunk_embedding_vector_index"),
+  VECTOR_CANDIDATE_MAX: z.coerce.number().int().positive().default(300),
+  VECTOR_NUM_CANDIDATES_MULTIPLIER: z.coerce.number().int().positive().default(20),
+  LLM_PROVIDER: z.enum(["openrouter", "gemini"]).default("openrouter"),
   OPENROUTER_API_KEY: z.string().optional(),
   OPENROUTER_MODEL: z.string().default("openai/gpt-4o-mini"),
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default("gemini-2.0-flash"),
+  PDF_STORAGE_DIR: z.string().default("storage/pdfs"),
   UPLOAD_MAX_MB: z.coerce.number().int().positive().default(25),
   UPLOAD_MAX_FILES: z.coerce.number().int().positive().default(10)
 });

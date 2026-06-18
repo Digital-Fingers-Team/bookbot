@@ -7,18 +7,22 @@ export type PageText = {
 
 export type TextChunk = {
   pageNumber: number;
+  chunkIndex: number;
   chunkText: string;
 };
 
 const SENTENCE_BOUNDARY = /(?<=[.!?])\s+/;
+const DEFAULT_MIN_TOKENS = 800;
+const DEFAULT_MAX_TOKENS = 1200;
+const DEFAULT_OVERLAP_TOKENS = 150;
 
 export function chunkPages(
   pages: PageText[],
-  options: { minChars?: number; maxChars?: number; overlapChars?: number } = {}
+  options: { minTokens?: number; maxTokens?: number; overlapTokens?: number; minChars?: number; maxChars?: number; overlapChars?: number } = {}
 ): TextChunk[] {
-  const minChars = options.minChars ?? 500;
-  const maxChars = options.maxChars ?? 950;
-  const overlapChars = options.overlapChars ?? 120;
+  const minTokens = options.minTokens ?? tokenEquivalent(options.minChars) ?? DEFAULT_MIN_TOKENS;
+  const maxTokens = options.maxTokens ?? tokenEquivalent(options.maxChars) ?? DEFAULT_MAX_TOKENS;
+  const overlapTokens = options.overlapTokens ?? tokenEquivalent(options.overlapChars) ?? DEFAULT_OVERLAP_TOKENS;
   const chunks: TextChunk[] = [];
 
   for (const page of pages) {
@@ -27,61 +31,101 @@ export function chunkPages(
       continue;
     }
 
-    if (text.length <= maxChars) {
-      chunks.push({ pageNumber: page.pageNumber, chunkText: text });
+    if (countTokens(text) <= maxTokens) {
+      chunks.push({ pageNumber: page.pageNumber, chunkIndex: chunks.length, chunkText: text });
       continue;
     }
 
     const sentences = text.split(SENTENCE_BOUNDARY).filter(Boolean);
-    let current = "";
+    let current: string[] = [];
 
     for (const sentence of sentences) {
-      const next = current ? `${current} ${sentence}` : sentence;
+      const currentText = current.join(" ");
+      const next = currentText ? `${currentText} ${sentence}` : sentence;
+      const nextTokens = countTokens(next);
 
-      if (next.length <= maxChars) {
-        current = next;
+      if (nextTokens <= maxTokens) {
+        current.push(sentence);
         continue;
       }
 
-      if (current.length >= minChars) {
-        chunks.push({ pageNumber: page.pageNumber, chunkText: current });
-        current = withOverlap(current, overlapChars, sentence);
+      if (countTokens(currentText) >= minTokens) {
+        chunks.push({ pageNumber: page.pageNumber, chunkIndex: chunks.length, chunkText: currentText });
+        current = [...overlapSentences(current, overlapTokens), sentence];
       } else {
-        const hardChunks = splitHard(next, maxChars, overlapChars);
+        const hardChunks = splitLongSentence(next, maxTokens, overlapTokens);
         for (const hardChunk of hardChunks.slice(0, -1)) {
-          chunks.push({ pageNumber: page.pageNumber, chunkText: hardChunk });
+          chunks.push({ pageNumber: page.pageNumber, chunkIndex: chunks.length, chunkText: hardChunk });
         }
-        current = hardChunks.at(-1) ?? "";
+        current = hardChunks.at(-1) ? [hardChunks.at(-1) as string] : [];
       }
     }
 
-    if (current.trim()) {
-      chunks.push({ pageNumber: page.pageNumber, chunkText: cleanWhitespace(current) });
+    const finalText = cleanWhitespace(current.join(" "));
+    if (finalText) {
+      chunks.push({ pageNumber: page.pageNumber, chunkIndex: chunks.length, chunkText: finalText });
     }
   }
 
-  return chunks.filter((chunk) => chunk.chunkText.length > 30);
+  return chunks
+    .filter((chunk) => chunk.chunkText.length > 30)
+    .map((chunk, chunkIndex) => ({
+      ...chunk,
+      chunkIndex
+    }));
 }
 
-function withOverlap(previous: string, overlapChars: number, nextSentence: string) {
-  const overlap = previous.slice(Math.max(0, previous.length - overlapChars));
-  return cleanWhitespace(`${overlap} ${nextSentence}`);
+function overlapSentences(sentences: string[], overlapTokens: number) {
+  const overlap: string[] = [];
+  let tokens = 0;
+
+  for (let index = sentences.length - 1; index >= 0; index -= 1) {
+    const sentence = sentences[index];
+    if (!sentence) {
+      continue;
+    }
+    const sentenceTokens = countTokens(sentence);
+    if (tokens > 0 && tokens + sentenceTokens > overlapTokens) {
+      break;
+    }
+    overlap.unshift(sentence);
+    tokens += sentenceTokens;
+  }
+
+  return overlap;
 }
 
-function splitHard(text: string, maxChars: number, overlapChars: number) {
+function splitLongSentence(text: string, maxTokens: number, overlapTokens: number) {
+  const words = cleanWhitespace(text).split(" ");
   const chunks: string[] = [];
   let cursor = 0;
 
-  while (cursor < text.length) {
-    const end = Math.min(cursor + maxChars, text.length);
-    chunks.push(cleanWhitespace(text.slice(cursor, end)));
+  while (cursor < words.length) {
+    const end = Math.min(cursor + maxTokens, words.length);
+    chunks.push(words.slice(cursor, end).join(" "));
 
-    if (end === text.length) {
+    if (end === words.length) {
       break;
     }
 
-    cursor = Math.max(0, end - overlapChars);
+    cursor = Math.max(0, end - overlapTokens);
   }
 
   return chunks;
+}
+
+function countTokens(text: string) {
+  if (!text.trim()) {
+    return 0;
+  }
+
+  return text.trim().split(/\s+/).length;
+}
+
+function tokenEquivalent(chars?: number) {
+  if (!chars) {
+    return undefined;
+  }
+
+  return Math.max(1, Math.round(chars / 5));
 }

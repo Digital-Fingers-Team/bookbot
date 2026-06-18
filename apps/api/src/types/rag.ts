@@ -9,9 +9,32 @@ export type RetrievedChunk = {
   bookId: string;
   bookName: string;
   pageNumber: number;
+  chunkIndex?: number;
   chunkText: string;
   score: number;
+  vectorScore?: number;
   highlights: Highlight[];
+};
+
+export type EvidenceChunk = {
+  pageNumber: number;
+  text: string;
+  chunkId: string;
+  score: number;
+};
+
+export type EvidenceBook = {
+  bookTitle: string;
+  bookId: string;
+  score: number;
+  evidence: EvidenceChunk[];
+};
+
+export type StructuredSource = {
+  bookTitle: string;
+  pageNumber: number;
+  bookName?: string;
+  supportingText?: string;
 };
 
 export type Source = {
@@ -26,4 +49,16 @@ export type ChatUsage = {
   completionTokens?: number;
   totalTokens?: number;
   retrievedChunks: number;
+};
+
+export type GenerateAnswerInput = {
+  question: string;
+  chunks: RetrievedChunk[];
+  model?: string;
+};
+
+export type GenerateAnswerResult = {
+  answer: string;
+  model?: string;
+  usage?: Omit<ChatUsage, "retrievedChunks">;
 };
