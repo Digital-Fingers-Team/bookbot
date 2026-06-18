@@ -1,7 +1,7 @@
 import { env } from "../../config/env.js";
 import { ApiError } from "../../utils/api-error.js";
 
-type OpenAIEmbeddingResponse = {
+type OpenRouterEmbeddingResponse = {
   data?: Array<{ embedding?: number[]; index?: number }>;
   model?: string;
   usage?: {
@@ -24,46 +24,47 @@ export async function embedTexts(texts: string[]): Promise<EmbeddingBatchResult>
   if (!texts.length) {
     return {
       embeddings: [],
-      model: env.OPENAI_EMBEDDING_MODEL,
-      dimensions: env.OPENAI_EMBEDDING_DIMENSIONS,
+      model: env.OPENROUTER_EMBEDDING_MODEL,
+      dimensions: env.OPENROUTER_EMBEDDING_DIMENSIONS,
       usage: {}
     };
   }
 
-  if (!env.OPENAI_API_KEY) {
-    throw new ApiError(503, "OPENAI_NOT_CONFIGURED", "OpenAI embeddings are not configured yet.");
+  if (!env.OPENROUTER_API_KEY) {
+    throw new ApiError(503, "OPENROUTER_NOT_CONFIGURED", "OpenRouter embeddings are not configured yet.");
   }
 
-  const response = await fetch("https://api.openai.com/v1/embeddings", {
+  const response = await fetch("https://openrouter.ai/api/v1/embeddings", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-      "Content-Type": "application/json"
+      Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://bookbot.local",
+      "X-Title": "BookBot"
     },
     body: JSON.stringify({
       input: texts,
-      model: env.OPENAI_EMBEDDING_MODEL,
-      dimensions: env.OPENAI_EMBEDDING_DIMENSIONS,
+      model: env.OPENROUTER_EMBEDDING_MODEL,
       encoding_format: "float"
     })
   });
 
   if (!response.ok) {
-    throw new ApiError(502, "OPENAI_EMBEDDING_FAILURE", "The embedding provider could not process this book.");
+    throw new ApiError(502, "OPENROUTER_EMBEDDING_FAILURE", "The embedding provider could not process this book.");
   }
 
-  const payload = (await response.json()) as OpenAIEmbeddingResponse;
+  const payload = (await response.json()) as OpenRouterEmbeddingResponse;
   const ordered = [...(payload.data ?? [])].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
   const embeddings = ordered.map((item) => item.embedding).filter((embedding): embedding is number[] => Array.isArray(embedding));
 
-  if (embeddings.length !== texts.length || embeddings.some((embedding) => embedding.length !== env.OPENAI_EMBEDDING_DIMENSIONS)) {
+  if (embeddings.length !== texts.length || embeddings.some((embedding) => embedding.length !== env.OPENROUTER_EMBEDDING_DIMENSIONS)) {
     throw new ApiError(502, "INVALID_EMBEDDING_RESPONSE", "The embedding provider returned invalid vectors.");
   }
 
   return {
     embeddings,
-    model: payload.model ?? env.OPENAI_EMBEDDING_MODEL,
-    dimensions: env.OPENAI_EMBEDDING_DIMENSIONS,
+    model: payload.model ?? env.OPENROUTER_EMBEDDING_MODEL,
+    dimensions: env.OPENROUTER_EMBEDDING_DIMENSIONS,
     usage: {
       promptTokens: payload.usage?.prompt_tokens,
       totalTokens: payload.usage?.total_tokens

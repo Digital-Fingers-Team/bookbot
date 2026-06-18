@@ -42,26 +42,10 @@ describe("LLM providers", () => {
     expect(body.messages[0].content).toContain("Do not cite books");
   });
 
-  it("Gemini provider uses JSON mode", async () => {
+  it("rejects non-OpenRouter providers until another API key is available", async () => {
     vi.resetModules();
-    vi.stubEnv("GEMINI_API_KEY", "gemini-key");
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: true,
-        json: async () => ({
-          candidates: [{ content: { parts: [{ text: "{\"answer\":\"Gemini answer.\"}" }] } }],
-          usageMetadata: { totalTokenCount: 12 }
-        })
-      }))
-    );
+    const { createLLMProvider } = await import("../src/services/generation/llm-provider.service.js");
 
-    const { GeminiProvider } = await import("../src/services/generation/providers/gemini.provider.js");
-    const result = await new GeminiProvider().generateAnswer({ question: "Question?", chunks });
-    const body = JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body));
-
-    expect(result.answer).toBe("Gemini answer.");
-    expect(body.generationConfig.responseMimeType).toBe("application/json");
-    expect(body.systemInstruction.parts[0].text).toContain("Do not cite books");
+    expect(() => createLLMProvider("other-provider")).toThrow("This AI provider is not supported.");
   });
 });

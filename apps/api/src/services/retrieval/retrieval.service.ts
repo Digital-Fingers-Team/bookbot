@@ -3,7 +3,7 @@ import { embeddingVersion } from "../../config/rag.js";
 import { Chunk } from "../../models/chunk.model.js";
 import type { RetrievedChunk } from "../../types/rag.js";
 import { ApiError } from "../../utils/api-error.js";
-import { embedText } from "../embeddings/openai-embedding.service.js";
+import { embedText } from "../embeddings/openrouter-embedding.service.js";
 import { createReranker, type Reranker } from "./reranker.service.js";
 
 type VectorChunk = {
@@ -63,7 +63,7 @@ async function vectorSearch(queryVector: number[], limit: number, numCandidates:
           numCandidates,
           limit,
           filter: {
-            embeddingModel: env.OPENAI_EMBEDDING_MODEL,
+            embeddingModel: env.OPENROUTER_EMBEDDING_MODEL,
             embeddingVersion: embeddingVersion()
           }
         }

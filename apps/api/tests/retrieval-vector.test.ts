@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("../src/services/embeddings/openai-embedding.service.js", () => ({
+vi.mock("../src/services/embeddings/openrouter-embedding.service.js", () => ({
   embedText: vi.fn(async () => [0.1, 0.2, 0.3])
 }));
 

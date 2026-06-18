@@ -3,7 +3,7 @@ import { Chunk } from "../../models/chunk.model.js";
 import { UsageEvent } from "../../models/usage-event.model.js";
 import { CHUNKING_VERSION, PROCESSING_VERSION, embeddingVersion } from "../../config/rag.js";
 import { env } from "../../config/env.js";
-import { embedTexts } from "../embeddings/openai-embedding.service.js";
+import { embedTexts } from "../embeddings/openrouter-embedding.service.js";
 import { ApiError } from "../../utils/api-error.js";
 import { titleFromFileName } from "../../utils/file-name.js";
 import { normalizeText } from "../../utils/text.js";
@@ -56,8 +56,8 @@ export async function ingestPdf(input: { buffer: Buffer; originalFileName: strin
         chunkText: chunk.chunkText,
         normalizedText: normalizeText(chunk.chunkText),
         embedding: embeddingResults[chunk.chunkIndex],
-        embeddingModel: env.OPENAI_EMBEDDING_MODEL,
-        embeddingDimensions: env.OPENAI_EMBEDDING_DIMENSIONS,
+        embeddingModel: env.OPENROUTER_EMBEDDING_MODEL,
+        embeddingDimensions: env.OPENROUTER_EMBEDDING_DIMENSIONS,
         chunkingVersion: CHUNKING_VERSION,
         embeddingVersion: embeddingVersion(),
         processingVersion: PROCESSING_VERSION

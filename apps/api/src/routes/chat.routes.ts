@@ -13,7 +13,7 @@ const chatSchema = z.object({
   limit: z.number().int().min(1).max(75).optional(),
   knownChunkIds: z.array(z.string().trim().min(1)).max(200).optional(),
   previousAnswer: z.string().trim().max(8000).optional(),
-  provider: z.enum(["openrouter", "gemini"]).optional(),
+  provider: z.enum(["openrouter"]).optional(),
   model: z.string().trim().min(3).max(120).optional()
 });
 

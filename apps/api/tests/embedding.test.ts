@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-describe("OpenAI embeddings", () => {
+describe("OpenRouter embeddings", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.resetModules();
-    vi.stubEnv("OPENAI_API_KEY", "test-key");
-    vi.stubEnv("OPENAI_EMBEDDING_DIMENSIONS", "1536");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    vi.stubEnv("OPENROUTER_EMBEDDING_MODEL", "openai/text-embedding-3-small");
+    vi.stubEnv("OPENROUTER_EMBEDDING_DIMENSIONS", "1536");
   });
 
   it("embeds batches and preserves provider order by index", async () => {
@@ -19,7 +20,7 @@ describe("OpenAI embeddings", () => {
       vi.fn(async () => ({
         ok: true,
         json: async () => ({
-          model: "text-embedding-3-small",
+          model: "openai/text-embedding-3-small",
           data: [
             { index: 1, embedding: vectors[1] },
             { index: 0, embedding: vectors[0] }
@@ -29,14 +30,14 @@ describe("OpenAI embeddings", () => {
       }))
     );
 
-    const { embedTexts } = await import("../src/services/embeddings/openai-embedding.service.js");
+    const { embedTexts } = await import("../src/services/embeddings/openrouter-embedding.service.js");
     const result = await embedTexts(["first", "second"]);
 
     expect(result.embeddings).toEqual(vectors);
-    expect(result.model).toBe("text-embedding-3-small");
+    expect(result.model).toBe("openai/text-embedding-3-small");
     expect(result.usage.totalTokens).toBe(12);
     expect(fetch).toHaveBeenCalledWith(
-      "https://api.openai.com/v1/embeddings",
+      "https://openrouter.ai/api/v1/embeddings",
       expect.objectContaining({
         method: "POST",
         body: expect.stringContaining("\"input\":[\"first\",\"second\"]")
