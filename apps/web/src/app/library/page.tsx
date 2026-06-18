@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, BookOpenText, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { AlertCircle, BookOpenText, Loader2, RefreshCw, Trash2, X } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { ApiClientError, deleteBook, getStats, listBooks } from "@/lib/api";
+import { ApiClientError, deleteBook, getBookPdf, getStats, listBooks } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
 
 export default function LibraryPage() {
@@ -15,6 +15,20 @@ export default function LibraryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState("");
+  const [readerBook, setReaderBook] = useState<Book | null>(null);
+  const [readerUrl, setReaderUrl] = useState("");
+  const [readerLoading, setReaderLoading] = useState(false);
+  const [readerError, setReaderError] = useState("");
+
+  const closeReader = useCallback(() => {
+    if (readerUrl) {
+      URL.revokeObjectURL(readerUrl);
+    }
+    setReaderBook(null);
+    setReaderUrl("");
+    setReaderError("");
+    setReaderLoading(false);
+  }, [readerUrl]);
 
   const refresh = useCallback(async () => {
     if (!token) {
@@ -48,6 +62,14 @@ export default function LibraryPage() {
     refresh();
   }, [authLoading, refresh, router, user]);
 
+  useEffect(() => {
+    return () => {
+      if (readerUrl) {
+        URL.revokeObjectURL(readerUrl);
+      }
+    };
+  }, [readerUrl]);
+
   async function removeBook(book: Book) {
     if (!window.confirm(`Delete "${book.title}" and all of its chunks?`)) {
       return;
@@ -63,6 +85,26 @@ export default function LibraryPage() {
       setError(err instanceof ApiClientError ? err.message : "Could not delete this book.");
     } finally {
       setDeletingId("");
+    }
+  }
+
+  async function openBook(book: Book) {
+    if (readerUrl) {
+      URL.revokeObjectURL(readerUrl);
+    }
+
+    setReaderBook(book);
+    setReaderUrl("");
+    setReaderError("");
+    setReaderLoading(true);
+
+    try {
+      const blob = await getBookPdf(book.id, token);
+      setReaderUrl(URL.createObjectURL(blob));
+    } catch (err) {
+      setReaderError(err instanceof ApiClientError ? err.message : "Could not open this book.");
+    } finally {
+      setReaderLoading(false);
     }
   }
 
@@ -113,13 +155,25 @@ export default function LibraryPage() {
               {books.map((book) => (
                 <article
                   key={book.id}
-                  className="group overflow-hidden rounded-md border border-line bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft dark:border-white/10 dark:bg-[#111a14]"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openBook(book)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openBook(book);
+                    }
+                  }}
+                  className="group cursor-pointer overflow-hidden rounded-md border border-line bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft focus:outline-none focus:ring-2 focus:ring-moss/30 dark:border-white/10 dark:bg-[#111a14]"
                 >
                   <div className="relative border-b border-line bg-[#f6f1e3] p-4 dark:border-white/10 dark:bg-[#1d2a20]">
                     {isAdmin ? (
                       <button
                         type="button"
-                        onClick={() => removeBook(book)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          removeBook(book);
+                        }}
                         disabled={deletingId === book.id}
                         className="absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-md border border-line bg-white text-red-700 shadow-sm transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-ink dark:text-red-300 dark:hover:bg-red-500/10"
                         aria-label={`Delete ${book.title}`}
@@ -150,6 +204,10 @@ export default function LibraryPage() {
                       <BookStat label="Chunks" value={book.chunkCount} />
                       <BookStat label="Author" value={book.author} />
                     </dl>
+                    <div className="inline-flex items-center gap-2 text-xs font-semibold text-moss dark:text-sea">
+                      <BookOpenText className="h-4 w-4" />
+                      Open reader
+                    </div>
                   </div>
                 </article>
               ))}
@@ -191,6 +249,46 @@ export default function LibraryPage() {
           </p>
         </div>
       </aside>
+
+      {readerBook ? (
+        <div className="fixed inset-0 z-50 bg-black/70 p-3 sm:p-6">
+          <div className="mx-auto flex h-full max-w-6xl flex-col overflow-hidden rounded-md border border-line bg-white shadow-soft dark:border-white/10 dark:bg-ink">
+            <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 dark:border-white/10">
+              <div className="min-w-0">
+                <h2 className="truncate text-sm font-semibold text-ink dark:text-white">{readerBook.title}</h2>
+                <p className="truncate text-xs text-ink/50 dark:text-white/50">{readerBook.originalFileName}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeReader}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line text-ink transition hover:bg-paper dark:border-white/10 dark:text-white dark:hover:bg-white/10"
+                aria-label="Close reader"
+                title="Close reader"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 bg-paper dark:bg-[#101510]">
+              {readerLoading ? (
+                <div className="flex h-full items-center justify-center text-sm text-ink/60 dark:text-white/60">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Opening book...
+                </div>
+              ) : readerError ? (
+                <div className="flex h-full items-center justify-center p-6 text-center">
+                  <div className="max-w-md rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                    <AlertCircle className="mx-auto mb-2 h-5 w-5" />
+                    {readerError}
+                  </div>
+                </div>
+              ) : readerUrl ? (
+                <iframe src={readerUrl} title={readerBook.title} className="h-full w-full bg-white" />
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

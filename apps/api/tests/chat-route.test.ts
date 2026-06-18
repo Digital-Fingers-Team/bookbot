@@ -1,0 +1,50 @@
+import express from "express";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("../src/models/usage-event.model.js", () => ({
+  UsageEvent: {
+    create: vi.fn(async () => ({}))
+  }
+}));
+
+vi.mock("../src/services/retrieval/retrieval.service.js", () => ({
+  retrieveRelevantChunks: vi.fn(async () => ({
+    chunks: [],
+    vectorCandidateCount: 0
+  }))
+}));
+
+describe("chat route", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns legacy evidence array on no-evidence responses", async () => {
+    const { chatRouter } = await import("../src/routes/chat.routes.js");
+    const app = express();
+    app.use(express.json());
+    app.use("/api/chat", chatRouter);
+
+    const server = app.listen(0);
+    const address = server.address();
+    if (!address || typeof address === "string") {
+      throw new Error("Could not start test server.");
+    }
+
+    try {
+      const response = await fetch(`http://127.0.0.1:${address.port}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: "missing detail", topK: 1 })
+      });
+      const payload = (await response.json()) as { evidence?: unknown[]; books?: unknown[]; sources?: unknown[] };
+
+      expect(response.status).toBe(200);
+      expect(payload.evidence).toEqual([]);
+      expect(payload.books).toEqual([]);
+      expect(payload.sources).toEqual([]);
+    } finally {
+      server.close();
+    }
+  });
+});

@@ -47,6 +47,7 @@ chatRouter.post(
         answer: "I couldn't find this information in the books.",
         books: [],
         sources: [],
+        evidence: [],
         usage: {
           retrievedChunks: 0
         }

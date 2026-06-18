@@ -189,6 +189,8 @@ function SectionHeader({ title, icon }: { title: string; icon: React.ReactNode }
 }
 
 function AnswerPanel({ response }: { response: ChatResponse }) {
+  const sources = response.sources ?? [];
+  const evidence = response.evidence ?? [];
   const notFound = response.usage.retrievedChunks === 0 || /information not found/i.test(response.answer);
 
   return (
@@ -213,9 +215,9 @@ function AnswerPanel({ response }: { response: ChatResponse }) {
 
         <div>
           <h2 className="mb-3 text-sm font-semibold uppercase text-ink/55 dark:text-white/55">Sources</h2>
-          {response.sources.length ? (
+          {sources.length ? (
             <div className="grid gap-3">
-              {response.sources.map((source, index) => (
+              {sources.map((source, index) => (
                 <article key={`${source.bookName}-${source.pageNumber}-${index}`} className="rounded-md border border-line bg-white p-4 dark:border-white/10 dark:bg-[#111a14]">
                   <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink dark:text-white">
                     <span>{source.bookName}</span>
@@ -230,14 +232,14 @@ function AnswerPanel({ response }: { response: ChatResponse }) {
           )}
         </div>
 
-        {response.evidence.length ? (
+        {evidence.length ? (
           <details className="rounded-md border border-line bg-white">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink">
               Show Evidence
               <ChevronDown className="h-4 w-4" />
             </summary>
             <div className="space-y-3 border-t border-line p-4">
-              {response.evidence.map((chunk) => (
+              {evidence.map((chunk) => (
                 <article key={chunk.id} className="rounded-md border border-line bg-paper p-4">
                   <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase text-ink/55">
                     <span>{chunk.bookName}</span>
