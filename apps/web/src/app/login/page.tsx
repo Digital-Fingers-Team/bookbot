@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, type FormEvent, useEffect, useState } from "react";
-import { AlertCircle, Loader2, LogIn, ShieldCheck } from "lucide-react";
+import { AlertCircle, Loader2, LogIn } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { ApiClientError } from "@/lib/api";
 
@@ -52,7 +52,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="mx-auto max-w-xl">
       <section className="overflow-hidden border border-line bg-white shadow-soft dark:border-white/10 dark:bg-white/8">
         <div className="bg-moss px-6 py-5 text-white">
           <p className="text-sm font-semibold uppercase text-white/75">Secure access</p>
@@ -109,20 +109,6 @@ function LoginForm() {
           </p>
         </form>
       </section>
-
-      <aside className="border border-line bg-paper p-5 shadow-soft dark:border-white/10 dark:bg-white/8">
-        <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-moss/10 text-moss dark:bg-sea/15 dark:text-sea">
-          <ShieldCheck className="h-5 w-5" />
-        </div>
-        <h2 className="mt-4 text-lg font-semibold text-ink dark:text-white">Default admin</h2>
-        <p className="mt-2 text-sm leading-6 text-ink/65 dark:text-white/65">
-          The API seeds the first admin account from environment variables. For local setup, use the credentials already filled in here.
-        </p>
-        <div className="mt-4 rounded-md border border-line bg-white p-4 text-sm dark:border-white/10 dark:bg-ink/70">
-          <p className="font-semibold text-ink dark:text-white">admin@example.com</p>
-          <p className="mt-1 text-ink/55 dark:text-white/55">admin123</p>
-        </div>
-      </aside>
     </div>
   );
 }

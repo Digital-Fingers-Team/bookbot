@@ -19,6 +19,15 @@ pnpm dev
 
 Run MongoDB locally or update `MONGODB_URI`. The API defaults to port `4000`; the web app defaults to port `3000`.
 
+If the API says MongoDB is not reachable, start a database first:
+
+```bash
+docker compose up -d mongo
+pnpm dev
+```
+
+If you do not want Docker, install MongoDB locally on Windows or use MongoDB Atlas and put its connection string in `MONGODB_URI`.
+
 ## Environment
 
 - `MONGODB_URI` - MongoDB connection string.
