@@ -1,5 +1,5 @@
 import type { RetrievedChunk } from "../../types/rag.js";
-import { escapeRegExp, normalizeText } from "../../utils/text.js";
+import { escapeRegExp, normalizeText, isArabicText } from "../../utils/text.js";
 import { buildHighlights } from "./highlight.service.js";
 import { tokenizeQuery } from "./tokenizer.service.js";
 
@@ -18,6 +18,7 @@ export class HybridReranker implements Reranker {
     const keywords = tokenizeQuery(input.question);
     const phrases = meaningfulPhrases(input.question);
     const bookCounts = new Map<string, number>();
+    const isArabic = isArabicText(input.question);
 
     return input.candidates
       .map((chunk) => {
@@ -27,7 +28,17 @@ export class HybridReranker implements Reranker {
         const vectorScore = normalizeScore(chunk.vectorScore ?? chunk.score);
         const alreadySelectedFromBook = bookCounts.get(chunk.bookId) ?? 0;
         const diversityPenalty = Math.min(alreadySelectedFromBook * 0.03, 0.12);
-        const score = clamp(vectorScore * 0.68 + keywordScore * 0.22 + phraseScore * 0.1 - diversityPenalty);
+        
+        const vectorWeight = isArabic ? 0.75 : 0.68;
+        const keywordWeight = isArabic ? 0.18 : 0.22;
+        const phraseWeight = isArabic ? 0.07 : 0.1;
+        
+        const score = clamp(
+          vectorScore * vectorWeight + 
+          keywordScore * keywordWeight + 
+          phraseScore * phraseWeight - 
+          diversityPenalty
+        );
         bookCounts.set(chunk.bookId, alreadySelectedFromBook + 1);
 
         return {
@@ -56,9 +67,9 @@ export function createReranker(): Reranker {
 
 function meaningfulPhrases(question: string) {
   return normalizeText(question)
-    .split(/[?.,;:!]/)
+    .split(/[?.,;:!]/u)
     .map((part) => part.trim())
-    .filter((part) => part.length >= 12);
+    .filter((part) => part.length >= 10);
 }
 
 function scoreKeywords(text: string, keywords: string[]) {

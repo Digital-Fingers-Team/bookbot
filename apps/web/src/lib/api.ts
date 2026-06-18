@@ -139,26 +139,17 @@ export function deleteBook(id: string, token?: string) {
 }
 
 export async function getBookPdf(id: string, token?: string) {
-  const headers = new Headers();
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
-  const response = await fetch(`${API_URL}/api/books/${id}/pdf`, {
-    headers,
-    cache: "no-store"
+  const payload = await request<{ fileName: string; mimeType: string; data: string }>(`/api/books/${id}/pdf-data`, {
+    token
   });
+  const binary = atob(payload.data);
+  const bytes = new Uint8Array(binary.length);
 
-  if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as ApiErrorResponse | null;
-    throw new ApiClientError(
-      response.status,
-      payload?.error.code ?? "PDF_LOAD_FAILED",
-      payload?.error.message ?? "Could not open this book."
-    );
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
   }
 
-  return response.blob();
+  return new Blob([bytes], { type: payload.mimeType || "application/pdf" });
 }
 
 export function getStats(token?: string) {
