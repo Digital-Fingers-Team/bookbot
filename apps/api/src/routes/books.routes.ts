@@ -6,7 +6,7 @@ import { Book } from "../models/book.model.js";
 import { Chunk } from "../models/chunk.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
-import { normalizeUploadedFileName, titleFromFileName } from "../utils/file-name.js";
+import { normalizeUploadedFileName, readableBookTitle } from "../utils/file-name.js";
 import { excerpt } from "../utils/text.js";
 import { deleteStoredPdf } from "../services/ingestion/pdf-storage.service.js";
 
@@ -28,16 +28,24 @@ booksRouter.get(
     const firstPageByBookId = new Map(firstPageChunks.map((chunk) => [String(chunk.bookId), excerpt(chunk.chunkText, 220)]));
 
     res.json({
-      books: books.map((book) => ({
-        id: String(book._id),
-        title: titleFromFileName(book.title),
-        originalFileName: normalizeUploadedFileName(book.originalFileName),
-        createdAt: book.createdAt,
-        chunkCount: book.chunkCount,
-        pageCount: book.pageCount,
-        author: "Unknown author",
-        firstPageText: firstPageByBookId.get(String(book._id)) ?? ""
-      }))
+      books: books.map((book) => {
+        const firstPageText = firstPageByBookId.get(String(book._id)) ?? "";
+
+        return {
+          id: String(book._id),
+          title: readableBookTitle({
+            title: book.title,
+            originalFileName: book.originalFileName,
+            firstPageText
+          }),
+          originalFileName: normalizeUploadedFileName(book.originalFileName),
+          createdAt: book.createdAt,
+          chunkCount: book.chunkCount,
+          pageCount: book.pageCount,
+          author: "Unknown author",
+          firstPageText
+        };
+      })
     });
   })
 );
@@ -66,7 +74,7 @@ booksRouter.get(
     }
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename="${normalizeUploadedFileName(book.originalFileName)}"`);
+    res.setHeader("Content-Disposition", contentDisposition(normalizeUploadedFileName(book.originalFileName)));
     res.sendFile(book.originalPdfPath);
   })
 );
@@ -91,3 +99,8 @@ booksRouter.delete(
     res.json({ deleted: true });
   })
 );
+
+function contentDisposition(fileName: string) {
+  const fallback = fileName.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_") || "book.pdf";
+  return `inline; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+}
