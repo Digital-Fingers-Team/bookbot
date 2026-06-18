@@ -19,7 +19,8 @@ const schema = z.object({
   DEFAULT_ADMIN_PASSWORD: z.string().min(6).default("admin123"),
   OPENROUTER_API_KEY: z.string().optional(),
   OPENROUTER_MODEL: z.string().default("openai/gpt-4o-mini"),
-  UPLOAD_MAX_MB: z.coerce.number().int().positive().default(25)
+  UPLOAD_MAX_MB: z.coerce.number().int().positive().default(25),
+  UPLOAD_MAX_FILES: z.coerce.number().int().positive().default(10)
 });
 
 export const env = schema.parse(process.env);

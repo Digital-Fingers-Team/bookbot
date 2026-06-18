@@ -8,10 +8,10 @@ import {
   ChevronRight,
   Library,
   LogIn,
-  LogOut,
   MessageSquareText,
   ShieldCheck,
   UploadCloud,
+  UserRound,
   UserPlus
 } from "lucide-react";
 import { clsx } from "clsx";
@@ -128,7 +128,7 @@ function PublicHeader({ loading = false }: { loading?: boolean }) {
 
 function AuthenticatedShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { user, logout, isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navItems = isAdmin ? [...baseNavItems.slice(0, 1), ...adminNavItems, ...baseNavItems.slice(1)] : baseNavItems;
 
   return (
@@ -144,7 +144,10 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
           </Link>
         </div>
 
-        <div className="border-b border-line px-5 py-4 dark:border-white/10">
+        <Link
+          href="/settings"
+          className="block border-b border-line px-5 py-4 transition hover:bg-paper dark:border-white/10 dark:hover:bg-white/5"
+        >
           <div className="flex items-center gap-3">
             <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-moss text-sm font-bold uppercase text-white">
               {user?.name.slice(0, 1) ?? "B"}
@@ -158,7 +161,7 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
             {isAdmin ? <ShieldCheck className="h-3.5 w-3.5" /> : <BookOpenText className="h-3.5 w-3.5" />}
             {user?.role}
           </div>
-        </div>
+        </Link>
 
         <nav className="flex-1 space-y-1 px-3 py-4">
           {navItems.map((item) => {
@@ -186,18 +189,10 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="border-t border-line p-4 dark:border-white/10">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase text-ink/45 dark:text-white/45">Appearance</span>
             <ThemeToggle />
           </div>
-          <button
-            type="button"
-            onClick={logout}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-md border border-line bg-white text-sm font-semibold text-ink transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-red-500/10 dark:hover:text-red-200"
-          >
-            <LogOut className="h-4 w-4" />
-            Sign out
-          </button>
         </div>
       </aside>
 
@@ -210,15 +205,14 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
             </Link>
             <div className="flex items-center gap-2">
               <ThemeToggle />
-              <button
-                type="button"
-                onClick={logout}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-line bg-white text-ink transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-white/10 dark:bg-white/5 dark:text-white"
-                aria-label="Sign out"
-                title="Sign out"
+              <Link
+                href="/settings"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-line bg-white text-ink transition hover:border-moss hover:text-moss dark:border-white/10 dark:bg-white/5 dark:text-white"
+                aria-label="Profile settings"
+                title="Profile settings"
               >
-                <LogOut className="h-4 w-4" />
-              </button>
+                <UserRound className="h-4 w-4" />
+              </Link>
             </div>
           </div>
           <nav className="mt-3 flex gap-2 overflow-x-auto pb-1">

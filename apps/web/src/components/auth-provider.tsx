@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { login as loginRequest, me, register as registerRequest } from "@/lib/api";
+import { login as loginRequest, me, register as registerRequest, updateProfile as updateProfileRequest } from "@/lib/api";
 import type { AuthSession, User } from "@/lib/types";
 
 type AuthContextValue = {
@@ -11,6 +11,7 @@ type AuthContextValue = {
   isAdmin: boolean;
   login: (input: { email: string; password: string }) => Promise<void>;
   register: (input: { name: string; email: string; password: string }) => Promise<void>;
+  updateProfile: (input: { name: string; language: "en" | "ar" }) => Promise<void>;
   logout: () => void;
 };
 
@@ -58,6 +59,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     saveSession(session);
   }
 
+  async function updateProfile(input: { name: string; language: "en" | "ar" }) {
+    const result = await updateProfileRequest(input, token);
+    const session = { token, user: result.user };
+    saveSession(session);
+  }
+
   function saveSession(session: AuthSession) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     setToken(session.token);
@@ -78,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: user?.role === "admin",
       login,
       register,
+      updateProfile,
       logout
     }),
     [token, user, loading]

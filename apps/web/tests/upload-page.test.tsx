@@ -21,6 +21,20 @@ describe("UploadPage", () => {
     const file = new File(["not a pdf"], "notes.txt", { type: "text/plain" });
     await userEvent.upload(input, file, { applyAccept: false });
 
-    expect(await screen.findByText("Please choose a PDF file.")).toBeTruthy();
+    expect(await screen.findByText('"notes.txt" is not a PDF file.')).toBeTruthy();
+  });
+
+  it("queues multiple PDF files before upload", async () => {
+    render(<UploadPage />);
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await userEvent.upload(input, [
+      new File(["pdf one"], "first.pdf", { type: "application/pdf" }),
+      new File(["pdf two"], "second.pdf", { type: "application/pdf" })
+    ]);
+
+    expect(await screen.findByText("2 books ready to process")).toBeTruthy();
+    expect(screen.getByText("first.pdf")).toBeTruthy();
+    expect(screen.getByText("second.pdf")).toBeTruthy();
   });
 });

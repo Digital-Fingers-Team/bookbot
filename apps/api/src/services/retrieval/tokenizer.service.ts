@@ -35,7 +35,7 @@ const STOPWORDS = new Set([
 
 export function tokenizeQuery(question: string) {
   const tokens = normalizeText(question)
-    .split(/[^a-z0-9]+/i)
+    .split(/[^\p{L}\p{N}]+/u)
     .map((token) => token.trim())
     .map(normalizeQueryToken)
     .filter((token) => token.length >= 3 && !STOPWORDS.has(token));

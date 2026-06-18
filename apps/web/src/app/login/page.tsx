@@ -19,8 +19,8 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, user, loading } = useAuth();
-  const [email, setEmail] = useState("admin@example.com");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 

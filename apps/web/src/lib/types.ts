@@ -13,6 +13,7 @@ export type User = {
   name: string;
   email: string;
   role: UserRole;
+  language?: "en" | "ar";
 };
 
 export type AuthSession = {
@@ -27,6 +28,8 @@ export type Book = {
   createdAt: string;
   chunkCount: number;
   pageCount: number;
+  author: string;
+  firstPageText: string;
 };
 
 export type Source = {

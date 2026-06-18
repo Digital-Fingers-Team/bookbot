@@ -5,12 +5,13 @@ import { requireAdmin } from "../middleware/auth.middleware.js";
 import { ingestPdf } from "../services/ingestion/ingestion.service.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
+import { normalizeUploadedFileName } from "../utils/file-name.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: env.UPLOAD_MAX_MB * 1024 * 1024,
-    files: 1
+    files: env.UPLOAD_MAX_FILES
   },
   fileFilter: (_req, file, cb) => {
     if (file.mimetype !== "application/pdf" && !file.originalname.toLowerCase().endsWith(".pdf")) {
@@ -26,17 +27,23 @@ export const uploadRouter: ExpressRouter = Router();
 uploadRouter.post(
   "/",
   requireAdmin,
-  upload.single("file"),
+  upload.array("files", env.UPLOAD_MAX_FILES),
   asyncHandler(async (req, res) => {
-    if (!req.file) {
-      throw new ApiError(400, "MISSING_FILE", "Please choose a PDF file to upload.");
+    const files = req.files;
+    if (!Array.isArray(files) || !files.length) {
+      throw new ApiError(400, "MISSING_FILE", "Please choose at least one PDF file to upload.");
     }
 
-    const result = await ingestPdf({
-      buffer: req.file.buffer,
-      originalFileName: req.file.originalname
-    });
+    const books = [];
+    for (const file of files) {
+      books.push(
+        await ingestPdf({
+          buffer: file.buffer,
+          originalFileName: normalizeUploadedFileName(file.originalname)
+        })
+      );
+    }
 
-    res.status(201).json(result);
+    res.status(201).json({ books });
   })
 );

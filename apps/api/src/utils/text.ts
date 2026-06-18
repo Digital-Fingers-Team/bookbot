@@ -19,5 +19,5 @@ export function excerpt(value: string, maxLength = 420) {
     return text;
   }
 
-  return `${text.slice(0, maxLength - 1).trim()}…`;
+  return `${text.slice(0, maxLength - 3).trim()}...`;
 }

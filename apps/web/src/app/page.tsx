@@ -1,12 +1,14 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
-import { AlertCircle, BookOpen, ChevronDown, Loader2, Search, Send, ShieldCheck } from "lucide-react";
+import { AlertCircle, BookOpen, ChevronDown, Loader2, Search, Send, ShieldCheck, Sparkles } from "lucide-react";
 import { askQuestion, ApiClientError } from "@/lib/api";
 import type { ChatResponse } from "@/lib/types";
 import { EvidenceText } from "@/components/evidence-text";
+import { useAuth } from "@/components/auth-provider";
 
 export default function ChatPage() {
+  const { isAdmin } = useAuth();
   const [question, setQuestion] = useState("");
   const [model, setModel] = useState("");
   const [limit, setLimit] = useState(8);
@@ -40,19 +42,19 @@ export default function ChatPage() {
 
   return (
     <div className="space-y-8">
-      <LibraryHero />
+      {!isAdmin ? <LibraryHero /> : null}
 
-      <section className="overflow-hidden border border-line bg-white shadow-soft">
+      <section className="overflow-hidden border border-line bg-white shadow-soft dark:border-white/10 dark:bg-ink/85">
         <SectionHeader title="Ask your uploaded books" icon={<ShieldCheck className="h-5 w-5" />} />
-        <div className="grid gap-8 p-5 lg:grid-cols-[minmax(0,1fr)_280px] lg:p-7">
+        <div className="grid gap-8 p-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:p-7">
           <form onSubmit={submit} className="space-y-5">
             <div>
-              <label className="mb-2 block text-sm font-semibold text-ink">Question</label>
+              <label className="mb-2 block text-sm font-semibold text-ink dark:text-white">Question</label>
               <textarea
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
-                placeholder="Ask a factual question that can be answered from your uploaded PDFs."
-                className="min-h-40 w-full resize-y rounded-md border border-line bg-white p-4 text-base text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15"
+                placeholder="Ask about a fact, page, topic, name, or quote from your books."
+                className="min-h-44 w-full resize-y rounded-md border border-line bg-white p-4 text-base leading-7 text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-[#111a14] dark:text-white dark:placeholder:text-white/35"
                 maxLength={2000}
               />
             </div>
@@ -62,14 +64,14 @@ export default function ChatPage() {
                 value={model}
                 onChange={(event) => setModel(event.target.value)}
                 placeholder="Optional OpenRouter model"
-                className="h-11 rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15"
+                className="h-11 rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-[#111a14] dark:text-white"
               />
-              <label className="flex h-11 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm text-ink/70">
+              <label className="flex h-11 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm text-ink/70 dark:border-white/10 dark:bg-[#111a14] dark:text-white/70">
                 Top chunks
                 <select
                   value={limit}
                   onChange={(event) => setLimit(Number(event.target.value))}
-                  className="ml-auto bg-transparent font-semibold text-ink outline-none"
+                  className="ml-auto bg-transparent font-semibold text-ink outline-none dark:text-white"
                 >
                   {[5, 8, 10, 12, 15].map((value) => (
                     <option key={value} value={value}>
@@ -89,9 +91,9 @@ export default function ChatPage() {
             </div>
 
             {loading ? (
-              <div className="flex items-center gap-3 rounded-md border border-sea/25 bg-sea/10 p-4 text-sm font-medium text-moss">
+              <div className="flex items-center gap-3 rounded-md border border-sea/25 bg-sea/10 p-4 text-sm font-medium text-moss dark:text-sea">
                 <Search className="h-4 w-4 animate-pulse" />
-                Searching books...
+                Searching the uploaded book chunks...
               </div>
             ) : null}
 
@@ -103,20 +105,25 @@ export default function ChatPage() {
             ) : null}
           </form>
 
-          <aside className="rounded-md border border-line bg-paper p-5">
-            <h2 className="text-base font-semibold text-moss">Strict RAG rules</h2>
-            <dl className="mt-4 space-y-4 text-sm">
+          <aside className="rounded-md border border-line bg-paper p-5 dark:border-white/10 dark:bg-white/5">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-moss/10 text-moss dark:bg-sea/10 dark:text-sea">
+                <Sparkles className="h-5 w-5" />
+              </span>
+              <h2 className="text-base font-semibold text-moss dark:text-white">Answer quality</h2>
+            </div>
+            <dl className="mt-5 space-y-4 text-sm">
               <div>
-                <dt className="font-medium text-ink">Book-only context</dt>
-                <dd className="mt-1 text-ink/60">Only retrieved chunks from uploaded books are sent to the model.</dd>
+                <dt className="font-medium text-ink dark:text-white">Search first</dt>
+                <dd className="mt-1 text-ink/60 dark:text-white/60">BookBot retrieves matching chunks before asking the model.</dd>
               </div>
               <div>
-                <dt className="font-medium text-ink">No guessing</dt>
-                <dd className="mt-1 text-ink/60">Unsupported questions return the not-found response.</dd>
+                <dt className="font-medium text-ink dark:text-white">Cited answers</dt>
+                <dd className="mt-1 text-ink/60 dark:text-white/60">Sources and evidence stay visible with every answer.</dd>
               </div>
               <div>
-                <dt className="font-medium text-ink">Evidence included</dt>
-                <dd className="mt-1 text-ink/60">Answers show sources, pages, relevance scores, and raw evidence.</dd>
+                <dt className="font-medium text-ink dark:text-white">Try exact terms</dt>
+                <dd className="mt-1 text-ink/60 dark:text-white/60">Names, headings, and page words work best.</dd>
               </div>
             </dl>
           </aside>
@@ -179,31 +186,39 @@ function SectionHeader({ title, icon }: { title: string; icon: React.ReactNode }
 }
 
 function AnswerPanel({ response }: { response: ChatResponse }) {
+  const notFound = response.usage.retrievedChunks === 0 || /information not found/i.test(response.answer);
+
   return (
-    <section className="overflow-hidden border border-line bg-white shadow-soft">
-      <SectionHeader title="Answer and evidence" icon={<BookOpen className="h-5 w-5" />} />
+    <section className="overflow-hidden border border-line bg-white shadow-soft dark:border-white/10 dark:bg-ink/85">
+      <SectionHeader title={notFound ? "No matching evidence" : "Answer and evidence"} icon={<BookOpen className="h-5 w-5" />} />
       <div className="space-y-5 p-5 lg:p-7">
-        <div className="rounded-md border border-line bg-paper p-4">
-          <h2 className="mb-3 text-sm font-semibold uppercase text-ink/55">Answer</h2>
-          <p className="whitespace-pre-wrap text-base leading-7 text-ink">{response.answer}</p>
+        <div className="rounded-md border border-line bg-paper p-5 dark:border-white/10 dark:bg-white/5">
+          <h2 className="mb-3 text-sm font-semibold uppercase text-ink/55 dark:text-white/55">
+            {notFound ? "What happened" : "Answer"}
+          </h2>
+          <p className="whitespace-pre-wrap text-base leading-7 text-ink dark:text-white">
+            {notFound
+              ? "I could not find matching evidence in the uploaded books. Try a more specific phrase, a name from the book, or increase the chunk count."
+              : response.answer.replace(/^Answer:\s*/i, "")}
+          </p>
         </div>
 
         <div>
-          <h2 className="mb-3 text-sm font-semibold uppercase text-ink/55">Sources</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase text-ink/55 dark:text-white/55">Sources</h2>
           {response.sources.length ? (
             <div className="grid gap-3">
               {response.sources.map((source, index) => (
-                <article key={`${source.bookName}-${source.pageNumber}-${index}`} className="rounded-md border border-line bg-white p-4">
-                  <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink">
+                <article key={`${source.bookName}-${source.pageNumber}-${index}`} className="rounded-md border border-line bg-white p-4 dark:border-white/10 dark:bg-[#111a14]">
+                  <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink dark:text-white">
                     <span>{source.bookName}</span>
                     <span className="rounded bg-moss/10 px-2 py-1 text-xs text-moss">Page {source.pageNumber}</span>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-ink/70">{source.supportingText}</p>
+                  <p className="mt-2 text-sm leading-6 text-ink/70 dark:text-white/70">{source.supportingText}</p>
                 </article>
               ))}
             </div>
           ) : (
-            <p className="rounded-md border border-line bg-paper p-4 text-sm text-ink/60">No supporting sources were found.</p>
+            <p className="rounded-md border border-line bg-paper p-4 text-sm text-ink/60 dark:border-white/10 dark:bg-white/5 dark:text-white/60">No supporting sources were found.</p>
           )}
         </div>
 

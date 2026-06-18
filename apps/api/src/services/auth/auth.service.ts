@@ -15,6 +15,7 @@ export type PublicUser = {
   name: string;
   email: string;
   role: UserRole;
+  language: "en" | "ar";
 };
 
 export async function seedDefaultAdmin() {
@@ -79,6 +80,35 @@ export async function getUserFromToken(token: string): Promise<PublicUser> {
   }
 }
 
+export async function updateUserProfile(userId: string, input: { name: string; language: "en" | "ar" }) {
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { name: input.name, language: input.language },
+    { new: true, runValidators: true }
+  );
+
+  if (!user) {
+    throw new ApiError(401, "UNAUTHORIZED", "Your session is no longer valid.");
+  }
+
+  return toPublicUser(user);
+}
+
+export async function changeUserPassword(userId: string, input: { currentPassword: string; newPassword: string }) {
+  const user = await User.findById(userId).select("+passwordHash");
+  if (!user) {
+    throw new ApiError(401, "UNAUTHORIZED", "Your session is no longer valid.");
+  }
+
+  const valid = await bcrypt.compare(input.currentPassword, user.passwordHash);
+  if (!valid) {
+    throw new ApiError(401, "INVALID_PASSWORD", "Current password is incorrect.");
+  }
+
+  user.passwordHash = await bcrypt.hash(input.newPassword, 12);
+  await user.save();
+}
+
 function buildSession(user: PublicUser) {
   const token = jwt.sign(
     {
@@ -93,11 +123,12 @@ function buildSession(user: PublicUser) {
   return { token, user };
 }
 
-function toPublicUser(user: { _id: unknown; name: string; email: string; role: UserRole }): PublicUser {
+function toPublicUser(user: { _id: unknown; name: string; email: string; role: UserRole; language?: string }): PublicUser {
   return {
     id: String(user._id),
     name: user.name,
     email: user.email,
-    role: user.role
+    role: user.role,
+    language: user.language === "ar" ? "ar" : "en"
   };
 }

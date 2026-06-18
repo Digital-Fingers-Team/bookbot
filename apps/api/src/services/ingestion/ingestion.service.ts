@@ -2,6 +2,7 @@ import { Book } from "../../models/book.model.js";
 import { Chunk } from "../../models/chunk.model.js";
 import { UsageEvent } from "../../models/usage-event.model.js";
 import { ApiError } from "../../utils/api-error.js";
+import { titleFromFileName } from "../../utils/file-name.js";
 import { normalizeText } from "../../utils/text.js";
 import { chunkPages } from "./chunker.service.js";
 import { extractPdfPages } from "./pdf.service.js";
@@ -67,8 +68,4 @@ export async function ingestPdf(input: { buffer: Buffer; originalFileName: strin
     });
     throw error;
   }
-}
-
-function titleFromFileName(fileName: string) {
-  return fileName.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").trim() || "Untitled book";
 }

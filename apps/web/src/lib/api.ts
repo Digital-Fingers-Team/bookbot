@@ -74,9 +74,35 @@ export function me(token: string) {
   return request<{ user: User }>("/api/auth/me", { token });
 }
 
-export async function uploadPdf(file: File, token?: string) {
+export function updateProfile(input: { name: string; language: "en" | "ar" }, token: string) {
+  return request<{ user: User }>("/api/auth/me", {
+    method: "PATCH",
+    body: input,
+    token
+  });
+}
+
+export function changePassword(input: { currentPassword: string; newPassword: string }, token: string) {
+  return request<{ changed: true }>("/api/auth/password", {
+    method: "PATCH",
+    body: input,
+    token
+  });
+}
+
+export type UploadedBook = {
+  bookId: string;
+  title: string;
+  originalFileName: string;
+  pageCount: number;
+  chunkCount: number;
+};
+
+export async function uploadPdfs(files: File[], token?: string) {
   const formData = new FormData();
-  formData.append("file", file);
+  for (const file of files) {
+    formData.append("files", file);
+  }
 
   const headers = new Headers();
   if (token) {
@@ -98,17 +124,11 @@ export async function uploadPdf(file: File, token?: string) {
     );
   }
 
-  return response.json() as Promise<{
-    bookId: string;
-    title: string;
-    originalFileName: string;
-    pageCount: number;
-    chunkCount: number;
-  }>;
+  return response.json() as Promise<{ books: UploadedBook[] }>;
 }
 
-export function listBooks() {
-  return request<{ books: Book[] }>("/api/books");
+export function listBooks(token?: string) {
+  return request<{ books: Book[] }>("/api/books", { token });
 }
 
 export function deleteBook(id: string, token?: string) {

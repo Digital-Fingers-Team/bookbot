@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AlertCircle, BookOpenText, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { ApiClientError, deleteBook, getStats, listBooks } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
 
 export default function LibraryPage() {
+  const router = useRouter();
   const { token, user, isAdmin, loading: authLoading } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -16,11 +17,15 @@ export default function LibraryPage() {
   const [deletingId, setDeletingId] = useState("");
 
   const refresh = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+
     setLoading(true);
     setError("");
 
     try {
-      const [bookResult, statsResult] = await Promise.all([listBooks(), isAdmin ? getStats(token) : Promise.resolve(null)]);
+      const [bookResult, statsResult] = await Promise.all([listBooks(token), isAdmin ? getStats(token) : Promise.resolve(null)]);
       setBooks(bookResult.books);
       setStats(statsResult);
     } catch (err) {
@@ -31,8 +36,17 @@ export default function LibraryPage() {
   }, [isAdmin, token]);
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
+    if (!user) {
+      router.replace("/login?next=/library");
+      return;
+    }
+
     refresh();
-  }, [refresh]);
+  }, [authLoading, refresh, router, user]);
 
   async function removeBook(book: Book) {
     if (!window.confirm(`Delete "${book.title}" and all of its chunks?`)) {
@@ -52,9 +66,20 @@ export default function LibraryPage() {
     }
   }
 
+  if (authLoading || !user) {
+    return (
+      <div className="mx-auto max-w-xl border border-line bg-white p-6 shadow-soft dark:border-white/10 dark:bg-ink/85">
+        <div className="flex items-center gap-3 text-sm font-medium text-ink/65 dark:text-white/70">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          {authLoading ? "Checking your session..." : "Redirecting to sign in..."}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <section className="border border-line bg-white shadow-soft dark:border-white/10 dark:bg-white/8">
+      <section className="border border-line bg-white shadow-soft dark:border-white/10 dark:bg-ink/85">
         <div className="flex items-center justify-between bg-gradient-to-b from-[#74b66f] to-moss px-5 py-4 text-white">
           <div>
             <p className="text-xs font-semibold text-white/80">Content management</p>
@@ -84,41 +109,49 @@ export default function LibraryPage() {
               Loading library...
             </div>
           ) : books.length ? (
-            <div className="overflow-hidden rounded-md border border-line dark:border-white/10">
-              <div className="grid grid-cols-[minmax(0,1fr)_110px_110px_64px] gap-3 border-b border-line bg-paper px-4 py-3 text-xs font-semibold uppercase text-ink/55 dark:border-white/10 dark:bg-ink/60 dark:text-white/55">
-                <span>Book</span>
-                <span>Pages</span>
-                <span>Chunks</span>
-                <span className="text-left">Delete</span>
-              </div>
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {books.map((book) => (
-                <div
+                <article
                   key={book.id}
-                  className="grid grid-cols-[minmax(0,1fr)_110px_110px_64px] items-center gap-3 border-b border-line px-4 py-4 last:border-b-0 dark:border-white/10"
+                  className="group overflow-hidden rounded-md border border-line bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft dark:border-white/10 dark:bg-[#111a14]"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-ink dark:text-white">{book.title}</p>
-                    <p className="mt-1 truncate text-xs text-ink/50 dark:text-white/45">
-                      {book.originalFileName} - {new Date(book.createdAt).toLocaleDateString()}
-                    </p>
+                  <div className="relative border-b border-line bg-[#f6f1e3] p-4 dark:border-white/10 dark:bg-[#1d2a20]">
+                    {isAdmin ? (
+                      <button
+                        type="button"
+                        onClick={() => removeBook(book)}
+                        disabled={deletingId === book.id}
+                        className="absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-md border border-line bg-white text-red-700 shadow-sm transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-ink dark:text-red-300 dark:hover:bg-red-500/10"
+                        aria-label={`Delete ${book.title}`}
+                        title={`Delete ${book.title}`}
+                      >
+                        {deletingId === book.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      </button>
+                    ) : null}
+                    <div className="mx-auto flex aspect-[3/4] max-h-72 w-full max-w-48 flex-col rounded-sm border border-black/10 bg-white p-5 shadow-[10px_14px_24px_rgba(38,50,56,0.18)] dark:border-white/10 dark:bg-paper">
+                      <div className="h-2 w-16 bg-copper" />
+                      <p className="mt-5 line-clamp-5 text-xs leading-5 text-ink/65">
+                        {book.firstPageText || "First page preview will appear here after text is extracted."}
+                      </p>
+                      <div className="mt-auto space-y-2">
+                        <div className="h-1.5 w-full rounded bg-moss/15" />
+                        <div className="h-1.5 w-2/3 rounded bg-moss/15" />
+                      </div>
+                    </div>
                   </div>
-                  <span className="text-sm text-ink/65 dark:text-white/65">{book.pageCount}</span>
-                  <span className="text-sm text-ink/65 dark:text-white/65">{book.chunkCount}</span>
-                  {isAdmin ? (
-                    <button
-                      type="button"
-                      onClick={() => removeBook(book)}
-                      disabled={deletingId === book.id}
-                      className="mr-auto inline-flex h-9 w-9 items-center justify-center rounded-md border border-line text-red-700 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10"
-                      aria-label={`Delete ${book.title}`}
-                      title={`Delete ${book.title}`}
-                    >
-                      {deletingId === book.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                    </button>
-                  ) : (
-                    <span className="text-xs text-ink/40 dark:text-white/40">Admin</span>
-                  )}
-                </div>
+
+                  <div className="space-y-3 p-4">
+                    <div>
+                      <h2 className="line-clamp-2 text-base font-semibold leading-6 text-ink dark:text-white">{book.title}</h2>
+                      <p className="mt-1 truncate text-xs text-ink/45 dark:text-white/45">{book.originalFileName}</p>
+                    </div>
+                    <dl className="grid grid-cols-3 gap-2 text-sm">
+                      <BookStat label="Pages" value={book.pageCount} />
+                      <BookStat label="Chunks" value={book.chunkCount} />
+                      <BookStat label="Author" value={book.author} />
+                    </dl>
+                  </div>
+                </article>
               ))}
             </div>
           ) : (
@@ -131,27 +164,17 @@ export default function LibraryPage() {
         </div>
       </section>
 
-      <aside className="space-y-5 border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-white/8">
+      <aside className="space-y-5 border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-ink/85">
         <div>
           <h2 className="text-base font-semibold text-ink dark:text-white">Access</h2>
-          {authLoading ? (
-            <p className="mt-2 text-sm text-ink/60 dark:text-white/60">Checking your session...</p>
-          ) : isAdmin ? (
+          {isAdmin ? (
             <p className="mt-2 rounded-md border border-moss/20 bg-moss/10 p-3 text-sm text-moss dark:border-sea/25 dark:bg-sea/10 dark:text-sea">
               Signed in as admin. You can delete books and view usage metrics.
             </p>
           ) : (
-            <div className="mt-2 space-y-3 text-sm text-ink/65 dark:text-white/65">
-              <p>
-                {user ? "You can browse the library. Admin access is required for deletion and stats." : "Sign in as admin to manage books and view stats."}
-              </p>
-              <Link
-                href="/login?next=/library"
-                className="inline-flex h-10 items-center justify-center rounded-md bg-moss px-4 font-semibold text-white transition hover:bg-[#064b26]"
-              >
-                Sign in as admin
-              </Link>
-            </div>
+            <p className="mt-2 rounded-md border border-line bg-paper p-3 text-sm text-ink/65 dark:border-white/10 dark:bg-white/5 dark:text-white/65">
+              You can browse the library. Admin access is required for deletion and stats.
+            </p>
           )}
         </div>
         <div className="grid grid-cols-3 gap-3">
@@ -168,6 +191,15 @@ export default function LibraryPage() {
           </p>
         </div>
       </aside>
+    </div>
+  );
+}
+
+function BookStat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-md border border-line bg-paper p-2 dark:border-white/10 dark:bg-white/5">
+      <dt className="text-[11px] font-semibold uppercase text-ink/45 dark:text-white/45">{label}</dt>
+      <dd className="mt-1 truncate text-sm font-semibold text-ink dark:text-white">{value}</dd>
     </div>
   );
 }
