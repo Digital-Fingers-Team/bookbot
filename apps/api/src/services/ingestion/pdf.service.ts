@@ -1,6 +1,6 @@
 import pdfParse from "pdf-parse";
 import { ApiError } from "../../utils/api-error.js";
-import { cleanWhitespace } from "../../utils/text.js";
+import { cleanWhitespace, cleanCorruptedText } from "../../utils/text.js";
 import type { PageText } from "./chunker.service.js";
 
 type PdfPageData = {
@@ -14,14 +14,17 @@ export async function extractPdfPages(buffer: Buffer): Promise<{ pages: PageText
     const result = await pdfParse(buffer, {
       pagerender: async (pageData: PdfPageData) => {
         const content = await pageData.getTextContent();
-        const text = cleanWhitespace(content.items.map((item) => item.str ?? "").join(" "));
+        let text = cleanWhitespace(content.items.map((item) => item.str ?? "").join(" "));
+        text = cleanCorruptedText(text);
         pages.push({ pageNumber: pages.length + 1, text });
         return text;
       }
     });
 
     if (!pages.length && result.text) {
-      pages.push({ pageNumber: 1, text: cleanWhitespace(result.text) });
+      let text = cleanWhitespace(result.text);
+      text = cleanCorruptedText(text);
+      pages.push({ pageNumber: 1, text });
     }
 
     return {

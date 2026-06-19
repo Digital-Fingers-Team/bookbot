@@ -2,6 +2,15 @@ export function cleanWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
+export function cleanCorruptedText(value: string): string {
+  return value
+    .replace(/([ا-ي])\1{2,}/g, "$1")
+    .replace(/([^ا-ي\s])\s+(?=[ا-ي])/g, "$1")
+    .replace(/(\w)\s+(\w)\s+(\w)\s+(\w)/g, "$1$2$3$4")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 export function isArabicText(value: string): boolean {
   return /[\u0600-\u06FF]/.test(value);
 }
