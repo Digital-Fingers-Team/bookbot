@@ -47,6 +47,8 @@ export class OpenRouterProvider implements LLMProvider {
       });
 
       if (!response.ok) {
+        const errorBody = await response.text();
+        console.error(`OpenRouter API Error: ${response.status} ${response.statusText}`, errorBody);
         throw new ApiError(502, "OPENROUTER_FAILURE", "The AI provider could not complete the answer right now.");
       }
 

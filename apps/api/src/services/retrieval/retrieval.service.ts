@@ -61,11 +61,13 @@ async function vectorSearch(queryVector: number[], limit: number, numCandidates:
           path: "embedding",
           queryVector,
           numCandidates,
-          limit,
-          filter: {
-            embeddingModel: env.OPENROUTER_EMBEDDING_MODEL,
-            embeddingVersion: embeddingVersion()
-          }
+          limit
+        }
+      },
+      {
+        $match: {
+          embeddingModel: env.OPENROUTER_EMBEDDING_MODEL,
+          embeddingVersion: embeddingVersion()
         }
       },
       {
