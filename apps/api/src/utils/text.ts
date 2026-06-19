@@ -3,12 +3,16 @@ export function cleanWhitespace(value: string) {
 }
 
 export function cleanCorruptedText(value: string): string {
-  return value
-    .replace(/([ا-ي])\1{2,}/g, "$1")
-    .replace(/([^ا-ي\s])\s+(?=[ا-ي])/g, "$1")
-    .replace(/(\w)\s+(\w)\s+(\w)\s+(\w)/g, "$1$2$3$4")
-    .replace(/\s{2,}/g, " ")
-    .trim();
+  // Remove repeated Arabic characters: "الإسااالام" -> "الإسلام"
+  let result = value.replace(/([ا-ي])\1{2,}/g, "$1");
+  
+  // Fix space-separated single characters at end of words
+  result = result.replace(/([ا-ي])\s+([ا-ي])\s+([ا-ي])\s+([ا-ي])(?=\s|$)/g, "$1$2$3$4");
+  
+  // Remove excessive spaces
+  result = result.replace(/\s{2,}/g, " ");
+  
+  return result.trim();
 }
 
 export function isArabicText(value: string): boolean {

@@ -50,14 +50,22 @@ export async function embedTexts(texts: string[]): Promise<EmbeddingBatchResult>
   });
 
   if (!response.ok) {
+    const errorBody = await response.text();
+    console.error(`OpenRouter Embedding API Error: ${response.status}`, errorBody);
     throw new ApiError(502, "OPENROUTER_EMBEDDING_FAILURE", "The embedding provider could not process this book.");
   }
 
   const payload = (await response.json()) as OpenRouterEmbeddingResponse;
+  console.log(`OpenRouter embedding response:`, JSON.stringify(payload, null, 2));
   const ordered = [...(payload.data ?? [])].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
   const embeddings = ordered.map((item) => item.embedding).filter((embedding): embedding is number[] => Array.isArray(embedding));
 
   if (embeddings.length !== texts.length || embeddings.some((embedding) => embedding.length !== env.OPENROUTER_EMBEDDING_DIMENSIONS)) {
+    console.error(`Invalid embeddings: got ${embeddings.length}/${texts.length} embeddings`, {
+      expectedDims: env.OPENROUTER_EMBEDDING_DIMENSIONS,
+      actualDims: embeddings[0]?.length,
+      model: payload.model
+    });
     throw new ApiError(502, "INVALID_EMBEDDING_RESPONSE", "The embedding provider returned invalid vectors.");
   }
 
