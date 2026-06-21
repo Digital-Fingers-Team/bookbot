@@ -56,7 +56,7 @@ export async function embedTexts(texts: string[]): Promise<EmbeddingBatchResult>
   }
 
   const payload = (await response.json()) as OpenRouterEmbeddingResponse;
-  console.log(`OpenRouter embedding response:`, JSON.stringify(payload, null, 2));
+  // Intentionally not logging full embedding payload to keep terminal output clean.
   const ordered = [...(payload.data ?? [])].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
   const embeddings = ordered.map((item) => item.embedding).filter((embedding): embedding is number[] => Array.isArray(embedding));
 
