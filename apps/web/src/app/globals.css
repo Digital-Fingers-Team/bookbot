@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(7, 95, 47, 0.045), transparent 20rem),
+    #faf9f4;
+  color: #263238;
+}
+
+.dark body {
+  background:
+    linear-gradient(180deg, rgba(79, 154, 95, 0.14), transparent 24rem),
+    #162019;
+  color: #faf9f4;
+}
+
+::selection {
+  background: rgba(245, 160, 0, 0.32);
+}
