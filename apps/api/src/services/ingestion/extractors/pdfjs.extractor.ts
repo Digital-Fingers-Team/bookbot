@@ -5,51 +5,61 @@ import {
   BasePageExtractor,
 } from "./base.extractor.js";
 
+import { cleanExtractedText } from "../../../utils/text.js";
+
 import type { ExtractedPage } from "./extractor.js";
 
-function rebuildText(items: any[]): string {
-  const sorted = [...items].sort((a, b) => {
-    const ay = a.transform?.[5] ?? 0;
-    const by = b.transform?.[5] ?? 0;
+type PositionedRun = {
+  str: string;
+  x: number;
+  y: number;
+};
 
-    if (Math.abs(ay - by) > 2) {
-      return by - ay;
+// True when a line is dominated by a right-to-left script (Arabic/Hebrew).
+function isRightToLeft(text: string): boolean {
+  const rtl = (text.match(/[\u0590-\u05ff\u0600-\u06ff\u0750-\u077f\ufb50-\ufdff\ufe70-\ufeff]/g) ?? []).length;
+  const ltr = (text.match(/[A-Za-z]/g) ?? []).length;
+  return rtl > ltr;
+}
+
+function rebuildText(items: any[]): string {
+  const runs: PositionedRun[] = items
+    .map((item) => ({
+      str: typeof item.str === "string" ? item.str : "",
+      x: item.transform?.[4] ?? 0,
+      y: item.transform?.[5] ?? 0,
+    }))
+    .filter((run) => run.str.length > 0)
+    .sort((a, b) => b.y - a.y);
+
+  // Group runs that share a baseline into visual lines.
+  const lines: PositionedRun[][] = [];
+  for (const run of runs) {
+    const current = lines.at(-1);
+    const lineY = current?.[0]?.y;
+
+    if (current && lineY !== undefined && Math.abs(lineY - run.y) <= 4) {
+      current.push(run);
+    } else {
+      lines.push([run]);
+    }
+  }
+
+  const rendered = lines.map((line) => {
+    // Order runs left-to-right by their x position (visual order).
+    const visual = [...line].sort((a, b) => a.x - b.x);
+    const visualText = visual.map((run) => run.str).join(" ");
+
+    // pdf.js returns RTL text in visual order, so the logical reading order is
+    // the reverse. Flipping the run order restores correct Arabic word order.
+    if (isRightToLeft(visualText)) {
+      return [...visual].reverse().map((run) => run.str).join(" ");
     }
 
-    return (a.transform?.[4] ?? 0) - (b.transform?.[4] ?? 0);
+    return visualText;
   });
 
-  const lines: string[] = [];
-
-  let currentLine = "";
-  let previousY: number | undefined;
-
-  for (const item of sorted) {
-    const y = item.transform?.[5] ?? 0;
-
-    if (
-      previousY !== undefined &&
-      Math.abs(previousY - y) > 4
-    ) {
-      lines.push(currentLine.trim());
-      currentLine = "";
-    }
-
-    currentLine += (item.str ?? "") + " ";
-
-    previousY = y;
-  }
-
-  if (currentLine.trim()) {
-    lines.push(currentLine.trim());
-  }
-
-  return lines
-    .join("\n")
-    .replace(/\u0640/g, "")
-    .replace(/[ \t]+/g, " ")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  return cleanExtractedText(rendered.join("\n"));
 }
 
 class PdfJsDocument extends BaseOpenedDocument {
@@ -92,7 +102,9 @@ class PdfJsDocument extends BaseOpenedDocument {
   }
 
   async close(): Promise<void> {
-    await this.document.destroy();
+    // In pdfjs v6 the document is torn down through its loading task; the proxy
+    // itself no longer exposes `destroy()`.
+    await this.document.loadingTask.destroy();
   }
 
 }

@@ -16,7 +16,10 @@ booksRouter.get(
   "/",
   requireAuth,
   asyncHandler(async (_req, res) => {
-    const books = await Book.find({}, { title: 1, originalFileName: 1, createdAt: 1, chunkCount: 1, pageCount: 1 })
+    const books = await Book.find(
+      {},
+      { title: 1, originalFileName: 1, createdAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1 }
+    )
       .sort({ createdAt: -1 })
       .lean();
     const bookIds = books.map((book) => book._id);
@@ -42,6 +45,9 @@ booksRouter.get(
           createdAt: book.createdAt,
           chunkCount: book.chunkCount,
           pageCount: book.pageCount,
+          status: book.status ?? "ready",
+          processedPages: book.processedPages ?? 0,
+          error: book.error ?? "",
           author: "Unknown author",
           firstPageText
         };

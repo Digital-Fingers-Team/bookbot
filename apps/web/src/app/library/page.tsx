@@ -70,6 +70,25 @@ export default function LibraryPage() {
     };
   }, [readerUrl]);
 
+  // Poll while any book is still being processed so progress updates live.
+  const hasProcessing = books.some((book) => book.status === "processing");
+  useEffect(() => {
+    if (!token || !hasProcessing) {
+      return;
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const result = await listBooks(token);
+        setBooks(result.books);
+      } catch {
+        // Ignore transient polling errors; the manual refresh still works.
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [token, hasProcessing]);
+
   async function removeBook(book: Book) {
     if (!window.confirm(`Delete "${book.title}" and all of its chunks?`)) {
       return;
@@ -199,6 +218,7 @@ export default function LibraryPage() {
                       <h2 className="line-clamp-2 text-base font-semibold leading-6 text-ink dark:text-white">{book.title}</h2>
                       <p className="mt-1 truncate text-xs text-ink/45 dark:text-white/45">{book.originalFileName}</p>
                     </div>
+                    <StatusBadge book={book} />
                     <dl className="grid grid-cols-3 gap-2 text-sm">
                       <BookStat label="Pages" value={book.pageCount} />
                       <BookStat label="Chunks" value={book.chunkCount} />
@@ -291,6 +311,35 @@ export default function LibraryPage() {
       ) : null}
     </div>
   );
+}
+
+function StatusBadge({ book }: { book: Book }) {
+  if (book.status === "failed") {
+    return (
+      <div
+        className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+        title={book.error || undefined}
+      >
+        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+        Processing failed — delete and re-upload
+      </div>
+    );
+  }
+
+  if (book.status === "processing") {
+    const label = book.pageCount
+      ? `Processing ${book.processedPages}/${book.pageCount} pages`
+      : "Processing…";
+
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-300">
+        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+        {label}
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function BookStat({ label, value }: { label: string; value: string | number }) {

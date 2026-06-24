@@ -1,37 +1,51 @@
 import pdf from "pdf-parse";
 
-import type {
-  ExtractionResult,
-  PdfExtractor,
-} from "./extractor.js";
+import {
+  BaseOpenedDocument,
+  BasePageExtractor,
+} from "./base.extractor.js";
 
-export class FallbackExtractor implements PdfExtractor {
-  readonly name = "pdf-parse";
+import { cleanExtractedText } from "../../../utils/text.js";
 
-  async extract(buffer: Buffer): Promise<ExtractionResult> {
-    const result = await pdf(buffer);
+import type { ExtractedPage, OpenedDocument } from "./extractor.js";
 
-    const pages = splitPages(result.text);
+class PdfParseDocument extends BaseOpenedDocument {
+  constructor(private readonly pages: string[]) {
+    super();
+  }
+
+  get pageCount(): number {
+    return this.pages.length;
+  }
+
+  async extractPage(pageNumber: number): Promise<ExtractedPage> {
+    if (pageNumber < 1 || pageNumber > this.pageCount) {
+      throw new RangeError(`Page ${pageNumber} does not exist.`);
+    }
 
     return {
-      pages,
-      pageCount: pages.length,
+      pageNumber,
+      text: cleanExtractedText(this.pages[pageNumber - 1] ?? ""),
     };
   }
 }
 
-function splitPages(text: string) {
+export class FallbackExtractor extends BasePageExtractor {
+  readonly name = "pdf-parse";
+
+  async open(buffer: Buffer): Promise<OpenedDocument> {
+    const result = await pdf(buffer);
+
+    return new PdfParseDocument(splitPages(result.text));
+  }
+}
+
+function splitPages(text: string): string[] {
   const normalized = text.replace(/\r/g, "");
 
-  const parts =
-    normalized.match(/\f/)
-      ? normalized.split("\f")
-      : normalized.split(/\n{3,}/);
+  const parts = normalized.match(/\f/)
+    ? normalized.split("\f")
+    : normalized.split(/\n{3,}/);
 
-  return parts
-    .map((page, index) => ({
-      pageNumber: index + 1,
-      text: page.trim(),
-    }))
-    .filter((p) => p.text.length > 0);
+  return parts.map((page) => page.trim()).filter((page) => page.length > 0);
 }

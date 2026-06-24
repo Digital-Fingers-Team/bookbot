@@ -24,6 +24,19 @@ const schema = z.object({
   VECTOR_NUM_CANDIDATES_MULTIPLIER: z.coerce.number().int().positive().default(20),
   OPENROUTER_API_KEY: z.string().optional(),
   OPENROUTER_MODEL: z.string().default("openai/gpt-4o-mini"),
+  OCR_ENABLED: z
+    .string()
+    .default("true")
+    .transform((value) => value !== "false" && value !== "0"),
+  OCR_PROVIDER: z.enum(["auto", "openrouter", "local"]).default("auto"),
+  OCR_LOCAL_LANGS: z.string().default("ara+eng"),
+  OCR_VISION_MODEL: z.string().default("google/gemini-2.5-flash"),
+  OCR_MIN_TEXT_SCORE: z.coerce.number().int().min(0).max(100).default(65),
+  OCR_RENDER_SCALE: z.coerce.number().positive().max(5).default(2),
+  OCR_MAX_PAGES: z.coerce.number().int().positive().default(600),
+  OCR_CONCURRENCY: z.coerce.number().int().positive().max(32).default(6),
+  OCR_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(4096),
+  PROCESSING_CONCURRENCY: z.coerce.number().int().positive().max(8).default(2),
   PDF_STORAGE_DIR: z.string().default("storage/pdfs"),
   UPLOAD_MAX_MB: z.coerce.number().int().positive().default(25),
   UPLOAD_MAX_FILES: z.coerce.number().int().positive().default(10)

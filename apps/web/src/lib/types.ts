@@ -21,6 +21,8 @@ export type AuthSession = {
   user: User;
 };
 
+export type BookStatus = "processing" | "ready" | "failed";
+
 export type Book = {
   id: string;
   title: string;
@@ -28,6 +30,9 @@ export type Book = {
   createdAt: string;
   chunkCount: number;
   pageCount: number;
+  status: BookStatus;
+  processedPages: number;
+  error: string;
   author: string;
   firstPageText: string;
 };

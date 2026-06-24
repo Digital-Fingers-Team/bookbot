@@ -2,7 +2,8 @@ import { Router, type Router as ExpressRouter } from "express";
 import multer from "multer";
 import { env } from "../config/env.js";
 import { requireAdmin } from "../middleware/auth.middleware.js";
-import { ingestPdf } from "../services/ingestion/ingestion.service.js";
+import { createProcessingBook } from "../services/ingestion/ingestion.service.js";
+import { enqueueBookProcessing } from "../services/ingestion/processing-queue.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { normalizeUploadedFileName } from "../utils/file-name.js";
@@ -36,12 +37,21 @@ uploadRouter.post(
 
     const books = [];
     for (const file of files) {
-      books.push(
-        await ingestPdf({
-          buffer: file.buffer,
-          originalFileName: normalizeUploadedFileName(file.originalname)
-        })
-      );
+      const created = await createProcessingBook({
+        buffer: file.buffer,
+        originalFileName: normalizeUploadedFileName(file.originalname)
+      });
+
+      enqueueBookProcessing(created.bookId);
+
+      books.push({
+        bookId: created.bookId,
+        title: created.title,
+        originalFileName: created.originalFileName,
+        status: created.status,
+        pageCount: 0,
+        chunkCount: 0
+      });
     }
 
     res.status(201).json({ books });

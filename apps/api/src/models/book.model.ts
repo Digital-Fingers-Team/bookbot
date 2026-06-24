@@ -12,7 +12,16 @@ const bookSchema = new Schema(
     embeddingVersion: { type: String, required: true, default: "text-embedding-3-small", trim: true },
     processingVersion: { type: String, required: true, default: "2026-06", trim: true },
     chunkCount: { type: Number, required: true, default: 0 },
-    pageCount: { type: Number, required: true, default: 0 }
+    pageCount: { type: Number, required: true, default: 0 },
+    status: {
+      type: String,
+      enum: ["processing", "ready", "failed"],
+      required: true,
+      default: "processing",
+      index: true
+    },
+    processedPages: { type: Number, required: true, default: 0 },
+    error: { type: String, trim: true }
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );

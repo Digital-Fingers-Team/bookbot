@@ -96,6 +96,7 @@ export type UploadedBook = {
   originalFileName: string;
   pageCount: number;
   chunkCount: number;
+  status: "processing" | "ready" | "failed";
 };
 
 export async function uploadPdfs(files: File[], token?: string) {

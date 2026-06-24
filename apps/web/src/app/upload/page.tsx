@@ -184,15 +184,22 @@ export default function UploadPage() {
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
             <div className="min-w-0">
               <p className="font-semibold">
-                Added {results.length} {results.length === 1 ? "book" : "books"} to the library.
+                Queued {results.length} {results.length === 1 ? "book" : "books"} for processing.
               </p>
               <ul className="mt-2 space-y-1">
                 {results.map((result) => (
                   <li key={result.bookId} className="truncate">
-                    {result.title} - {result.chunkCount} chunks across {result.pageCount} pages
+                    {result.title} — extracting text &amp; running OCR where needed
                   </li>
                 ))}
               </ul>
+              <p className="mt-2">
+                Large or scanned books take a few minutes.{" "}
+                <Link href="/library" className="font-semibold underline">
+                  Track progress in the Library
+                </Link>
+                .
+              </p>
             </div>
           </div>
         ) : null}
