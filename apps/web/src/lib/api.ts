@@ -268,3 +268,50 @@ export async function getBookPdf(id: string, token?: string) {
 export function getStats(token?: string) {
   return request<Stats>("/api/stats", { token });
 }
+
+export type StoredSource = {
+  bookId?: string;
+  bookName?: string;
+  pageNumber?: number;
+  supportingText?: string;
+};
+
+export type StoredMessage = {
+  role: "user" | "assistant";
+  content: string;
+  sources?: StoredSource[];
+};
+
+export type ConversationSummary = {
+  id: string;
+  title: string;
+  updatedAt: string;
+  messageCount: number;
+};
+
+export type ConversationDetail = {
+  id: string;
+  title: string;
+  messages: StoredMessage[];
+  updatedAt: string;
+};
+
+export function listConversations(token: string) {
+  return request<{ conversations: ConversationSummary[] }>("/api/conversations", { token });
+}
+
+export function getConversation(id: string, token: string) {
+  return request<ConversationDetail>(`/api/conversations/${id}`, { token });
+}
+
+export function createConversation(input: { title?: string; messages: StoredMessage[] }, token: string) {
+  return request<{ id: string; title: string }>("/api/conversations", { method: "POST", body: input, token });
+}
+
+export function updateConversation(id: string, input: { title?: string; messages: StoredMessage[] }, token: string) {
+  return request<{ id: string; title: string }>(`/api/conversations/${id}`, { method: "PUT", body: input, token });
+}
+
+export function deleteConversation(id: string, token: string) {
+  return request<{ deleted: true }>(`/api/conversations/${id}`, { method: "DELETE", token });
+}

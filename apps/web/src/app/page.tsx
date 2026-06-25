@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, type KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   BookOpen,
@@ -10,6 +10,7 @@ import {
   ExternalLink,
   FileText,
   Loader2,
+  History,
   MessageSquareText,
   Plus,
   Printer,
@@ -20,9 +21,22 @@ import {
   Square,
   ThumbsDown,
   ThumbsUp,
+  Trash2,
   X
 } from "lucide-react";
-import { ApiClientError, getBookPdf, streamQuestion, type StreamMeta } from "@/lib/api";
+import {
+  ApiClientError,
+  type ConversationSummary,
+  createConversation,
+  deleteConversation,
+  getBookPdf,
+  getConversation,
+  listConversations,
+  type StoredMessage,
+  streamQuestion,
+  type StreamMeta,
+  updateConversation
+} from "@/lib/api";
 import { useAuth } from "@/components/auth-provider";
 import type { EvidenceChunk, Source } from "@/lib/types";
 import { EvidenceText } from "@/components/evidence-text";
@@ -55,15 +69,130 @@ export default function ChatPage() {
   const [readerLoading, setReaderLoading] = useState(false);
   const [readerError, setReaderError] = useState("");
 
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const conversationIdRef = useRef<string | null>(null);
+  conversationIdRef.current = conversationId;
 
   useEffect(() => {
     if (stick && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, stick]);
+
+  const refreshConversations = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    try {
+      const result = await listConversations(token);
+      setConversations(result.conversations);
+    } catch {
+      // History is best-effort; ignore transient failures.
+    }
+  }, [token]);
+
+  useEffect(() => {
+    refreshConversations();
+  }, [refreshConversations]);
+
+  // Persist the conversation whenever a turn finishes (busy returns to false).
+  useEffect(() => {
+    if (busy || !token) {
+      return;
+    }
+    const hasAnswer = messages.some((message) => message.role === "assistant" && message.status === "done" && message.content);
+    if (!hasAnswer) {
+      return;
+    }
+
+    const stored: StoredMessage[] = messages
+      .filter((message) => message.content)
+      .map((message) => ({
+        role: message.role,
+        content: message.content,
+        sources:
+          message.role === "assistant"
+            ? message.sources.map((source) => ({
+                bookId: source.bookId,
+                bookName: source.bookName,
+                pageNumber: source.pageNumber,
+                supportingText: source.supportingText
+              }))
+            : []
+      }));
+
+    if (!stored.length) {
+      return;
+    }
+
+    (async () => {
+      try {
+        if (conversationIdRef.current) {
+          await updateConversation(conversationIdRef.current, { messages: stored }, token);
+        } else {
+          const created = await createConversation({ messages: stored }, token);
+          setConversationId(created.id);
+        }
+        await refreshConversations();
+      } catch {
+        // Saving history is best-effort and must never break the chat.
+      }
+    })();
+    // Intentionally keyed on `busy` so we save once per finished turn.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy]);
+
+  async function openConversation(id: string) {
+    if (!token || busy) {
+      return;
+    }
+    abortRef.current?.abort();
+    setHistoryOpen(false);
+    try {
+      const conversation = await getConversation(id, token);
+      setMessages(
+        conversation.messages.map((message) => ({
+          id: crypto.randomUUID(),
+          role: message.role,
+          content: message.content,
+          sources: (message.sources ?? []).map((source) => ({
+            bookId: source.bookId,
+            bookName: source.bookName ?? "",
+            pageNumber: source.pageNumber ?? 0,
+            supportingText: source.supportingText ?? ""
+          })),
+          evidence: [],
+          status: "done"
+        }))
+      );
+      setConversationId(id);
+      setStick(true);
+    } catch {
+      // ignore load failure
+    }
+  }
+
+  async function removeConversation(id: string) {
+    if (!token) {
+      return;
+    }
+    try {
+      await deleteConversation(id, token);
+      if (conversationId === id) {
+        setMessages([]);
+        setConversationId(null);
+      }
+      await refreshConversations();
+    } catch {
+      // ignore
+    }
+  }
 
   useEffect(() => {
     return () => {
@@ -172,6 +301,7 @@ export default function ChatPage() {
   function newChat() {
     abortRef.current?.abort();
     setMessages([]);
+    setConversationId(null);
     setInput("");
     resetTextarea();
   }
@@ -212,7 +342,7 @@ export default function ChatPage() {
   }
 
   return (
-    <section className="flex h-[calc(100dvh-10rem)] min-h-[30rem] flex-col overflow-hidden rounded-xl border border-line bg-white shadow-soft dark:border-white/10 dark:bg-[#0c0c0e] lg:h-[calc(100dvh-6rem)]">
+    <section className="relative flex h-[calc(100dvh-10rem)] min-h-[30rem] flex-col overflow-hidden rounded-xl border border-line bg-white shadow-soft dark:border-white/10 dark:bg-[#0c0c0e] lg:h-[calc(100dvh-6rem)]">
       <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-4 dark:border-white/10">
         <div className="flex min-w-0 items-center gap-3">
           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-moss/10 text-moss dark:bg-sea/15 dark:text-sea">
@@ -223,16 +353,27 @@ export default function ChatPage() {
             <p className="truncate text-xs text-ink/45 dark:text-white/45">{t("ask.subtitle")}</p>
           </div>
         </div>
-        {messages.length ? (
+        <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            onClick={newChat}
-            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line bg-white px-3 text-sm font-medium text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:text-sea"
+            onClick={() => setHistoryOpen(true)}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-white px-3 text-sm font-medium text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:text-sea"
+            title={t("ask.history")}
           >
-            <Plus className="h-4 w-4" />
-            {t("ask.newChat")}
+            <History className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("ask.history")}</span>
           </button>
-        ) : null}
+          {messages.length ? (
+            <button
+              type="button"
+              onClick={newChat}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-white px-3 text-sm font-medium text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:text-sea"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("ask.newChat")}</span>
+            </button>
+          ) : null}
+        </div>
       </header>
 
       <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto px-3 py-5 sm:px-5">
@@ -276,7 +417,123 @@ export default function ChatPage() {
           onClose={closeReader}
         />
       ) : null}
+
+      {historyOpen ? (
+        <HistoryDrawer
+          conversations={conversations}
+          activeId={conversationId}
+          onClose={() => setHistoryOpen(false)}
+          onOpen={openConversation}
+          onDelete={removeConversation}
+          onNew={() => {
+            newChat();
+            setHistoryOpen(false);
+          }}
+        />
+      ) : null}
     </section>
+  );
+}
+
+function HistoryDrawer({
+  conversations,
+  activeId,
+  onClose,
+  onOpen,
+  onDelete,
+  onNew
+}: {
+  conversations: ConversationSummary[];
+  activeId: string | null;
+  onClose: () => void;
+  onOpen: (id: string) => void;
+  onDelete: (id: string) => void;
+  onNew: () => void;
+}) {
+  const t = useT();
+
+  useEffect(() => {
+    function onKey(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="absolute inset-0 z-40 flex" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" />
+      <aside
+        className="relative ms-auto flex h-full w-full max-w-xs flex-col border-s border-line bg-white shadow-soft dark:border-white/10 dark:bg-[#0c0c0e]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3 dark:border-white/10">
+          <span className="flex items-center gap-2 text-sm font-semibold text-ink dark:text-white">
+            <History className="h-4 w-4" />
+            {t("ask.history")}
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/50 transition hover:bg-ink/5 hover:text-ink dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white"
+            aria-label={t("ask.closeReader")}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={onNew}
+          className="m-3 inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-line bg-white text-sm font-medium text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:text-sea"
+        >
+          <Plus className="h-4 w-4" />
+          {t("ask.newChat")}
+        </button>
+
+        <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 pb-3">
+          {conversations.length ? (
+            conversations.map((conversation) => (
+              <div
+                key={conversation.id}
+                className={`group/conv flex items-center gap-1 rounded-lg pe-1 transition ${
+                  activeId === conversation.id
+                    ? "bg-moss/[0.08] dark:bg-sea/15"
+                    : "hover:bg-ink/[0.04] dark:hover:bg-white/5"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => onOpen(conversation.id)}
+                  className="min-w-0 flex-1 truncate px-2.5 py-2.5 text-start text-sm text-ink/80 dark:text-white/80"
+                  dir="auto"
+                  title={conversation.title}
+                >
+                  {conversation.title}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(t("ask.deleteChatConfirm"))) {
+                      onDelete(conversation.id);
+                    }
+                  }}
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-ink/30 opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover/conv:opacity-100 dark:text-white/30 dark:hover:bg-red-500/10 dark:hover:text-red-300"
+                  aria-label={t("ask.deleteChat")}
+                  title={t("ask.deleteChat")}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))
+          ) : (
+            <p className="px-3 py-8 text-center text-sm text-ink/45 dark:text-white/45">{t("ask.noHistory")}</p>
+          )}
+        </div>
+      </aside>
+    </div>
   );
 }
 

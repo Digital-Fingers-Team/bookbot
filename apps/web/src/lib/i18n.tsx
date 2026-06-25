@@ -65,6 +65,10 @@ export const STRINGS = {
   "ask.enterToSend": { ar: "للإرسال", en: "to send" },
   "ask.shiftEnter": { ar: "لسطر جديد", en: "for a new line" },
   "ask.depth": { ar: "العمق", en: "Depth" },
+  "ask.history": { ar: "سجل المحادثات", en: "History" },
+  "ask.noHistory": { ar: "لا توجد محادثات محفوظة بعد", en: "No saved conversations yet" },
+  "ask.deleteChat": { ar: "حذف المحادثة", en: "Delete conversation" },
+  "ask.deleteChatConfirm": { ar: "حذف هذه المحادثة؟", en: "Delete this conversation?" },
 
   // Library
   "lib.title": { ar: "المكتبة", en: "Library" },
