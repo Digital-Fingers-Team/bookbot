@@ -40,7 +40,8 @@ import {
 import { useAuth } from "@/components/auth-provider";
 import type { EvidenceChunk, Source } from "@/lib/types";
 import { EvidenceText } from "@/components/evidence-text";
-import { answerOverlapHighlights } from "@/lib/highlight";
+import { answerOverlapHighlights, citeSentences } from "@/lib/highlight";
+import { Landing } from "@/components/landing";
 import { useT } from "@/lib/i18n";
 
 type ChatMessage = {
@@ -55,7 +56,26 @@ type ChatMessage = {
 
 const EXAMPLES = ["ما هو مفهوم القيادة؟", "ما الفرق بين الإدارة والقيادة؟", "اذكر أهمية القيادة الإدارية"];
 
-export default function ChatPage() {
+export default function HomePage() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center text-ink/40 dark:text-white/40">
+        <Loader2 className="h-5 w-5 animate-spin" />
+      </div>
+    );
+  }
+
+  // Visitors get the marketing landing; signed-in accounts go straight to chat.
+  if (!user) {
+    return <Landing />;
+  }
+
+  return <ChatExperience />;
+}
+
+function ChatExperience() {
   const { token } = useAuth();
   const t = useT();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -639,7 +659,7 @@ function EmptyState({ onPick, disabled }: { onPick: (prompt: string) => void; di
 
 function UserBubble({ message }: { message: ChatMessage }) {
   return (
-    <div className="flex justify-end">
+    <div className="flex justify-start ltr:justify-end">
       <div
         dir="auto"
         className="book-text max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-tr-sm bg-moss px-4 py-2.5 text-[0.95rem] text-white shadow-sm dark:bg-sea/90"
@@ -647,6 +667,42 @@ function UserBubble({ message }: { message: ChatMessage }) {
         {message.content}
       </div>
     </div>
+  );
+}
+
+function CitedAnswer({
+  text,
+  sources,
+  onOpenSource
+}: {
+  text: string;
+  sources: Source[];
+  onOpenSource: (source: Source) => void;
+}) {
+  const t = useT();
+  const segments = citeSentences(text, sources);
+
+  return (
+    <>
+      {segments.map((segment, index) => {
+        const source = segment.source !== null ? sources[segment.source] : undefined;
+        return (
+          <span key={index}>
+            {segment.text}
+            {source ? (
+              <button
+                type="button"
+                onClick={() => onOpenSource(source)}
+                className="mx-0.5 inline-flex items-center rounded bg-moss/10 px-1 align-super text-[0.62em] font-bold text-moss transition hover:bg-moss/20 dark:bg-sea/15 dark:text-sea dark:hover:bg-sea/25"
+                title={`${t("ask.openAtPage")} ${source.pageNumber}`}
+              >
+                {(segment.source as number) + 1}
+              </button>
+            ) : null}
+          </span>
+        );
+      })}
+    </>
   );
 }
 
@@ -680,7 +736,11 @@ function AssistantBubble({ message, onOpenSource }: { message: ChatMessage; onOp
               <>
                 <p dir="auto" className="book-text whitespace-pre-wrap text-[0.97rem] text-ink dark:text-white">
                   {failed ? <AlertCircle className="me-1.5 inline h-4 w-4 align-text-bottom" /> : null}
-                  {message.content}
+                  {message.status === "done" && message.sources.length && !failed ? (
+                    <CitedAnswer text={message.content} sources={message.sources} onOpenSource={onOpenSource} />
+                  ) : (
+                    message.content
+                  )}
                   {streaming ? <span className="ms-0.5 inline-block h-4 w-[2px] animate-pulse bg-moss align-middle dark:bg-sea" /> : null}
                 </p>
 

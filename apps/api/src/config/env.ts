@@ -23,6 +23,9 @@ const schema = z.object({
   VECTOR_CANDIDATE_MAX: z.coerce.number().int().positive().default(300),
   VECTOR_NUM_CANDIDATES_MULTIPLIER: z.coerce.number().int().positive().default(10),
   OPENROUTER_API_KEY: z.string().optional(),
+  // Base URL for the chat + embedding API. Point this at a regional or
+  // self-hosted OpenAI-compatible endpoint for data residency / sovereignty.
+  OPENROUTER_BASE_URL: z.string().url().default("https://openrouter.ai/api/v1"),
   OPENROUTER_MODEL: z.string().default("openai/gpt-4o-mini"),
   OCR_ENABLED: z
     .string()

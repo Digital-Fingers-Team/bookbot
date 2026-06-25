@@ -1,4 +1,4 @@
-import { cleanWhitespace } from "../../utils/text.js";
+import { cleanCorruptedText, cleanWhitespace } from "../../utils/text.js";
 
 export type PageText = {
   pageNumber: number;
@@ -26,7 +26,9 @@ export function chunkPages(
   const chunks: TextChunk[] = [];
 
   for (const page of pages) {
-    const text = cleanWhitespace(page.text);
+    // Clean common OCR garble (repeated/space-split letters) before chunking so
+    // stored, embedded, and displayed text is cleaner for newly uploaded books.
+    const text = cleanCorruptedText(cleanWhitespace(page.text));
     if (!text) {
       continue;
     }

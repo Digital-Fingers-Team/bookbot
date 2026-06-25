@@ -142,3 +142,60 @@ export function answerOverlapHighlights(text: string, answer: string): Highlight
 
   return ranges;
 }
+
+export type CitedSegment = { text: string; source: number | null };
+
+/**
+ * Split an answer into segments, tagging each sentence with the index of the
+ * source it most overlaps with (or null). Offsets are preserved exactly so the
+ * original answer text is never altered — only citation markers are added.
+ */
+export function citeSentences(answer: string, sources: { supportingText?: string }[]): CitedSegment[] {
+  if (!answer.trim()) {
+    return [];
+  }
+
+  const sentences = splitSentences(answer);
+  if (!sentences.length || !sources.length) {
+    return [{ text: answer, source: null }];
+  }
+
+  const sourceWords = sources.map((source) => significantWords(source.supportingText ?? ""));
+
+  const segments: CitedSegment[] = [];
+  let cursor = 0;
+
+  for (const sentence of sentences) {
+    if (sentence.start > cursor) {
+      segments.push({ text: answer.slice(cursor, sentence.start), source: null });
+    }
+
+    const words = significantWords(sentence.text);
+    let best = -1;
+    let bestScore = 0;
+    sourceWords.forEach((set, index) => {
+      if (!set.size) {
+        return;
+      }
+      let score = 0;
+      for (const word of words) {
+        if (set.has(word)) {
+          score += 1;
+        }
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        best = index;
+      }
+    });
+
+    segments.push({ text: answer.slice(sentence.start, sentence.end), source: bestScore >= 2 ? best : null });
+    cursor = sentence.end;
+  }
+
+  if (cursor < answer.length) {
+    segments.push({ text: answer.slice(cursor), source: null });
+  }
+
+  return segments;
+}

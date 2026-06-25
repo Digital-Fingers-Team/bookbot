@@ -33,7 +33,7 @@ export class OpenRouterProvider implements LLMProvider {
     const model = input.model || env.OPENROUTER_MODEL;
 
     try {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      const response = await fetch(`${env.OPENROUTER_BASE_URL}/chat/completions`, {
         method: "POST",
         signal: controller.signal,
         headers: {
@@ -99,7 +99,7 @@ export class OpenRouterProvider implements LLMProvider {
 
     let response: Response;
     try {
-      response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      response = await fetch(`${env.OPENROUTER_BASE_URL}/chat/completions`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,

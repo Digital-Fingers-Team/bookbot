@@ -52,7 +52,7 @@ export async function visionOcr(image: Buffer, mimeType = "image/png"): Promise<
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      const response = await fetch(`${env.OPENROUTER_BASE_URL}/chat/completions`, {
         method: "POST",
         signal: controller.signal,
         headers: {

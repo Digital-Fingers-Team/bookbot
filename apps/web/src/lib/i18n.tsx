@@ -205,6 +205,29 @@ export const STRINGS = {
   "auth.createError": { ar: "تعذّر إنشاء الحساب. حاول مرة أخرى.", en: "Could not create the account. Please try again." },
   "auth.loadingSignin": { ar: "جارٍ تحميل تسجيل الدخول…", en: "Loading sign in…" },
 
+  // Landing
+  "landing.heroTitle": { ar: "اسأل مكتبتك، واحصل على إجابات موثّقة", en: "Ask your library, get cited answers" },
+  "landing.heroSubtitle": {
+    ar: "منصّة معرفية تبحث في كتب المنظمة المرفوعة، وتُجيب فقط بما تجده، مع عرض المصدر والصفحة لكل معلومة.",
+    en: "A knowledge platform that searches the organization's uploaded books and answers only from what it finds — with the source and page for every fact."
+  },
+  "landing.getStarted": { ar: "ابدأ الآن", en: "Get started" },
+  "landing.f1Title": { ar: "إجابات من كتبك فقط", en: "Answers from your books only" },
+  "landing.f1Body": {
+    ar: "لا تخمين ولا معلومات خارجية — كل إجابة مبنية على مكتبتك.",
+    en: "No guessing, no outside knowledge — every answer is grounded in your library."
+  },
+  "landing.f2Title": { ar: "أدلة قابلة للتحقق", en: "Verifiable evidence" },
+  "landing.f2Body": {
+    ar: "اطّلع على المقاطع الداعمة وافتح الكتاب عند الصفحة الصحيحة بنقرة.",
+    en: "See the supporting passages and open the book at the exact page in one click."
+  },
+  "landing.f3Title": { ar: "عربي بالكامل", en: "Fully Arabic" },
+  "landing.f3Body": {
+    ar: "واجهة عربية من اليمين إلى اليسار، مع دعم الإنجليزية عند الحاجة.",
+    en: "A right-to-left Arabic interface, with English available when needed."
+  },
+
   // Analytics
   "nav.analytics": { ar: "التحليلات", en: "Analytics" },
   "an.title": { ar: "لوحة التحليلات", en: "Analytics" },

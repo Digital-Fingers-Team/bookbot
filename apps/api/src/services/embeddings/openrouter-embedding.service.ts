@@ -48,7 +48,7 @@ export async function embedTexts(
   }
 
   const response = await fetch(
-    "https://openrouter.ai/api/v1/embeddings",
+    `${env.OPENROUTER_BASE_URL}/embeddings`,
     {
       method: "POST",
       headers: {
