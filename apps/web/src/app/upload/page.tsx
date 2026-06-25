@@ -16,9 +16,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { ApiClientError, type UploadedBook, uploadPdfs } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 export default function UploadPage() {
   const { token, user, isAdmin, loading: authLoading } = useAuth();
+  const t = useT();
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,7 +38,7 @@ export default function UploadPage() {
 
     const invalid = incoming.find((file) => file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf"));
     if (invalid) {
-      setError(`"${invalid.name}" is not a PDF file.`);
+      setError(`"${invalid.name}" ${t("up.notPdf")}`);
       return;
     }
 
@@ -72,7 +74,7 @@ export default function UploadPage() {
       setResults(uploaded.books);
       setFiles([]);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Upload failed. Please try again.");
+      setError(err instanceof ApiClientError ? err.message : t("up.uploadFailed"));
     } finally {
       setLoading(false);
     }
@@ -89,7 +91,7 @@ export default function UploadPage() {
       <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-6 dark:border-white/10 dark:bg-[#0c0c0e]">
         <div className="flex items-center gap-3 text-sm font-medium text-ink/60 dark:text-white/60">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Checking admin access…
+          {t("up.checkingAccess")}
         </div>
       </div>
     );
@@ -104,11 +106,8 @@ export default function UploadPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-7">
       <header className="text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-white">Add to your library</h1>
-        <p className="mx-auto mt-1.5 max-w-md text-sm leading-6 text-ink/55 dark:text-white/55">
-          Drop in PDFs and BookBot extracts the text, splits each book into searchable chunks, and keeps every source page
-          for citations.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-white">{t("up.title")}</h1>
+        <p className="mx-auto mt-1.5 max-w-md text-sm leading-6 text-ink/55 dark:text-white/55">{t("up.subtitle")}</p>
       </header>
 
       <label
@@ -132,10 +131,10 @@ export default function UploadPage() {
           <UploadCloud className="h-7 w-7" />
         </span>
         <span className="mt-5 text-base font-semibold text-ink dark:text-white">
-          {isDragging ? "Drop to add" : "Drag & drop PDFs here"}
+          {isDragging ? t("up.dropNow") : t("up.dropHere")}
         </span>
         <span className="mt-1.5 text-sm text-ink/50 dark:text-white/50">
-          or <span className="font-medium text-moss dark:text-sea">browse your files</span> · text-based PDFs cite best
+          {t("up.orBrowse")} <span className="font-medium text-moss dark:text-sea">{t("up.browse")}</span> · {t("up.textBest")}
         </span>
         <input
           type="file"
@@ -156,9 +155,11 @@ export default function UploadPage() {
           <div className="flex flex-col gap-3 border-b border-line px-4 py-3.5 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-ink dark:text-white">
-                {files.length} {files.length === 1 ? "book" : "books"} ready
+                {files.length} {files.length === 1 ? t("up.book") : t("up.books")} {t("up.ready")}
               </p>
-              <p className="mt-0.5 text-xs text-ink/45 dark:text-white/45">{formatBytes(totalBytes)} · added as separate books</p>
+              <p className="mt-0.5 text-xs text-ink/45 dark:text-white/45">
+                {formatBytes(totalBytes)} · {t("up.separateBooks")}
+              </p>
             </div>
             <button
               type="button"
@@ -167,7 +168,7 @@ export default function UploadPage() {
               className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
-              {loading ? "Processing…" : `Process ${files.length === 1 ? "book" : `${files.length} books`}`}
+              {loading ? t("up.processing") : `${t("up.process")} ${files.length} ${files.length === 1 ? t("up.book") : t("up.books")}`}
             </button>
           </div>
 
@@ -184,8 +185,8 @@ export default function UploadPage() {
                   onClick={() => removeFile(file)}
                   disabled={loading}
                   className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink/40 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:text-white/40 dark:hover:bg-red-500/10 dark:hover:text-red-300"
-                  aria-label={`Remove ${file.name}`}
-                  title={`Remove ${file.name}`}
+                  aria-label={file.name}
+                  title={file.name}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -207,7 +208,7 @@ export default function UploadPage() {
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 shrink-0 text-moss dark:text-sea" />
             <p className="text-sm font-semibold text-ink dark:text-white">
-              Queued {results.length} {results.length === 1 ? "book" : "books"} for processing
+              {t("up.queued")} ({results.length})
             </p>
           </div>
           <ul className="mt-3 space-y-1.5">
@@ -222,21 +223,21 @@ export default function UploadPage() {
             href="/library"
             className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-moss transition hover:gap-2.5 dark:text-sea"
           >
-            Track progress in the Library
-            <ArrowRight className="h-4 w-4" />
+            {t("up.trackProgress")}
+            <ArrowRight className="h-4 w-4 ltr:rotate-0 rtl:rotate-180" />
           </Link>
         </div>
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <InfoCard icon={Layers} title="Split by page">
-          Each PDF is chunked with its source page kept for citations.
+        <InfoCard icon={Layers} title={t("up.infoSplitTitle")}>
+          {t("up.infoSplitBody")}
         </InfoCard>
-        <InfoCard icon={ScanLine} title="OCR fallback">
-          Scanned or image-only pages are read with OCR automatically.
+        <InfoCard icon={ScanLine} title={t("up.infoOcrTitle")}>
+          {t("up.infoOcrBody")}
         </InfoCard>
-        <InfoCard icon={Lock} title="Privacy">
-          The full book never leaves your store — only matched chunks reach the AI.
+        <InfoCard icon={Lock} title={t("up.infoPrivacyTitle")}>
+          {t("up.infoPrivacyBody")}
         </InfoCard>
       </div>
     </div>
@@ -273,29 +274,28 @@ function formatBytes(bytes: number) {
 }
 
 function AdminOnlyUpload({ userName }: { userName?: string }) {
+  const t = useT();
   return (
     <div className="mx-auto max-w-md rounded-2xl border border-line bg-white p-8 text-center dark:border-white/10 dark:bg-[#0c0c0e]">
       <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300">
         <Lock className="h-6 w-6" />
       </span>
-      <h1 className="mt-4 text-lg font-semibold text-ink dark:text-white">Admins only</h1>
+      <h1 className="mt-4 text-lg font-semibold text-ink dark:text-white">{t("up.adminsOnly")}</h1>
       <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-ink/55 dark:text-white/55">
-        {userName
-          ? `${userName}, you can ask questions and browse the library, but uploading books needs an admin account.`
-          : "Please sign in as an admin to upload books."}
+        {userName ? `${userName} — ${t("up.adminsBody")}` : t("up.signinAdmin")}
       </p>
       <div className="mt-5 flex flex-wrap justify-center gap-2.5">
         <Link
           href="/login?next=/upload"
           className="inline-flex h-10 items-center justify-center rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90"
         >
-          Sign in as admin
+          {t("up.signinAdmin")}
         </Link>
         <Link
           href="/"
           className="inline-flex h-10 items-center justify-center rounded-lg border border-line bg-white px-4 text-sm font-medium text-ink transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:text-sea"
         >
-          Back to chat
+          {t("up.backToChat")}
         </Link>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { AlertCircle, BookOpenText } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 
 // Shared styling for auth inputs so Login and Register stay identical.
 export const authInputClass =
@@ -16,9 +16,8 @@ export function AuthShell({
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center py-6">
       <div className="mb-6 text-center">
-        <span className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-line bg-white text-moss dark:border-white/10 dark:bg-white/5 dark:text-sea">
-          <BookOpenText className="h-6 w-6" />
-        </span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.jpeg" alt="" className="mx-auto h-12 w-12 rounded-2xl" />
         <h1 className="mt-4 text-xl font-semibold tracking-tight text-ink dark:text-white">{title}</h1>
         <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-ink/55 dark:text-white/55">{subtitle}</p>
       </div>

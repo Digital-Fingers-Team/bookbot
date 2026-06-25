@@ -12,11 +12,14 @@ import {
   Loader2,
   MessageSquareText,
   Plus,
+  Printer,
   Quote,
   Search,
   Send,
   Sparkles,
   Square,
+  ThumbsDown,
+  ThumbsUp,
   X
 } from "lucide-react";
 import { ApiClientError, getBookPdf, streamQuestion, type StreamMeta } from "@/lib/api";
@@ -24,6 +27,7 @@ import { useAuth } from "@/components/auth-provider";
 import type { EvidenceChunk, Source } from "@/lib/types";
 import { EvidenceText } from "@/components/evidence-text";
 import { answerOverlapHighlights } from "@/lib/highlight";
+import { useT } from "@/lib/i18n";
 
 type ChatMessage = {
   id: string;
@@ -39,6 +43,7 @@ const EXAMPLES = ["ما هو مفهوم القيادة؟", "ما الفرق بي
 
 export default function ChatPage() {
   const { token } = useAuth();
+  const t = useT();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [depth, setDepth] = useState(8);
@@ -85,7 +90,7 @@ export default function ChatPage() {
       const blob = await getBookPdf(source.bookId, token);
       setReaderUrl(URL.createObjectURL(blob));
     } catch (error) {
-      setReaderError(error instanceof ApiClientError ? error.message : "Could not open this book.");
+      setReaderError(error instanceof ApiClientError ? error.message : t("ask.openFailed"));
     } finally {
       setReaderLoading(false);
     }
@@ -214,8 +219,8 @@ export default function ChatPage() {
             <MessageSquareText className="h-[18px] w-[18px]" />
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-[0.95rem] font-semibold text-ink dark:text-white">Ask your books</h1>
-            <p className="truncate text-xs text-ink/45 dark:text-white/45">Grounded only in your library</p>
+            <h1 className="truncate text-[0.95rem] font-semibold text-ink dark:text-white">{t("ask.title")}</h1>
+            <p className="truncate text-xs text-ink/45 dark:text-white/45">{t("ask.subtitle")}</p>
           </div>
         </div>
         {messages.length ? (
@@ -225,7 +230,7 @@ export default function ChatPage() {
             className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line bg-white px-3 text-sm font-medium text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:text-sea"
           >
             <Plus className="h-4 w-4" />
-            New chat
+            {t("ask.newChat")}
           </button>
         ) : null}
       </header>
@@ -290,6 +295,7 @@ function BookReader({
   error: string;
   onClose: () => void;
 }) {
+  const t = useT();
   useEffect(() => {
     function onKey(event: globalThis.KeyboardEvent) {
       if (event.key === "Escape") {
@@ -309,14 +315,16 @@ function BookReader({
         <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 dark:border-white/10">
           <div className="min-w-0">
             <h2 className="truncate text-sm font-semibold text-ink dark:text-white">{bookName}</h2>
-            <p className="truncate text-xs text-ink/45 dark:text-white/45">Opened at page {page}</p>
+            <p className="truncate text-xs text-ink/45 dark:text-white/45">
+              {t("ask.openedAtPage")} {page}
+            </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/70 dark:hover:text-sea"
-            aria-label="Close reader"
-            title="Close reader (Esc)"
+            aria-label={t("ask.closeReader")}
+            title={t("ask.closeReader")}
           >
             <X className="h-4 w-4" />
           </button>
@@ -325,8 +333,8 @@ function BookReader({
         <div className="min-h-0 flex-1 bg-paper dark:bg-[#08080a]">
           {loading ? (
             <div className="flex h-full items-center justify-center text-sm text-ink/60 dark:text-white/60">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Opening book…
+              <Loader2 className="me-2 h-4 w-4 animate-spin" />
+              {t("ask.opening")}
             </div>
           ) : error ? (
             <div className="flex h-full items-center justify-center p-6 text-center">
@@ -345,15 +353,14 @@ function BookReader({
 }
 
 function EmptyState({ onPick, disabled }: { onPick: (prompt: string) => void; disabled: boolean }) {
+  const t = useT();
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center px-4 text-center">
       <span className="inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-moss/15 bg-moss/10 text-moss dark:border-sea/25 dark:bg-sea/10 dark:text-sea">
         <BookOpen className="h-8 w-8" />
       </span>
-      <h2 className="mt-5 text-2xl font-bold text-moss dark:text-white">Ask your library anything</h2>
-      <p className="mt-2 max-w-md text-sm leading-6 text-ink/60 dark:text-white/60">
-        BookBot searches your uploaded books, shows the matching evidence, and answers only from what it finds.
-      </p>
+      <h2 className="mt-5 text-2xl font-bold text-moss dark:text-white">{t("ask.emptyTitle")}</h2>
+      <p className="mt-2 max-w-md text-sm leading-6 text-ink/60 dark:text-white/60">{t("ask.emptyBody")}</p>
       <div className="mt-7 grid w-full gap-2.5 sm:grid-cols-1">
         {EXAMPLES.map((example) => (
           <button
@@ -387,6 +394,7 @@ function UserBubble({ message }: { message: ChatMessage }) {
 }
 
 function AssistantBubble({ message, onOpenSource }: { message: ChatMessage; onOpenSource: (source: Source) => void }) {
+  const t = useT();
   const searching = message.status === "searching";
   const streaming = message.status === "streaming";
   const failed = message.status === "error";
@@ -422,7 +430,13 @@ function AssistantBubble({ message, onOpenSource }: { message: ChatMessage; onOp
                 {message.status === "done" && message.content ? (
                   <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line/70 pt-3 dark:border-white/10">
                     <CopyButton text={message.content} />
-                    {message.usage?.retrievedChunks ? <MetaChip>{message.usage.retrievedChunks} chunks</MetaChip> : null}
+                    <PrintButton />
+                    <Feedback />
+                    {message.usage?.retrievedChunks ? (
+                      <MetaChip>
+                        {message.usage.retrievedChunks} {t("ask.chunks")}
+                      </MetaChip>
+                    ) : null}
                     {message.usage?.model ? <MetaChip>{message.usage.model}</MetaChip> : null}
                   </div>
                 ) : null}
@@ -447,10 +461,11 @@ function AssistantBubble({ message, onOpenSource }: { message: ChatMessage; onOp
 }
 
 function Thinking() {
+  const t = useT();
   return (
     <div className="flex items-center gap-2 text-sm font-medium text-moss dark:text-sea">
       <Search className="h-4 w-4 animate-pulse" />
-      Searching your books
+      {t("ask.searching")}
       <span className="flex gap-1">
         <Dot delay="0ms" />
         <Dot delay="150ms" />
@@ -475,6 +490,7 @@ function Evidence({
   answer: string;
   onOpenSource: (source: Source) => void;
 }) {
+  const t = useT();
   if (!sources.length && !evidence.length) {
     return null;
   }
@@ -487,7 +503,7 @@ function Evidence({
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-sm font-semibold text-ink transition hover:text-moss dark:text-white dark:hover:text-sea">
         <span className="flex items-center gap-2">
           <Quote className="h-4 w-4" />
-          Evidence
+          {t("ask.evidence")}
           <span className="rounded-full bg-moss/10 px-2 py-0.5 text-xs font-bold text-moss dark:bg-sea/15 dark:text-sea">
             {Math.max(sources.length, evidence.length)}
           </span>
@@ -529,7 +545,7 @@ function Evidence({
                 <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink dark:text-white">{source.bookName}</span>
                 <span className="inline-flex items-center gap-1 rounded-full bg-moss/10 px-2 py-0.5 text-xs font-semibold text-moss dark:bg-sea/15 dark:text-sea">
                   <FileText className="h-3 w-3" />
-                  Page {source.pageNumber}
+                  {t("ask.page")} {source.pageNumber}
                 </span>
               </div>
               {source.supportingText ? (
@@ -540,7 +556,7 @@ function Evidence({
               {canOpen ? (
                 <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-moss opacity-0 transition group-hover/src:opacity-100 dark:text-sea">
                   <ExternalLink className="h-3 w-3" />
-                  Open at page {source.pageNumber}
+                  {t("ask.openAtPage")} {source.pageNumber}
                 </span>
               ) : null}
             </article>
@@ -550,7 +566,7 @@ function Evidence({
         {evidence.length ? (
           <details className="group/ev rounded-lg border border-dashed border-line dark:border-white/10">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ink/55 dark:text-white/55">
-              Raw retrieved chunks ({evidence.length})
+              {t("ask.rawChunks")} ({evidence.length})
               <ChevronDown className="h-3.5 w-3.5 transition group-open/ev:rotate-180" />
             </summary>
             <div className="space-y-2 border-t border-line p-3 dark:border-white/10">
@@ -559,9 +575,11 @@ function Evidence({
                   <div className="mb-1.5 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-ink/55 dark:text-white/55">
                     <span className="truncate uppercase">{chunk.bookName}</span>
                     <span className="text-ink/30 dark:text-white/30">·</span>
-                    <span>Page {chunk.pageNumber}</span>
+                    <span>
+                      {t("ask.page")} {chunk.pageNumber}
+                    </span>
                     <span className="ms-auto rounded-full bg-moss/10 px-2 py-0.5 font-bold text-moss dark:bg-sea/15 dark:text-sea">
-                      {scorePercent(chunk.score)} match
+                      {scorePercent(chunk.score)} {t("ask.match")}
                     </span>
                   </div>
                   <p dir="auto" className="book-text text-sm text-ink/75 dark:text-white/75">
@@ -598,6 +616,7 @@ function Composer({
   onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onStop: () => void;
 }) {
+  const t = useT();
   return (
     <div className="border-t border-line bg-white px-3 py-3 dark:border-white/10 dark:bg-[#0c0c0e] sm:px-5">
       <form onSubmit={onSubmit} className="mx-auto max-w-3xl">
@@ -609,7 +628,7 @@ function Composer({
             rows={1}
             onChange={(event) => onChange(event.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Ask about a fact, page, topic, name, or quote…"
+            placeholder={t("ask.placeholder")}
             className="max-h-[200px] min-h-[2.75rem] flex-1 resize-none bg-transparent px-2 py-2 text-[0.97rem] leading-7 text-ink outline-none placeholder:text-ink/35 dark:text-white dark:placeholder:text-white/35"
             maxLength={2000}
           />
@@ -638,13 +657,13 @@ function Composer({
 
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-ink/45 dark:text-white/45">
           <span className="hidden sm:inline">
-            <kbd className="rounded border border-line px-1 font-sans dark:border-white/15">Enter</kbd> to send ·{" "}
-            <kbd className="rounded border border-line px-1 font-sans dark:border-white/15">Shift</kbd>+
-            <kbd className="rounded border border-line px-1 font-sans dark:border-white/15">Enter</kbd> for a new line
+            <kbd className="rounded border border-line px-1 font-sans dark:border-white/15">Enter</kbd> {t("ask.enterToSend")}{" "}
+            · <kbd className="rounded border border-line px-1 font-sans dark:border-white/15">Shift</kbd>+
+            <kbd className="rounded border border-line px-1 font-sans dark:border-white/15">Enter</kbd> {t("ask.shiftEnter")}
           </span>
           <label className="ms-auto flex items-center gap-1.5 font-medium">
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin text-moss dark:text-sea" /> : null}
-            Depth
+            {t("ask.depth")}
             <select
               value={depth}
               onChange={(event) => onDepthChange(Number(event.target.value))}
@@ -664,6 +683,7 @@ function Composer({
 }
 
 function CopyButton({ text }: { text: string }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -683,8 +703,53 @@ function CopyButton({ text }: { text: string }) {
       className="inline-flex items-center gap-1.5 rounded-md border border-line bg-white px-2.5 py-1 text-xs font-semibold text-ink/65 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:bg-white/5 dark:text-white/65 dark:hover:text-sea"
     >
       {copied ? <Check className="h-3.5 w-3.5 text-moss dark:text-sea" /> : <Copy className="h-3.5 w-3.5" />}
-      {copied ? "Copied" : "Copy"}
+      {copied ? t("ask.copied") : t("ask.copy")}
     </button>
+  );
+}
+
+function PrintButton() {
+  const t = useT();
+  return (
+    <button
+      type="button"
+      onClick={() => window.print()}
+      className="inline-flex items-center gap-1.5 rounded-md border border-line bg-white px-2.5 py-1 text-xs font-semibold text-ink/65 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:bg-white/5 dark:text-white/65 dark:hover:text-sea"
+    >
+      <Printer className="h-3.5 w-3.5" />
+      {t("ask.print")}
+    </button>
+  );
+}
+
+function Feedback() {
+  const t = useT();
+  const [vote, setVote] = useState<"up" | "down" | null>(null);
+
+  if (vote) {
+    return <span className="text-xs font-medium text-moss dark:text-sea">{t("ask.feedbackThanks")}</span>;
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="text-xs text-ink/45 dark:text-white/45">{t("ask.helpful")}</span>
+      <button
+        type="button"
+        onClick={() => setVote("up")}
+        aria-label="👍"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-ink/50 transition hover:bg-moss/10 hover:text-moss dark:text-white/50 dark:hover:bg-sea/15 dark:hover:text-sea"
+      >
+        <ThumbsUp className="h-3.5 w-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={() => setVote("down")}
+        aria-label="👎"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-ink/50 transition hover:bg-red-50 hover:text-red-600 dark:text-white/50 dark:hover:bg-red-500/10 dark:hover:text-red-300"
+      >
+        <ThumbsDown className="h-3.5 w-3.5" />
+      </button>
+    </span>
   );
 }
 

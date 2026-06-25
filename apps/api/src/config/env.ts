@@ -21,7 +21,7 @@ const schema = z.object({
   OPENROUTER_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(1536),
   ATLAS_VECTOR_INDEX_NAME: z.string().default("chunk_embedding_vector_index"),
   VECTOR_CANDIDATE_MAX: z.coerce.number().int().positive().default(300),
-  VECTOR_NUM_CANDIDATES_MULTIPLIER: z.coerce.number().int().positive().default(20),
+  VECTOR_NUM_CANDIDATES_MULTIPLIER: z.coerce.number().int().positive().default(10),
   OPENROUTER_API_KEY: z.string().optional(),
   OPENROUTER_MODEL: z.string().default("openai/gpt-4o-mini"),
   OCR_ENABLED: z

@@ -7,10 +7,12 @@ import { Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { AuthField, AuthShell, ErrorBanner, authInputClass } from "@/components/auth-shell";
 import { ApiClientError } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 export default function RegisterPage() {
   const router = useRouter();
   const { register, user, loading } = useAuth();
+  const t = useT();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,16 +39,16 @@ export default function RegisterPage() {
       await register({ name: name.trim(), email: email.trim(), password });
       router.replace("/");
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Could not create the account. Please try again.");
+      setError(err instanceof ApiClientError ? err.message : t("auth.createError"));
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <AuthShell title="Create your account" subtitle="Start asking questions grounded in your own library.">
+    <AuthShell title={t("auth.createTitle")} subtitle={t("auth.createSubtitle")}>
       <form onSubmit={submit} className="space-y-4">
-        <AuthField label="Name">
+        <AuthField label={t("auth.name")}>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -54,13 +56,13 @@ export default function RegisterPage() {
             autoComplete="name"
             minLength={2}
             maxLength={120}
-            placeholder="Your name"
+            placeholder={t("auth.namePlaceholder")}
             className={authInputClass}
             required
           />
         </AuthField>
 
-        <AuthField label="Email">
+        <AuthField label={t("auth.email")}>
           <input
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -72,7 +74,7 @@ export default function RegisterPage() {
           />
         </AuthField>
 
-        <AuthField label="Password">
+        <AuthField label={t("auth.password")}>
           <div className="relative">
             <input
               value={password}
@@ -81,15 +83,15 @@ export default function RegisterPage() {
               autoComplete="new-password"
               minLength={6}
               maxLength={128}
-              placeholder="At least 6 characters"
-              className={`${authInputClass} pr-11`}
+              placeholder={t("auth.passwordHint")}
+              className={`${authInputClass} pe-11`}
               required
             />
             <button
               type="button"
               onClick={() => setShowPassword((value) => !value)}
-              className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-ink/40 transition hover:bg-ink/5 hover:text-ink dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white"
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute end-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-ink/40 transition hover:bg-ink/5 hover:text-ink dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white"
+              aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -104,14 +106,14 @@ export default function RegisterPage() {
           className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-          Create account
+          {t("auth.create")}
         </button>
       </form>
 
       <p className="mt-5 text-center text-sm text-ink/55 dark:text-white/55">
-        Already have an account?{" "}
+        {t("auth.haveAccount")}{" "}
         <Link href="/login" className="font-medium text-moss hover:underline dark:text-sea">
-          Sign in
+          {t("auth.signin")}
         </Link>
       </p>
     </AuthShell>

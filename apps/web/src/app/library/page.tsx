@@ -18,16 +18,17 @@ import {
 import { useAuth } from "@/components/auth-provider";
 import { ApiClientError, deleteBook, getBookPdf, getStats, listBooks } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
+import { useT, type StringKey } from "@/lib/i18n";
 
 type ViewMode = "grid" | "list";
 type StatusFilter = "all" | "ready" | "processing" | "failed";
 type SortKey = "recent" | "title" | "pages" | "chunks";
 
-const STATUS_TABS: { key: StatusFilter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "ready", label: "Ready" },
-  { key: "processing", label: "Processing" },
-  { key: "failed", label: "Failed" }
+const STATUS_TABS: { key: StatusFilter; labelKey: StringKey }[] = [
+  { key: "all", labelKey: "lib.statusAll" },
+  { key: "ready", labelKey: "lib.statusReady" },
+  { key: "processing", labelKey: "lib.statusProcessing" },
+  { key: "failed", labelKey: "lib.statusFailed" }
 ];
 
 const nf = new Intl.NumberFormat("en");
@@ -35,6 +36,7 @@ const nf = new Intl.NumberFormat("en");
 export default function LibraryPage() {
   const router = useRouter();
   const { token, user, isAdmin, loading: authLoading } = useAuth();
+  const t = useT();
   const [books, setBooks] = useState<Book[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,7 +75,7 @@ export default function LibraryPage() {
       setBooks(bookResult.books);
       setStats(statsResult);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Could not load the library.");
+      setError(err instanceof ApiClientError ? err.message : t("lib.loadError"));
     } finally {
       setLoading(false);
     }
@@ -120,7 +122,7 @@ export default function LibraryPage() {
   }, [token, hasProcessing]);
 
   async function removeBook(book: Book) {
-    if (!window.confirm(`Delete "${book.title}" and all of its chunks?`)) {
+    if (!window.confirm(`${t("lib.deleteConfirm")}\n\n"${book.title}"`)) {
       return;
     }
 
@@ -131,7 +133,7 @@ export default function LibraryPage() {
       await deleteBook(book.id, token);
       await refresh();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Could not delete this book.");
+      setError(err instanceof ApiClientError ? err.message : t("lib.deleteError"));
     } finally {
       setDeletingId("");
     }
@@ -151,7 +153,7 @@ export default function LibraryPage() {
       const blob = await getBookPdf(book.id, token);
       setReaderUrl(URL.createObjectURL(blob));
     } catch (err) {
-      setReaderError(err instanceof ApiClientError ? err.message : "Could not open this book.");
+      setReaderError(err instanceof ApiClientError ? err.message : t("ask.openFailed"));
     } finally {
       setReaderLoading(false);
     }
@@ -202,7 +204,7 @@ export default function LibraryPage() {
       <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-6 dark:border-white/10 dark:bg-[#0c0c0e]">
         <div className="flex items-center gap-3 text-sm font-medium text-ink/60 dark:text-white/60">
           <Loader2 className="h-4 w-4 animate-spin" />
-          {authLoading ? "Checking your session…" : "Redirecting to sign in…"}
+          {authLoading ? t("lib.checkingSession") : t("lib.redirecting")}
         </div>
       </div>
     );
@@ -214,15 +216,15 @@ export default function LibraryPage() {
     <div className="space-y-7">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-white">Library</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-white">{t("lib.title")}</h1>
           <p className="mt-1.5 text-sm text-ink/55 dark:text-white/55">
             {loading ? (
-              "Loading your books…"
+              t("lib.loadingBooks")
             ) : (
               <>
-                <span className="font-medium text-ink/70 dark:text-white/70">{nf.format(totals.books)}</span> books ·{" "}
-                <span className="font-medium text-ink/70 dark:text-white/70">{nf.format(totals.pages)}</span> pages ·{" "}
-                <span className="font-medium text-ink/70 dark:text-white/70">{nf.format(totals.chunks)}</span> searchable chunks
+                <span className="font-medium text-ink/70 dark:text-white/70">{nf.format(totals.books)}</span> {t("lib.statBooks")} ·{" "}
+                <span className="font-medium text-ink/70 dark:text-white/70">{nf.format(totals.pages)}</span> {t("lib.statPages")} ·{" "}
+                <span className="font-medium text-ink/70 dark:text-white/70">{nf.format(totals.chunks)}</span> {t("lib.statChunks")}
               </>
             )}
           </p>
@@ -234,7 +236,7 @@ export default function LibraryPage() {
             className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-line bg-white px-3.5 text-sm font-medium text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:text-sea"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            <span className="hidden sm:inline">Refresh</span>
+            <span className="hidden sm:inline">{t("lib.refresh")}</span>
           </button>
           {isAdmin ? (
             <Link
@@ -242,7 +244,7 @@ export default function LibraryPage() {
               className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90"
             >
               <Plus className="h-4 w-4" />
-              Upload
+              {t("lib.upload")}
             </Link>
           ) : null}
         </div>
@@ -259,19 +261,19 @@ export default function LibraryPage() {
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/35 dark:text-white/35" />
+            <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/35 dark:text-white/35" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by title, file name, or author…"
-              className="h-10 w-full rounded-lg border border-line bg-white pl-9 pr-9 text-sm text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/35"
+              placeholder={t("lib.searchPlaceholder")}
+              className="h-10 w-full rounded-lg border border-line bg-white ps-9 pe-9 text-sm text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/35"
             />
             {search ? (
               <button
                 type="button"
                 onClick={() => setSearch("")}
-                className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-ink/40 transition hover:bg-ink/5 hover:text-ink dark:text-white/40 dark:hover:bg-white/10"
-                aria-label="Clear search"
+                className="absolute end-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-ink/40 transition hover:bg-ink/5 hover:text-ink dark:text-white/40 dark:hover:bg-white/10"
+                aria-label="Clear"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -283,12 +285,12 @@ export default function LibraryPage() {
               value={sort}
               onChange={(event) => setSort(event.target.value as SortKey)}
               className="h-10 rounded-lg border border-line bg-white px-3 text-sm font-medium text-ink/80 outline-none transition focus:border-moss dark:border-white/10 dark:bg-white/5 dark:text-white/80"
-              aria-label="Sort books"
+              aria-label={t("lib.sortNewest")}
             >
-              <option value="recent">Newest first</option>
-              <option value="title">Title A–Z</option>
-              <option value="pages">Most pages</option>
-              <option value="chunks">Most chunks</option>
+              <option value="recent">{t("lib.sortNewest")}</option>
+              <option value="title">{t("lib.sortTitle")}</option>
+              <option value="pages">{t("lib.sortPages")}</option>
+              <option value="chunks">{t("lib.sortChunks")}</option>
             </select>
 
             <div className="flex items-center rounded-lg border border-line bg-white p-1 dark:border-white/10 dark:bg-white/5">
@@ -317,7 +319,7 @@ export default function LibraryPage() {
                     : "border-line bg-white text-ink/55 hover:text-ink dark:border-white/10 dark:bg-white/5 dark:text-white/55 dark:hover:text-white"
                 }`}
               >
-                {tab.label}
+                {t(tab.labelKey)}
                 <span className={`tabular-nums ${active ? "opacity-80" : "opacity-50"}`}>{count}</span>
               </button>
             );
@@ -359,7 +361,7 @@ export default function LibraryPage() {
         <>
           {isFiltering ? (
             <p className="-mt-2 text-xs text-ink/45 dark:text-white/45">
-              Showing {visibleBooks.length} of {books.length} {books.length === 1 ? "book" : "books"}
+              {t("lib.showing")} {visibleBooks.length} {t("lib.of")} {books.length} {t("lib.statBooks")}
             </p>
           ) : null}
 
@@ -449,6 +451,7 @@ function BookCard({
   onOpen: () => void;
   onDelete: () => void;
 }) {
+  const t = useT();
   return (
     <article
       role="button"
@@ -481,7 +484,7 @@ function BookCard({
         <div className="mx-auto flex aspect-[3/4] max-h-64 w-full max-w-44 flex-col rounded-md border border-black/[0.06] bg-white p-5 shadow-[8px_12px_26px_rgba(24,24,27,0.12)] transition group-hover:-translate-y-0.5 dark:border-black/10 dark:bg-paper">
           <div className="h-1.5 w-12 rounded-full bg-moss/70" />
           <p dir="auto" className="mt-5 line-clamp-5 text-xs leading-5 text-ink/60">
-            {book.firstPageText || "First page preview appears here after text is extracted."}
+            {book.firstPageText || t("lib.previewFallback")}
           </p>
           <div className="mt-auto space-y-2">
             <div className="h-1.5 w-full rounded bg-moss/15" />
@@ -505,10 +508,10 @@ function BookCard({
 
         <div className="mt-auto flex items-center justify-between border-t border-line/70 pt-3 dark:border-white/10">
           <span className="text-xs text-ink/50 dark:text-white/50">
-            {nf.format(book.pageCount)} pages · {nf.format(book.chunkCount)} chunks
+            {nf.format(book.pageCount)} {t("lib.pages")} · {nf.format(book.chunkCount)} {t("lib.chunks")}
           </span>
           <span className="inline-flex items-center gap-1 text-xs font-medium text-moss transition group-hover:gap-1.5 dark:text-sea">
-            Open
+            {t("lib.openBook")}
             <BookOpenText className="h-3.5 w-3.5" />
           </span>
         </div>
@@ -530,6 +533,7 @@ function BookRow({
   onOpen: () => void;
   onDelete: () => void;
 }) {
+  const t = useT();
   return (
     <div
       role="button"
@@ -556,11 +560,11 @@ function BookRow({
       <div className="hidden shrink-0 sm:block">
         <StatusBadge book={book} compact />
       </div>
-      <div className="hidden w-28 shrink-0 text-right text-xs text-ink/55 dark:text-white/55 md:block">
-        {nf.format(book.pageCount)} pages
+      <div className="hidden w-28 shrink-0 text-end text-xs text-ink/55 dark:text-white/55 md:block">
+        {nf.format(book.pageCount)} {t("lib.pages")}
       </div>
-      <div className="hidden w-28 shrink-0 text-right text-xs text-ink/55 dark:text-white/55 md:block">
-        {nf.format(book.chunkCount)} chunks
+      <div className="hidden w-28 shrink-0 text-end text-xs text-ink/55 dark:text-white/55 md:block">
+        {nf.format(book.chunkCount)} {t("lib.chunks")}
       </div>
       {isAdmin ? (
         <button
@@ -582,6 +586,7 @@ function BookRow({
 }
 
 function EmptyState({ filtering, isAdmin, onClear }: { filtering: boolean; isAdmin: boolean; onClear: () => void }) {
+  const t = useT();
   return (
     <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-line bg-paper p-12 text-center dark:border-white/10 dark:bg-white/[0.02]">
       <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-moss/10 text-moss dark:bg-sea/15 dark:text-sea">
@@ -589,23 +594,21 @@ function EmptyState({ filtering, isAdmin, onClear }: { filtering: boolean; isAdm
       </span>
       {filtering ? (
         <>
-          <p className="mt-4 text-sm font-semibold text-ink dark:text-white">No books match your filters</p>
-          <p className="mt-1 text-sm text-ink/50 dark:text-white/50">Try a different search or status.</p>
+          <p className="mt-4 text-sm font-semibold text-ink dark:text-white">{t("lib.noMatchTitle")}</p>
+          <p className="mt-1 text-sm text-ink/50 dark:text-white/50">{t("lib.noMatchBody")}</p>
           <button
             type="button"
             onClick={onClear}
             className="mt-4 inline-flex h-9 items-center rounded-lg border border-line bg-white px-3.5 text-sm font-medium text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:text-sea"
           >
-            Clear filters
+            {t("lib.clearFilters")}
           </button>
         </>
       ) : (
         <>
-          <p className="mt-4 text-sm font-semibold text-ink dark:text-white">No books yet</p>
+          <p className="mt-4 text-sm font-semibold text-ink dark:text-white">{t("lib.noBooksTitle")}</p>
           <p className="mt-1 max-w-xs text-sm text-ink/50 dark:text-white/50">
-            {isAdmin
-              ? "Upload a PDF to start building your searchable knowledge base."
-              : "Once an admin uploads books, they'll appear here for you to search."}
+            {isAdmin ? t("lib.noBooksAdmin") : t("lib.noBooksUser")}
           </p>
           {isAdmin ? (
             <Link
@@ -613,7 +616,7 @@ function EmptyState({ filtering, isAdmin, onClear }: { filtering: boolean; isAdm
               className="mt-4 inline-flex h-10 items-center gap-2 rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90"
             >
               <Plus className="h-4 w-4" />
-              Upload your first book
+              {t("lib.uploadFirst")}
             </Link>
           ) : null}
         </>
@@ -635,6 +638,7 @@ function Reader({
   error: string;
   onClose: () => void;
 }) {
+  const t = useT();
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -660,8 +664,8 @@ function Reader({
             type="button"
             onClick={onClose}
             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/70 dark:hover:text-sea"
-            aria-label="Close reader"
-            title="Close reader (Esc)"
+            aria-label={t("ask.closeReader")}
+            title={t("ask.closeReader")}
           >
             <X className="h-4 w-4" />
           </button>
@@ -670,8 +674,8 @@ function Reader({
         <div className="min-h-0 flex-1 bg-paper dark:bg-[#08080a]">
           {loading ? (
             <div className="flex h-full items-center justify-center text-sm text-ink/60 dark:text-white/60">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Opening book…
+              <Loader2 className="me-2 h-4 w-4 animate-spin" />
+              {t("ask.opening")}
             </div>
           ) : error ? (
             <div className="flex h-full items-center justify-center p-6 text-center">
@@ -690,6 +694,7 @@ function Reader({
 }
 
 function StatusBadge({ book, compact = false }: { book: Book; compact?: boolean }) {
+  const t = useT();
   if (book.status === "failed") {
     return (
       <span
@@ -697,17 +702,19 @@ function StatusBadge({ book, compact = false }: { book: Book; compact?: boolean 
         title={book.error || undefined}
       >
         <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-        {compact ? "Failed" : "Failed — delete & re-upload"}
+        {compact ? t("lib.failedShort") : t("lib.failedBadge")}
       </span>
     );
   }
 
   if (book.status === "processing") {
-    const label = book.pageCount ? `Processing ${book.processedPages}/${book.pageCount}` : "Processing…";
+    const label = book.pageCount
+      ? `${t("lib.processingOf")} ${book.processedPages}/${book.pageCount}`
+      : t("lib.processingShort");
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-300">
         <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
-        {compact ? "Processing" : label}
+        {compact ? t("lib.processingShort") : label}
       </span>
     );
   }
@@ -715,7 +722,7 @@ function StatusBadge({ book, compact = false }: { book: Book; compact?: boolean 
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-moss/20 bg-moss/[0.06] px-2.5 py-1 text-xs font-medium text-moss dark:border-sea/25 dark:bg-sea/10 dark:text-sea">
       <span className="h-1.5 w-1.5 rounded-full bg-moss dark:bg-sea" />
-      Ready
+      {t("lib.ready")}
     </span>
   );
 }

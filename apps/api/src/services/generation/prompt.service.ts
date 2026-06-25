@@ -1,4 +1,11 @@
 import type { RetrievedChunk } from "../../types/rag.js";
+import { bestSnippet } from "../../utils/text.js";
+
+// Bound how much of each chunk is sent to the model. Most chunks are smaller
+// than this; only oversized ones get trimmed — centred on the matched terms so
+// the relevant passage is kept — which lowers input tokens and speeds up the
+// time to first token without changing what the answer can draw on.
+const MAX_CHUNK_CHARS = 1400;
 
 // Shared guidance that makes the assistant understand any shape of question
 // (keyword, full sentence, casual wording, typo, multi-part, or follow-up) and
@@ -37,7 +44,15 @@ ${SHARED_RAG_GUIDANCE}
 Output plain text only — no JSON, no markdown fences.`;
 
 export function buildUserPrompt(question: string, chunks: RetrievedChunk[]) {
-  const context = chunks.map((chunk, index) => `[Excerpt ${index + 1}]\n${chunk.chunkText}`).join("\n\n");
+  const context = chunks
+    .map((chunk, index) => {
+      const text =
+        chunk.chunkText.length > MAX_CHUNK_CHARS
+          ? bestSnippet(chunk.chunkText, chunk.highlights, MAX_CHUNK_CHARS)
+          : chunk.chunkText;
+      return `[Excerpt ${index + 1}]\n${text}`;
+    })
+    .join("\n\n");
 
   return `A user asked the question below. Figure out their intent, then answer using only the library excerpts that follow.
 

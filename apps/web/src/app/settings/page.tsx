@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle2, KeyRound, Loader2, LogOut, ShieldCheck, UserRound } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { ApiClientError, changePassword } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 const inputClass =
   "h-11 w-full rounded-lg border border-line bg-white px-3.5 text-sm text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/35";
@@ -12,6 +13,7 @@ const inputClass =
 export default function SettingsPage() {
   const router = useRouter();
   const { token, user, loading, updateProfile, logout } = useAuth();
+  const t = useT();
   const [name, setName] = useState("");
   const [language, setLanguage] = useState<"en" | "ar">("en");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -46,9 +48,9 @@ export default function SettingsPage() {
 
     try {
       await updateProfile({ name: name.trim(), language });
-      setProfileStatus("Profile updated.");
+      setProfileStatus(t("set.profileUpdated"));
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Could not update your profile.");
+      setError(err instanceof ApiClientError ? err.message : t("set.profileError"));
     } finally {
       setSavingProfile(false);
     }
@@ -68,9 +70,9 @@ export default function SettingsPage() {
       await changePassword({ currentPassword, newPassword }, token);
       setCurrentPassword("");
       setNewPassword("");
-      setPasswordStatus("Password changed.");
+      setPasswordStatus(t("set.passwordChanged"));
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Could not change your password.");
+      setError(err instanceof ApiClientError ? err.message : t("set.passwordError"));
     } finally {
       setSavingPassword(false);
     }
@@ -86,7 +88,7 @@ export default function SettingsPage() {
       <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-6 dark:border-white/10 dark:bg-[#0c0c0e]">
         <div className="flex items-center gap-3 text-sm font-medium text-ink/60 dark:text-white/60">
           <Loader2 className="h-4 w-4 animate-spin" />
-          {loading ? "Loading profile…" : "Redirecting to sign in…"}
+          {loading ? t("set.loadingProfile") : t("lib.redirecting")}
         </div>
       </div>
     );
@@ -95,8 +97,8 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-white">Settings</h1>
-        <p className="mt-1.5 text-sm text-ink/55 dark:text-white/55">Manage your profile, language, and password.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-white">{t("set.title")}</h1>
+        <p className="mt-1.5 text-sm text-ink/55 dark:text-white/55">{t("set.subtitle")}</p>
       </header>
 
       {/* Account summary */}
@@ -110,7 +112,7 @@ export default function SettingsPage() {
               <p className="truncate text-base font-semibold text-ink dark:text-white">{user.name}</p>
               <span className="inline-flex items-center gap-1 rounded-full border border-moss/20 bg-moss/[0.06] px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-moss dark:border-sea/25 dark:bg-sea/10 dark:text-sea">
                 <ShieldCheck className="h-3 w-3" />
-                {user.role}
+                {user.role === "admin" ? t("role.admin") : t("role.user")}
               </span>
             </div>
             <p className="truncate text-sm text-ink/50 dark:text-white/50">{user.email}</p>
@@ -122,7 +124,7 @@ export default function SettingsPage() {
           className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-line bg-white px-4 text-sm font-medium text-ink/70 transition hover:border-red-300 hover:text-red-600 dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:border-red-500/40 dark:hover:text-red-300"
         >
           <LogOut className="h-4 w-4" />
-          Log out
+          {t("set.logout")}
         </button>
       </div>
 
@@ -134,9 +136,9 @@ export default function SettingsPage() {
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <SectionCard icon={UserRound} title="Profile" description="Your display name and answer language.">
+        <SectionCard icon={UserRound} title={t("set.profile")} description={t("set.profileDesc")}>
           <form onSubmit={submitProfile} className="space-y-4">
-            <Field label="Name">
+            <Field label={t("set.name")}>
               <input
                 value={name}
                 onChange={(event) => setName(event.target.value)}
@@ -147,28 +149,28 @@ export default function SettingsPage() {
               />
             </Field>
 
-            <Field label="Language">
+            <Field label={t("set.langField")}>
               <select
                 value={language}
                 onChange={(event) => setLanguage(event.target.value as "en" | "ar")}
                 className={inputClass}
               >
-                <option value="en">English</option>
-                <option value="ar">Arabic</option>
+                <option value="en">{t("set.english")}</option>
+                <option value="ar">{t("set.arabic")}</option>
               </select>
             </Field>
 
             <SubmitButton loading={savingProfile} icon={CheckCircle2}>
-              Save changes
+              {t("set.save")}
             </SubmitButton>
 
             {profileStatus ? <StatusMessage>{profileStatus}</StatusMessage> : null}
           </form>
         </SectionCard>
 
-        <SectionCard icon={KeyRound} title="Password" description="Use at least 6 characters.">
+        <SectionCard icon={KeyRound} title={t("set.password")} description={t("set.passwordDesc")}>
           <form onSubmit={submitPassword} className="space-y-4">
-            <Field label="Current password">
+            <Field label={t("set.currentPassword")}>
               <input
                 value={currentPassword}
                 onChange={(event) => setCurrentPassword(event.target.value)}
@@ -179,7 +181,7 @@ export default function SettingsPage() {
               />
             </Field>
 
-            <Field label="New password">
+            <Field label={t("set.newPassword")}>
               <input
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
@@ -193,7 +195,7 @@ export default function SettingsPage() {
             </Field>
 
             <SubmitButton loading={savingPassword} icon={KeyRound}>
-              Update password
+              {t("set.updatePassword")}
             </SubmitButton>
 
             {passwordStatus ? <StatusMessage>{passwordStatus}</StatusMessage> : null}

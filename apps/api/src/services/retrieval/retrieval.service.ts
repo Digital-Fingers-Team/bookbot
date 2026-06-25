@@ -3,6 +3,7 @@ import { embeddingVersion } from "../../config/rag.js";
 import { Chunk } from "../../models/chunk.model.js";
 import type { RetrievedChunk } from "../../types/rag.js";
 import { ApiError } from "../../utils/api-error.js";
+import { isLikelyTableOfContents } from "../../utils/text.js";
 import { embedText } from "../embeddings/openrouter-embedding.service.js";
 import { createReranker, type Reranker } from "./reranker.service.js";
 
@@ -22,13 +23,40 @@ export type RetrievalResult = {
   vectorCandidateCount: number;
 };
 
+// Small in-process LRU of query embeddings. The query embedding is a network
+// round-trip to OpenRouter on the critical path before any answer can stream,
+// so repeating a question (or asking a common one) skips it entirely.
+const QUERY_EMBEDDING_CACHE_MAX = 256;
+const queryEmbeddingCache = new Map<string, number[]>();
+
+async function embedQuery(question: string): Promise<number[]> {
+  const key = question.trim();
+  const cached = queryEmbeddingCache.get(key);
+  if (cached) {
+    // Refresh recency for the LRU eviction below.
+    queryEmbeddingCache.delete(key);
+    queryEmbeddingCache.set(key, cached);
+    return cached;
+  }
+
+  const vector = await embedText(question);
+  queryEmbeddingCache.set(key, vector);
+  if (queryEmbeddingCache.size > QUERY_EMBEDDING_CACHE_MAX) {
+    const oldest = queryEmbeddingCache.keys().next().value;
+    if (oldest !== undefined) {
+      queryEmbeddingCache.delete(oldest);
+    }
+  }
+  return vector;
+}
+
 export async function retrieveRelevantChunks(
   question: string,
   topK = 15,
   reranker: Reranker = createReranker()
 ): Promise<RetrievalResult> {
   const boundedTopK = boundTopK(topK);
-  const queryVector = await embedText(question);
+  const queryVector = await embedQuery(question);
   const candidateLimit = Math.min(Math.max(50, boundedTopK * 4), env.VECTOR_CANDIDATE_MAX);
   const numCandidates = candidateLimit * env.VECTOR_NUM_CANDIDATES_MULTIPLIER;
   const candidates = await vectorSearch(queryVector, candidateLimit, numCandidates);
@@ -40,10 +68,15 @@ export async function retrieveRelevantChunks(
     };
   }
 
+  // Drop table-of-contents / index (فهرس) pages: they match many queries on
+  // keywords but never answer them, and look like noise as evidence.
+  const retrieved = candidates.map(toRetrievedChunk);
+  const usable = retrieved.filter((chunk) => !isLikelyTableOfContents(chunk.chunkText));
+
   const chunks = await reranker.rerank({
     question,
     topK: boundedTopK,
-    candidates: candidates.map(toRetrievedChunk)
+    candidates: usable
   });
 
   return {

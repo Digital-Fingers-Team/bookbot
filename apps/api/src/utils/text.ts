@@ -79,6 +79,61 @@ export function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// Strong "this is a contents/index page" keywords (matched on diacritic-stripped text).
+const TOC_KEYWORDS = /فهرس|المحتويات|جدول المحتويات|قائمة المحتويات|table of contents/;
+// Section/ordinal markers common in Arabic academic front-matter, matched as
+// whole words so they don't fire inside unrelated words.
+const TOC_SECTION_MARKERS =
+  /(?<![\p{L}])(?:المبحث|الفصل|المطلب|الباب|تمهيد|مقدمة|مقدمه|الخاتمة|الخاتمه|المراجع|اولا|ثانيا|ثالثا|رابعا|خامسا|سادسا|سابعا)(?![\p{L}])/gu;
+// Dotted leaders ("title .......... 12") that almost only appear in a contents list.
+const DOTTED_LEADERS = /[.…·•]{4,}|(?:\.\s?){4,}/g;
+const DIGITS = /[\d٠-٩۰-۹]/g;
+
+/**
+ * Heuristic detector for table-of-contents / index (فهرس) pages so they can be
+ * dropped from retrieval — they are full of section titles + page numbers and
+ * never actually answer a question, yet match many queries on keywords alone.
+ * Tuned for precision (avoid flagging real prose) by requiring several signals.
+ */
+export function isLikelyTableOfContents(value: string): boolean {
+  const text = value.trim();
+  if (text.length < 12) {
+    return false;
+  }
+
+  const normalized = text.normalize("NFKD").replace(/\p{M}/gu, "");
+  // A page that literally says "contents" / فهرس is a contents page regardless of length.
+  if (TOC_KEYWORDS.test(normalized)) {
+    return true;
+  }
+
+  // The remaining signals need enough text to be meaningful.
+  if (text.length < 40) {
+    return false;
+  }
+
+  const dottedLeaders = (text.match(DOTTED_LEADERS) ?? []).length;
+  const sectionMarkers = (normalized.match(TOC_SECTION_MARKERS) ?? []).length;
+  const digitCount = (text.match(DIGITS) ?? []).length;
+  const letterCount = (text.match(/\p{L}/gu) ?? []).length;
+  const digitRatio = digitCount + letterCount ? digitCount / (digitCount + letterCount) : 0;
+
+  if (dottedLeaders >= 2) {
+    return true;
+  }
+  if (sectionMarkers >= 4) {
+    return true;
+  }
+  if (sectionMarkers >= 2 && (dottedLeaders >= 1 || digitRatio > 0.12)) {
+    return true;
+  }
+  if (digitRatio > 0.22 && sectionMarkers >= 1) {
+    return true;
+  }
+
+  return false;
+}
+
 export function excerpt(value: string, maxLength = 420) {
   const text = cleanWhitespace(value);
   if (text.length <= maxLength) {
