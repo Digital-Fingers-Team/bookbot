@@ -18,7 +18,7 @@ booksRouter.get(
   asyncHandler(async (_req, res) => {
     const books = await Book.find(
       {},
-      { title: 1, originalFileName: 1, createdAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1 }
+      { title: 1, originalFileName: 1, createdAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1 }
     )
       .sort({ createdAt: -1 })
       .lean();
@@ -49,6 +49,7 @@ booksRouter.get(
           processedPages: book.processedPages ?? 0,
           error: book.error ?? "",
           author: "Unknown author",
+          category: book.category ?? "",
           firstPageText
         };
       })
@@ -80,6 +81,28 @@ booksRouter.get(
       mimeType: "application/pdf",
       data: buffer.toString("base64")
     });
+  })
+);
+
+booksRouter.patch(
+  "/:id",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    if (!isValidObjectId(req.params.id)) {
+      throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
+    }
+
+    const category = typeof req.body?.category === "string" ? req.body.category.trim().slice(0, 80) : undefined;
+    if (category === undefined) {
+      throw new ApiError(400, "INVALID_BOOK_UPDATE", "Nothing to update.");
+    }
+
+    const book = await Book.findByIdAndUpdate(req.params.id, { category }, { new: true });
+    if (!book) {
+      throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
+    }
+
+    res.json({ id: String(book._id), category: book.category ?? "" });
   })
 );
 

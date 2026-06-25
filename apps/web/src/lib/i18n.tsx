@@ -93,6 +93,11 @@ export const STRINGS = {
   "lib.pages": { ar: "صفحة", en: "pages" },
   "lib.chunks": { ar: "مقطع", en: "chunks" },
   "lib.openBook": { ar: "فتح", en: "Open" },
+  "lib.category": { ar: "التصنيف", en: "Category" },
+  "lib.allCategories": { ar: "كل التصنيفات", en: "All categories" },
+  "lib.uncategorized": { ar: "غير مصنّف", en: "Uncategorized" },
+  "lib.addCategory": { ar: "إضافة تصنيف", en: "Add category" },
+  "lib.categoryPrompt": { ar: "أدخل التصنيف (اتركه فارغًا للإزالة):", en: "Enter a category (leave empty to remove):" },
   "lib.previewFallback": {
     ar: "ستظهر معاينة الصفحة الأولى هنا بعد استخراج النص.",
     en: "First page preview appears here after text is extracted."

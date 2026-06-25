@@ -12,11 +12,12 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Tag,
   Trash2,
   X
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { ApiClientError, deleteBook, getBookPdf, getStats, listBooks } from "@/lib/api";
+import { ApiClientError, deleteBook, getBookPdf, getStats, listBooks, updateBookCategory } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
 import { useT, type StringKey } from "@/lib/i18n";
 
@@ -49,6 +50,7 @@ export default function LibraryPage() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [sort, setSort] = useState<SortKey>("recent");
   const [view, setView] = useState<ViewMode>("grid");
 
@@ -139,6 +141,19 @@ export default function LibraryPage() {
     }
   }
 
+  async function setCategory(book: Book) {
+    const next = window.prompt(t("lib.categoryPrompt"), book.category ?? "");
+    if (next === null) {
+      return;
+    }
+    try {
+      await updateBookCategory(book.id, next.trim(), token);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : t("lib.deleteError"));
+    }
+  }
+
   async function openBook(book: Book) {
     if (readerUrl) {
       URL.revokeObjectURL(readerUrl);
@@ -169,10 +184,26 @@ export default function LibraryPage() {
     [books]
   );
 
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    for (const book of books) {
+      if (book.category) {
+        set.add(book.category);
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [books]);
+
   const visibleBooks = useMemo(() => {
     const query = search.trim().toLowerCase();
     const filtered = books.filter((book) => {
       if (statusFilter !== "all" && book.status !== statusFilter) {
+        return false;
+      }
+      if (categoryFilter === "__none__" && book.category) {
+        return false;
+      }
+      if (categoryFilter !== "all" && categoryFilter !== "__none__" && book.category !== categoryFilter) {
         return false;
       }
       if (!query) {
@@ -181,7 +212,8 @@ export default function LibraryPage() {
       return (
         book.title.toLowerCase().includes(query) ||
         book.originalFileName.toLowerCase().includes(query) ||
-        (book.author ?? "").toLowerCase().includes(query)
+        (book.author ?? "").toLowerCase().includes(query) ||
+        (book.category ?? "").toLowerCase().includes(query)
       );
     });
 
@@ -191,7 +223,7 @@ export default function LibraryPage() {
       if (sort === "chunks") return b.chunkCount - a.chunkCount;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [books, search, statusFilter, sort]);
+  }, [books, search, statusFilter, categoryFilter, sort]);
 
   const totals = {
     books: stats?.totalBooks ?? books.length,
@@ -210,7 +242,7 @@ export default function LibraryPage() {
     );
   }
 
-  const isFiltering = Boolean(search.trim()) || statusFilter !== "all";
+  const isFiltering = Boolean(search.trim()) || statusFilter !== "all" || categoryFilter !== "all";
 
   return (
     <div className="space-y-7">
@@ -281,6 +313,20 @@ export default function LibraryPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <select
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value)}
+              className="h-10 max-w-[10rem] rounded-lg border border-line bg-white px-3 text-sm font-medium text-ink/80 outline-none transition focus:border-moss dark:border-white/10 dark:bg-white/5 dark:text-white/80"
+              aria-label={t("lib.category")}
+            >
+              <option value="all">{t("lib.allCategories")}</option>
+              <option value="__none__">{t("lib.uncategorized")}</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
             <select
               value={sort}
               onChange={(event) => setSort(event.target.value as SortKey)}
@@ -375,6 +421,7 @@ export default function LibraryPage() {
                   deleting={deletingId === book.id}
                   onOpen={() => openBook(book)}
                   onDelete={() => removeBook(book)}
+                  onSetCategory={() => setCategory(book)}
                 />
               ))}
             </div>
@@ -388,13 +435,22 @@ export default function LibraryPage() {
                   deleting={deletingId === book.id}
                   onOpen={() => openBook(book)}
                   onDelete={() => removeBook(book)}
+                  onSetCategory={() => setCategory(book)}
                 />
               ))}
             </div>
           )}
         </>
       ) : (
-        <EmptyState filtering={isFiltering} isAdmin={isAdmin} onClear={() => { setSearch(""); setStatusFilter("all"); }} />
+        <EmptyState
+          filtering={isFiltering}
+          isAdmin={isAdmin}
+          onClear={() => {
+            setSearch("");
+            setStatusFilter("all");
+            setCategoryFilter("all");
+          }}
+        />
       )}
 
       {readerBook ? (
@@ -443,13 +499,15 @@ function BookCard({
   isAdmin,
   deleting,
   onOpen,
-  onDelete
+  onDelete,
+  onSetCategory
 }: {
   book: Book;
   isAdmin: boolean;
   deleting: boolean;
   onOpen: () => void;
   onDelete: () => void;
+  onSetCategory: () => void;
 }) {
   const t = useT();
   return (
@@ -504,7 +562,10 @@ function BookCard({
           </p>
         </div>
 
-        <StatusBadge book={book} />
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge book={book} />
+          <CategoryControl book={book} isAdmin={isAdmin} onSetCategory={onSetCategory} />
+        </div>
 
         <div className="mt-auto flex items-center justify-between border-t border-line/70 pt-3 dark:border-white/10">
           <span className="text-xs text-ink/50 dark:text-white/50">
@@ -525,13 +586,15 @@ function BookRow({
   isAdmin,
   deleting,
   onOpen,
-  onDelete
+  onDelete,
+  onSetCategory
 }: {
   book: Book;
   isAdmin: boolean;
   deleting: boolean;
   onOpen: () => void;
   onDelete: () => void;
+  onSetCategory: () => void;
 }) {
   const t = useT();
   return (
@@ -557,7 +620,8 @@ function BookRow({
           {book.originalFileName}
         </p>
       </div>
-      <div className="hidden shrink-0 sm:block">
+      <div className="hidden shrink-0 items-center gap-2 sm:flex">
+        <CategoryControl book={book} isAdmin={isAdmin} onSetCategory={onSetCategory} />
         <StatusBadge book={book} compact />
       </div>
       <div className="hidden w-28 shrink-0 text-end text-xs text-ink/55 dark:text-white/55 md:block">
@@ -690,6 +754,56 @@ function Reader({
         </div>
       </div>
     </div>
+  );
+}
+
+function CategoryControl({
+  book,
+  isAdmin,
+  onSetCategory
+}: {
+  book: Book;
+  isAdmin: boolean;
+  onSetCategory: () => void;
+}) {
+  const t = useT();
+
+  if (!book.category && !isAdmin) {
+    return null;
+  }
+
+  const handleClick = (event: React.MouseEvent) => {
+    if (!isAdmin) {
+      return;
+    }
+    event.stopPropagation();
+    onSetCategory();
+  };
+
+  if (book.category) {
+    return (
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={!isAdmin}
+        className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink/60 transition enabled:hover:border-moss/40 enabled:hover:text-moss disabled:cursor-default dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:enabled:hover:text-sea"
+        title={isAdmin ? t("lib.category") : undefined}
+      >
+        <Tag className="h-3 w-3" />
+        {book.category}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className="inline-flex items-center gap-1 rounded-full border border-dashed border-line px-2.5 py-1 text-xs font-medium text-ink/45 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/45 dark:hover:text-sea"
+    >
+      <Tag className="h-3 w-3" />
+      {t("lib.addCategory")}
+    </button>
   );
 }
 

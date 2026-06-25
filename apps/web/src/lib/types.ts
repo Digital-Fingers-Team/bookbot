@@ -34,6 +34,7 @@ export type Book = {
   processedPages: number;
   error: string;
   author: string;
+  category: string;
   firstPageText: string;
 };
 

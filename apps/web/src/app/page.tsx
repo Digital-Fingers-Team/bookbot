@@ -702,7 +702,7 @@ function AssistantBubble({ message, onOpenSource }: { message: ChatMessage; onOp
           </div>
 
           {showEvidence ? (
-            <aside className="w-full animate-slide-in-left sm:w-72 sm:shrink-0">
+            <aside className="w-full animate-slide-in-left sm:sticky sm:top-3 sm:w-72 sm:shrink-0 sm:self-start">
               <Evidence
                 sources={message.sources}
                 evidence={message.evidence}
@@ -768,7 +768,7 @@ function Evidence({
         <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
       </summary>
 
-      <div className="space-y-3 border-t border-line p-3 dark:border-white/10">
+      <div className="max-h-[60vh] space-y-3 overflow-y-auto overscroll-contain border-t border-line p-3 dark:border-white/10">
         {sources.map((source, index) => {
           const canOpen = Boolean(source.bookId);
           return (

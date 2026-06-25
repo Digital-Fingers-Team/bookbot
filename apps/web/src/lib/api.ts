@@ -251,6 +251,14 @@ export function deleteBook(id: string, token?: string) {
   });
 }
 
+export function updateBookCategory(id: string, category: string, token?: string) {
+  return request<{ id: string; category: string }>(`/api/books/${id}`, {
+    method: "PATCH",
+    body: { category },
+    token
+  });
+}
+
 export async function getBookPdf(id: string, token?: string) {
   const payload = await request<{ fileName: string; mimeType: string; data: string }>(`/api/books/${id}/pdf-data`, {
     token
