@@ -1,5 +1,5 @@
 import type { EvidenceBook, RetrievedChunk, StructuredSource } from "../../types/rag.js";
-import { excerpt } from "../../utils/text.js";
+import { bestSnippet } from "../../utils/text.js";
 
 const DEFAULT_BOOK_LIMIT = 3;
 
@@ -23,7 +23,8 @@ export function buildEvidenceBooks(chunks: RetrievedChunk[], bookLimit = DEFAULT
           pageNumber: chunk.pageNumber,
           text: chunk.chunkText,
           chunkId: chunk.id,
-          score: roundScore(chunk.score)
+          score: roundScore(chunk.score),
+          highlights: chunk.highlights
         }))
       };
     })
@@ -44,9 +45,10 @@ export function buildStructuredSources(books: EvidenceBook[]): StructuredSource[
       seen.add(key);
       sources.push({
         bookTitle: book.bookTitle,
+        bookId: book.bookId,
         pageNumber: evidence.pageNumber,
         bookName: book.bookTitle,
-        supportingText: excerpt(evidence.text)
+        supportingText: bestSnippet(evidence.text, evidence.highlights)
       });
     }
   }

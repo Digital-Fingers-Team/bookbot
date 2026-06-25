@@ -87,3 +87,72 @@ export function excerpt(value: string, maxLength = 420) {
 
   return `${text.slice(0, maxLength - 3).trim()}...`;
 }
+
+/**
+ * Pick the most relevant window of a chunk for display as "supporting text".
+ *
+ * Instead of always showing the opening of a chunk (which is often a heading or
+ * a contents list), this centres the snippet on the densest cluster of query
+ * matches — the `ranges` are the highlight offsets the reranker already found
+ * for the question's terms. Falls back to the chunk's start when nothing matched.
+ */
+export function bestSnippet(value: string, ranges: Array<{ start: number; end: number }> = [], maxLength = 360): string {
+  if (value.length <= maxLength) {
+    return cleanWhitespace(value);
+  }
+
+  const points = ranges
+    .map((range) => range.start)
+    .filter((start) => start >= 0 && start < value.length)
+    .sort((a, b) => a - b);
+
+  const firstPoint = points[0];
+  if (firstPoint === undefined) {
+    return excerpt(value, maxLength);
+  }
+
+  // Find the anchor whose following `maxLength` window covers the most matches.
+  let bestAnchor = firstPoint;
+  let bestCount = 0;
+  for (const anchor of points) {
+    const windowEnd = anchor + maxLength;
+    let count = 0;
+    for (const point of points) {
+      if (point >= anchor && point < windowEnd) {
+        count += 1;
+      }
+    }
+    if (count > bestCount) {
+      bestCount = count;
+      bestAnchor = anchor;
+    }
+  }
+
+  // Give the first match a little lead-in, then clamp the window to the text.
+  let start = Math.max(0, bestAnchor - 60);
+  let end = Math.min(value.length, start + maxLength);
+  start = Math.max(0, end - maxLength);
+
+  // Snap to word boundaries so we don't slice words in half.
+  if (start > 0) {
+    const nextSpace = value.indexOf(" ", start);
+    if (nextSpace !== -1 && nextSpace - start < 40) {
+      start = nextSpace + 1;
+    }
+  }
+  if (end < value.length) {
+    const prevSpace = value.lastIndexOf(" ", end);
+    if (prevSpace > start) {
+      end = prevSpace;
+    }
+  }
+
+  let snippet = cleanWhitespace(value.slice(start, end));
+  if (start > 0) {
+    snippet = `…${snippet}`;
+  }
+  if (end < value.length) {
+    snippet = `${snippet}…`;
+  }
+  return snippet;
+}

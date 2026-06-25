@@ -1,6 +1,21 @@
 import type { Highlight } from "@/lib/types";
 
-export function EvidenceText({ text, highlights }: { text: string; highlights: Highlight[] }) {
+const TONE_CLASS = {
+  // Query-term matches (which words from the question appear here).
+  query: "rounded bg-copper/20 px-0.5 text-inherit ring-1 ring-copper/25 dark:bg-copper/25 dark:ring-copper/35",
+  // Text the model's answer actually drew on.
+  answer: "rounded bg-moss/15 px-0.5 text-inherit ring-1 ring-moss/25 dark:bg-sea/20 dark:ring-sea/35"
+} as const;
+
+export function EvidenceText({
+  text,
+  highlights,
+  tone = "query"
+}: {
+  text: string;
+  highlights: Highlight[];
+  tone?: keyof typeof TONE_CLASS;
+}) {
   if (!highlights.length) {
     return <span>{text}</span>;
   }
@@ -14,10 +29,7 @@ export function EvidenceText({ text, highlights }: { text: string; highlights: H
     }
 
     parts.push(
-      <mark
-        key={`${highlight.start}-${highlight.end}`}
-        className="rounded bg-copper/20 px-0.5 text-inherit ring-1 ring-copper/25 dark:bg-copper/25 dark:ring-copper/35"
-      >
+      <mark key={`${highlight.start}-${highlight.end}`} className={TONE_CLASS[tone]}>
         {text.slice(highlight.start, highlight.end)}
       </mark>
     );

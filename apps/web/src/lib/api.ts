@@ -56,6 +56,118 @@ export function askQuestion(input: { question: string; limit?: number; model?: s
   });
 }
 
+export type StreamMeta = {
+  sources: ChatResponse["sources"];
+  evidence: ChatResponse["evidence"];
+  usage: { retrievedChunks: number; vectorCandidateCount?: number };
+};
+
+export type StreamDone = {
+  answer: string;
+  usage: { model?: string; retrievedChunks: number };
+};
+
+export type StreamHandlers = {
+  onMeta?: (meta: StreamMeta) => void;
+  onToken?: (delta: string) => void;
+  onDone?: (done: StreamDone) => void;
+  onError?: (error: ApiClientError) => void;
+  signal?: AbortSignal;
+};
+
+export async function streamQuestion(
+  input: { question: string; limit?: number; model?: string },
+  handlers: StreamHandlers
+): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/api/chat/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+      signal: handlers.signal
+    });
+  } catch {
+    handlers.onError?.(new ApiClientError(0, "NETWORK", "Could not reach the server."));
+    return;
+  }
+
+  if (!response.ok || !response.body) {
+    const payload = (await response.json().catch(() => null)) as ApiErrorResponse | null;
+    handlers.onError?.(
+      new ApiClientError(
+        response.status,
+        payload?.error.code ?? "CHAT_FAILED",
+        payload?.error.message ?? "The chat request failed."
+      )
+    );
+    return;
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+
+      let boundary = buffer.indexOf("\n\n");
+      while (boundary >= 0) {
+        dispatchSseEvent(buffer.slice(0, boundary), handlers);
+        buffer = buffer.slice(boundary + 2);
+        boundary = buffer.indexOf("\n\n");
+      }
+    }
+  } catch (error) {
+    if ((error as Error)?.name !== "AbortError") {
+      handlers.onError?.(new ApiClientError(0, "STREAM_INTERRUPTED", "The connection was interrupted."));
+    }
+  }
+}
+
+function dispatchSseEvent(raw: string, handlers: StreamHandlers) {
+  let eventName = "message";
+  const dataLines: string[] = [];
+
+  for (const line of raw.split("\n")) {
+    if (line.startsWith("event:")) {
+      eventName = line.slice(6).trim();
+    } else if (line.startsWith("data:")) {
+      dataLines.push(line.slice(5).trim());
+    }
+  }
+
+  if (!dataLines.length) {
+    return;
+  }
+
+  let data: unknown;
+  try {
+    data = JSON.parse(dataLines.join("\n"));
+  } catch {
+    return;
+  }
+
+  if (eventName === "meta") {
+    handlers.onMeta?.(data as StreamMeta);
+  } else if (eventName === "token") {
+    handlers.onToken?.((data as { delta?: string }).delta ?? "");
+  } else if (eventName === "done") {
+    handlers.onDone?.(data as StreamDone);
+  } else if (eventName === "error") {
+    const errorData = data as { code?: string; message?: string };
+    handlers.onError?.(
+      new ApiClientError(0, errorData.code ?? "CHAT_FAILED", errorData.message ?? "The chat request failed.")
+    );
+  }
+}
+
 export function login(input: { email: string; password: string }) {
   return request<AuthSession>("/api/auth/login", {
     method: "POST",

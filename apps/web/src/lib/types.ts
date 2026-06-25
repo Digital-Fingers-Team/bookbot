@@ -38,6 +38,7 @@ export type Book = {
 };
 
 export type Source = {
+  bookId?: string;
   bookName: string;
   pageNumber: number;
   supportingText: string;

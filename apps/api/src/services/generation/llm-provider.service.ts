@@ -4,6 +4,7 @@ import { OpenRouterProvider } from "./providers/openrouter.provider.js";
 
 export interface LLMProvider {
   generateAnswer(input: GenerateAnswerInput): Promise<GenerateAnswerResult>;
+  streamAnswer?(input: GenerateAnswerInput): AsyncGenerator<string>;
 }
 
 export function createLLMProvider(providerName = "openrouter"): LLMProvider {

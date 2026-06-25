@@ -1,261 +1,702 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
-import { AlertCircle, BookOpen, ChevronDown, Loader2, Search, Send, ShieldCheck, Sparkles } from "lucide-react";
-import { askQuestion, ApiClientError } from "@/lib/api";
-import type { ChatResponse } from "@/lib/types";
-import { EvidenceText } from "@/components/evidence-text";
+import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
+import {
+  AlertCircle,
+  BookOpen,
+  Check,
+  ChevronDown,
+  Copy,
+  ExternalLink,
+  FileText,
+  Loader2,
+  MessageSquareText,
+  Plus,
+  Quote,
+  Search,
+  Send,
+  Sparkles,
+  Square,
+  X
+} from "lucide-react";
+import { ApiClientError, getBookPdf, streamQuestion, type StreamMeta } from "@/lib/api";
 import { useAuth } from "@/components/auth-provider";
+import type { EvidenceChunk, Source } from "@/lib/types";
+import { EvidenceText } from "@/components/evidence-text";
+import { answerOverlapHighlights } from "@/lib/highlight";
+
+type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  sources: Source[];
+  evidence: EvidenceChunk[];
+  status: "searching" | "streaming" | "done" | "error";
+  usage?: { retrievedChunks?: number; model?: string };
+};
+
+const EXAMPLES = ["ما هو مفهوم القيادة؟", "ما الفرق بين الإدارة والقيادة؟", "اذكر أهمية القيادة الإدارية"];
 
 export default function ChatPage() {
-  const { isAdmin } = useAuth();
-  const [question, setQuestion] = useState("");
-  const [limit, setLimit] = useState(8);
+  const { token } = useAuth();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [depth, setDepth] = useState(8);
+  const [busy, setBusy] = useState(false);
+  const [stick, setStick] = useState(true);
 
-  const [response, setResponse] = useState<ChatResponse | null>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [reader, setReader] = useState<{ bookName: string; page: number } | null>(null);
+  const [readerUrl, setReaderUrl] = useState("");
+  const [readerLoading, setReaderLoading] = useState(false);
+  const [readerError, setReaderError] = useState("");
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!question.trim() || loading) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (stick && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, stick]);
+
+  useEffect(() => {
+    return () => {
+      if (readerUrl) {
+        URL.revokeObjectURL(readerUrl);
+      }
+    };
+  }, [readerUrl]);
+
+  async function openSource(source: Source) {
+    if (!source.bookId) {
       return;
     }
 
-
-    setLoading(true);
-    setError("");
-    setResponse(null);
+    if (readerUrl) {
+      URL.revokeObjectURL(readerUrl);
+    }
+    setReader({ bookName: source.bookName, page: source.pageNumber });
+    setReaderUrl("");
+    setReaderError("");
+    setReaderLoading(true);
 
     try {
-      const result = await askQuestion({
-        question: question.trim(),
-        limit
-      });
-
-      setResponse(result);
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Chat failed. Please try again.");
+      const blob = await getBookPdf(source.bookId, token);
+      setReaderUrl(URL.createObjectURL(blob));
+    } catch (error) {
+      setReaderError(error instanceof ApiClientError ? error.message : "Could not open this book.");
     } finally {
-      setLoading(false);
+      setReaderLoading(false);
     }
   }
 
+  function closeReader() {
+    if (readerUrl) {
+      URL.revokeObjectURL(readerUrl);
+    }
+    setReader(null);
+    setReaderUrl("");
+    setReaderError("");
+    setReaderLoading(false);
+  }
+
+  function patch(id: string, update: (message: ChatMessage) => ChatMessage) {
+    setMessages((prev) => prev.map((message) => (message.id === id ? update(message) : message)));
+  }
+
+  async function send(text?: string) {
+    const question = (text ?? input).trim();
+    if (!question || busy) {
+      return;
+    }
+
+    const assistantId = crypto.randomUUID();
+    setMessages((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), role: "user", content: question, sources: [], evidence: [], status: "done" },
+      { id: assistantId, role: "assistant", content: "", sources: [], evidence: [], status: "searching" }
+    ]);
+    setInput("");
+    resetTextarea();
+    setBusy(true);
+    setStick(true);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      await streamQuestion(
+        { question, limit: depth },
+        {
+          signal: controller.signal,
+          onMeta: (meta: StreamMeta) =>
+            patch(assistantId, (message) => ({
+              ...message,
+              sources: meta.sources ?? [],
+              evidence: meta.evidence ?? [],
+              status: "streaming",
+              usage: { ...message.usage, retrievedChunks: meta.usage?.retrievedChunks }
+            })),
+          onToken: (delta) =>
+            patch(assistantId, (message) => ({ ...message, content: message.content + delta, status: "streaming" })),
+          onDone: (done) =>
+            patch(assistantId, (message) => ({
+              ...message,
+              content: message.content || done.answer,
+              status: "done",
+              usage: { retrievedChunks: done.usage?.retrievedChunks ?? message.usage?.retrievedChunks, model: done.usage?.model }
+            })),
+          onError: (error) =>
+            patch(assistantId, (message) => ({ ...message, status: "error", content: message.content || error.message }))
+        }
+      );
+    } finally {
+      abortRef.current = null;
+      setBusy(false);
+      patch(assistantId, (message) =>
+        message.status === "searching" || message.status === "streaming" ? { ...message, status: "done" } : message
+      );
+    }
+  }
+
+  function stop() {
+    abortRef.current?.abort();
+  }
+
+  function newChat() {
+    abortRef.current?.abort();
+    setMessages([]);
+    setInput("");
+    resetTextarea();
+  }
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    send();
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+      event.preventDefault();
+      send();
+    }
+  }
+
+  function resetTextarea() {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+    }
+  }
+
+  function autoResize() {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+    }
+  }
+
+  function onScroll() {
+    const el = scrollRef.current;
+    if (!el) {
+      return;
+    }
+    setStick(el.scrollHeight - el.scrollTop - el.clientHeight < 80);
+  }
+
   return (
-    <div className="space-y-8">
-      {!isAdmin ? <LibraryHero /> : null}
-
-      <section className="overflow-hidden border border-line bg-white shadow-soft dark:border-white/10 dark:bg-ink/85">
-        <SectionHeader title="Ask your uploaded books" icon={<ShieldCheck className="h-5 w-5" />} />
-        <div className="grid gap-8 p-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:p-7">
-          <div className="space-y-5">
-            <form onSubmit={submit} className="space-y-5">
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-ink dark:text-white">Question</label>
-                <textarea
-                  value={question}
-                  onChange={(event) => setQuestion(event.target.value)}
-                  placeholder="Ask about a fact, page, topic, name, or quote from your books."
-                  className="min-h-44 w-full resize-y rounded-md border border-line bg-white p-4 text-base leading-7 text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-[#111a14] dark:text-white dark:placeholder:text-white/35"
-                  maxLength={2000}
-                />
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_170px_130px]">
-
-                <label className="flex h-11 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm text-ink/70 dark:border-white/10 dark:bg-[#111a14] dark:text-white/70">
-                  Top chunks
-                  <select
-                    value={limit}
-                    onChange={(event) => setLimit(Number(event.target.value))}
-                    className="ml-auto bg-transparent font-semibold text-ink outline-none dark:text-white"
-                  >
-                    {[5, 8, 10, 12, 15].map((value) => (
-                      <option key={value} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  type="submit"
-                  disabled={loading || !question.trim()}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-moss px-4 text-sm font-semibold text-white shadow-sm shadow-moss/20 transition hover:bg-[#064b26] disabled:cursor-not-allowed disabled:opacity-55"
-                >
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  Ask
-                </button>
-              </div>
-            </form>
-
-            {loading ? (
-              <div className="flex items-center gap-3 rounded-md border border-sea/25 bg-sea/10 p-4 text-sm font-medium text-moss dark:text-sea">
-                <Search className="h-4 w-4 animate-pulse" />
-                Searching the uploaded book chunks...
-              </div>
-            ) : null}
-
-            {error ? (
-              <div className="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>{error}</p>
-              </div>
-            ) : null}
-
-            {response ? <AnswerPanel response={response} /> : null}
+    <section className="flex h-[calc(100dvh-10rem)] min-h-[30rem] flex-col overflow-hidden rounded-xl border border-line bg-white shadow-soft dark:border-white/10 dark:bg-[#0c0c0e] lg:h-[calc(100dvh-6rem)]">
+      <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-4 dark:border-white/10">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-moss/10 text-moss dark:bg-sea/15 dark:text-sea">
+            <MessageSquareText className="h-[18px] w-[18px]" />
+          </span>
+          <div className="min-w-0">
+            <h1 className="truncate text-[0.95rem] font-semibold text-ink dark:text-white">Ask your books</h1>
+            <p className="truncate text-xs text-ink/45 dark:text-white/45">Grounded only in your library</p>
           </div>
-
-          <aside className="rounded-md border border-line bg-paper p-5 dark:border-white/10 dark:bg-white/5">
-            <div className="flex items-center gap-3">
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-moss/10 text-moss dark:bg-sea/10 dark:text-sea">
-                <Sparkles className="h-5 w-5" />
-              </span>
-              <h2 className="text-base font-semibold text-moss dark:text-white">Answer quality</h2>
-            </div>
-            <dl className="mt-5 space-y-4 text-sm">
-              <div>
-                <dt className="font-medium text-ink dark:text-white">Search first</dt>
-                <dd className="mt-1 text-ink/60 dark:text-white/60">BookBot retrieves matching chunks before asking the model.</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-ink dark:text-white">Cited answers</dt>
-                <dd className="mt-1 text-ink/60 dark:text-white/60">Sources and evidence stay visible with every answer.</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-ink dark:text-white">Try exact terms</dt>
-                <dd className="mt-1 text-ink/60 dark:text-white/60">Names, headings, and page words work best.</dd>
-              </div>
-            </dl>
-          </aside>
         </div>
-      </section>
+        {messages.length ? (
+          <button
+            type="button"
+            onClick={newChat}
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line bg-white px-3 text-sm font-medium text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:text-sea"
+          >
+            <Plus className="h-4 w-4" />
+            New chat
+          </button>
+        ) : null}
+      </header>
 
-    </div>
-  );
-}
-
-function LibraryHero() {
-  const books = [
-    ["Governance", "bg-[#e6c766]", "h-44"],
-    ["Leadership", "bg-white", "h-52"],
-    ["Digital", "bg-[#6aa66d]", "h-56"],
-    ["Security", "bg-[#234331] text-white", "h-48"],
-    ["Strategy", "bg-[#eee6d3]", "h-60"]
-  ];
-
-  return (
-    <section className="relative overflow-hidden border-b-[16px] border-moss bg-white shadow-soft">
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.96),rgba(255,255,255,0.82)),repeating-linear-gradient(90deg,rgba(7,95,47,0.07)_0,rgba(7,95,47,0.07)_5px,transparent_5px,transparent_44px)]" />
-      <div className="relative grid min-h-[310px] items-end gap-8 px-6 py-10 lg:grid-cols-[1fr_0.95fr] lg:px-12">
-        <div className="pb-4">
-          <p className="text-sm font-semibold uppercase tracking-wide text-copper">AI Book Knowledge Library</p>
-          <h1 className="mt-3 text-4xl font-black leading-tight text-moss drop-shadow-sm sm:text-5xl lg:text-6xl">
-            Ask books. Get cited answers.
-          </h1>
-          <div className="my-5 h-1 w-full max-w-xl bg-copper" />
-          <p className="max-w-2xl text-xl font-semibold leading-relaxed text-ink/75 sm:text-2xl">
-            Upload PDFs, search them with hybrid retrieval, and answer only from trusted book evidence.
-          </p>
-        </div>
-        <div className="flex min-h-52 items-end justify-center gap-3">
-          {books.map(([title, color, height], index) => (
-            <div
-              key={title}
-              className={`relative w-24 ${height} ${color} flex shrink-0 flex-col justify-between border border-black/10 p-3 text-center shadow-[12px_14px_18px_rgba(0,0,0,0.22)]`}
-              style={{ transform: `translateY(${index % 2 ? 12 : 0}px) skewY(-1deg)` }}
-            >
-              <BookOpen className="mx-auto h-7 w-7 text-moss" />
-              <span className="text-xs font-bold leading-5">{title}</span>
-              <span className="h-2 bg-moss/70" />
-            </div>
-          ))}
-        </div>
+      <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto px-3 py-5 sm:px-5">
+        {messages.length === 0 ? (
+          <EmptyState onPick={(prompt) => send(prompt)} disabled={busy} />
+        ) : (
+          <div className="mx-auto flex max-w-5xl flex-col gap-6">
+            {messages.map((message) =>
+              message.role === "user" ? (
+                <UserBubble key={message.id} message={message} />
+              ) : (
+                <AssistantBubble key={message.id} message={message} onOpenSource={openSource} />
+              )
+            )}
+          </div>
+        )}
       </div>
+
+      <Composer
+        input={input}
+        depth={depth}
+        busy={busy}
+        textareaRef={textareaRef}
+        onChange={(value) => {
+          setInput(value);
+          autoResize();
+        }}
+        onDepthChange={setDepth}
+        onSubmit={onSubmit}
+        onKeyDown={onKeyDown}
+        onStop={stop}
+      />
+
+      {reader ? (
+        <BookReader
+          bookName={reader.bookName}
+          page={reader.page}
+          url={readerUrl}
+          loading={readerLoading}
+          error={readerError}
+          onClose={closeReader}
+        />
+      ) : null}
     </section>
   );
 }
 
-function SectionHeader({ title, icon }: { title: string; icon: React.ReactNode }) {
+function BookReader({
+  bookName,
+  page,
+  url,
+  loading,
+  error,
+  onClose
+}: {
+  bookName: string;
+  page: number;
+  url: string;
+  loading: boolean;
+  error: string;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    function onKey(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
-    <div className="flex items-center justify-between bg-gradient-to-b from-[#74b66f] to-moss px-5 py-4 text-white">
-      <h2 className="text-xl font-semibold">{title}</h2>
-      <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-moss/45 shadow-inner">{icon}</span>
+    <div className="fixed inset-0 z-50 bg-black/70 p-3 backdrop-blur-sm sm:p-6" onClick={onClose}>
+      <div
+        className="mx-auto flex h-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-soft dark:border-white/10 dark:bg-[#0c0c0e]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 dark:border-white/10">
+          <div className="min-w-0">
+            <h2 className="truncate text-sm font-semibold text-ink dark:text-white">{bookName}</h2>
+            <p className="truncate text-xs text-ink/45 dark:text-white/45">Opened at page {page}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/70 dark:hover:text-sea"
+            aria-label="Close reader"
+            title="Close reader (Esc)"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 bg-paper dark:bg-[#08080a]">
+          {loading ? (
+            <div className="flex h-full items-center justify-center text-sm text-ink/60 dark:text-white/60">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Opening book…
+            </div>
+          ) : error ? (
+            <div className="flex h-full items-center justify-center p-6 text-center">
+              <div className="max-w-md rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+                <AlertCircle className="mx-auto mb-2 h-5 w-5" />
+                {error}
+              </div>
+            </div>
+          ) : url ? (
+            <iframe src={`${url}#page=${page}`} title={bookName} className="h-full w-full bg-white" />
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
 
-function AnswerPanel({ response }: { response: ChatResponse }) {
-  const sources = response.sources ?? [];
-  const evidence = response.evidence ?? [];
-  const notFound = response.usage.retrievedChunks === 0 || /information not found/i.test(response.answer);
+function EmptyState({ onPick, disabled }: { onPick: (prompt: string) => void; disabled: boolean }) {
+  return (
+    <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center px-4 text-center">
+      <span className="inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-moss/15 bg-moss/10 text-moss dark:border-sea/25 dark:bg-sea/10 dark:text-sea">
+        <BookOpen className="h-8 w-8" />
+      </span>
+      <h2 className="mt-5 text-2xl font-bold text-moss dark:text-white">Ask your library anything</h2>
+      <p className="mt-2 max-w-md text-sm leading-6 text-ink/60 dark:text-white/60">
+        BookBot searches your uploaded books, shows the matching evidence, and answers only from what it finds.
+      </p>
+      <div className="mt-7 grid w-full gap-2.5 sm:grid-cols-1">
+        {EXAMPLES.map((example) => (
+          <button
+            key={example}
+            type="button"
+            disabled={disabled}
+            onClick={() => onPick(example)}
+            dir="auto"
+            className="group flex items-center justify-between gap-3 rounded-lg border border-line bg-paper px-4 py-3 text-start text-sm font-medium text-ink transition hover:border-moss/40 hover:bg-moss/5 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:border-sea/40"
+          >
+            <span className="book-text">{example}</span>
+            <Send className="h-4 w-4 shrink-0 text-ink/30 transition group-hover:text-moss dark:text-white/30 dark:group-hover:text-sea" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function UserBubble({ message }: { message: ChatMessage }) {
+  return (
+    <div className="flex justify-end">
+      <div
+        dir="auto"
+        className="book-text max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-tr-sm bg-moss px-4 py-2.5 text-[0.95rem] text-white shadow-sm dark:bg-sea/90"
+      >
+        {message.content}
+      </div>
+    </div>
+  );
+}
+
+function AssistantBubble({ message, onOpenSource }: { message: ChatMessage; onOpenSource: (source: Source) => void }) {
+  const searching = message.status === "searching";
+  const streaming = message.status === "streaming";
+  const failed = message.status === "error";
+  // Normal chat: the reply streams in as a comfortably wide bubble. Once it is done
+  // the evidence slides in from the left and sits in a column beside the reply.
+  const showEvidence = message.status === "done" && (message.sources.length > 0 || message.evidence.length > 0);
 
   return (
-    <div className="overflow-hidden rounded-md border border-line bg-white dark:border-white/10 dark:bg-[#111a14]">
-      <div className="flex items-center justify-between border-b border-line bg-paper px-4 py-3 dark:border-white/10 dark:bg-white/5">
-        <h2 className="text-sm font-semibold uppercase text-ink/55 dark:text-white/55">
-          {notFound ? "No matching evidence" : "Answer and evidence"}
-        </h2>
-        <BookOpen className="h-4 w-4 text-moss dark:text-sea" />
-      </div>
-      <div className="space-y-5 p-4">
-        <div className="rounded-md border border-line bg-paper p-5 dark:border-white/10 dark:bg-white/5">
-          <h2 className="mb-3 text-sm font-semibold uppercase text-ink/55 dark:text-white/55">
-            {notFound ? "What happened" : "Answer"}
-          </h2>
-          <p className="whitespace-pre-wrap text-base leading-7 text-ink dark:text-white">
-            {notFound
-              ? "I could not find matching evidence in the uploaded books. Try a more specific phrase, a name from the book, or increase the chunk count."
-              : response.answer.replace(/^Answer:\s*/i, "")}
-          </p>
-        </div>
+    <div className="flex gap-3">
+      <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-moss/10 text-moss dark:bg-sea/15 dark:text-sea">
+        <Sparkles className="h-5 w-5" />
+      </span>
 
-        <div>
-          <h2 className="mb-3 text-sm font-semibold uppercase text-ink/55 dark:text-white/55">Sources</h2>
-          {sources.length ? (
-            <div className="grid gap-3">
-              {sources.map((source, index) => (
-                <article key={`${source.bookName}-${source.pageNumber}-${index}`} className="rounded-md border border-line bg-white p-4 dark:border-white/10 dark:bg-[#111a14]">
-                  <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink dark:text-white">
-                    <span>{source.bookName}</span>
-                    <span className="rounded bg-moss/10 px-2 py-1 text-xs text-moss">Page {source.pageNumber}</span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-col gap-4 sm:flex-row-reverse sm:items-start">
+          <div
+            className={`min-w-0 flex-1 rounded-2xl rounded-tl-sm border p-4 ${
+              failed
+                ? "border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+                : "border-line bg-paper dark:border-white/10 dark:bg-white/5"
+            }`}
+          >
+            {searching ? (
+              <Thinking />
+            ) : (
+              <>
+                <p dir="auto" className="book-text whitespace-pre-wrap text-[0.97rem] text-ink dark:text-white">
+                  {failed ? <AlertCircle className="me-1.5 inline h-4 w-4 align-text-bottom" /> : null}
+                  {message.content}
+                  {streaming ? <span className="ms-0.5 inline-block h-4 w-[2px] animate-pulse bg-moss align-middle dark:bg-sea" /> : null}
+                </p>
+
+                {message.status === "done" && message.content ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line/70 pt-3 dark:border-white/10">
+                    <CopyButton text={message.content} />
+                    {message.usage?.retrievedChunks ? <MetaChip>{message.usage.retrievedChunks} chunks</MetaChip> : null}
+                    {message.usage?.model ? <MetaChip>{message.usage.model}</MetaChip> : null}
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-ink/70 dark:text-white/70">{source.supportingText}</p>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <p className="rounded-md border border-line bg-paper p-4 text-sm text-ink/60 dark:border-white/10 dark:bg-white/5 dark:text-white/60">No supporting sources were found.</p>
-          )}
+                ) : null}
+              </>
+            )}
+          </div>
+
+          {showEvidence ? (
+            <aside className="w-full animate-slide-in-left sm:w-72 sm:shrink-0">
+              <Evidence
+                sources={message.sources}
+                evidence={message.evidence}
+                answer={message.content}
+                onOpenSource={onOpenSource}
+              />
+            </aside>
+          ) : null}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function Thinking() {
+  return (
+    <div className="flex items-center gap-2 text-sm font-medium text-moss dark:text-sea">
+      <Search className="h-4 w-4 animate-pulse" />
+      Searching your books
+      <span className="flex gap-1">
+        <Dot delay="0ms" />
+        <Dot delay="150ms" />
+        <Dot delay="300ms" />
+      </span>
+    </div>
+  );
+}
+
+function Dot({ delay }: { delay: string }) {
+  return <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-moss/60 dark:bg-sea/60" style={{ animationDelay: delay }} />;
+}
+
+function Evidence({
+  sources,
+  evidence,
+  answer,
+  onOpenSource
+}: {
+  sources: Source[];
+  evidence: EvidenceChunk[];
+  answer: string;
+  onOpenSource: (source: Source) => void;
+}) {
+  if (!sources.length && !evidence.length) {
+    return null;
+  }
+
+  return (
+    <details
+      className="group rounded-xl border border-line bg-white dark:border-white/10 dark:bg-[#0c0c0e]"
+      open={sources.length > 0}
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-sm font-semibold text-ink transition hover:text-moss dark:text-white dark:hover:text-sea">
+        <span className="flex items-center gap-2">
+          <Quote className="h-4 w-4" />
+          Evidence
+          <span className="rounded-full bg-moss/10 px-2 py-0.5 text-xs font-bold text-moss dark:bg-sea/15 dark:text-sea">
+            {Math.max(sources.length, evidence.length)}
+          </span>
+        </span>
+        <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
+      </summary>
+
+      <div className="space-y-3 border-t border-line p-3 dark:border-white/10">
+        {sources.map((source, index) => {
+          const canOpen = Boolean(source.bookId);
+          return (
+            <article
+              key={`${source.bookName}-${source.pageNumber}-${index}`}
+              style={{ animationDelay: `${index * 90}ms` }}
+              role={canOpen ? "button" : undefined}
+              tabIndex={canOpen ? 0 : undefined}
+              onClick={canOpen ? () => onOpenSource(source) : undefined}
+              onKeyDown={
+                canOpen
+                  ? (event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onOpenSource(source);
+                      }
+                    }
+                  : undefined
+              }
+              title={canOpen ? `Open ${source.bookName} at page ${source.pageNumber}` : undefined}
+              className={`group/src animate-fade-in rounded-lg border border-line bg-paper p-3.5 dark:border-white/10 dark:bg-white/5 ${
+                canOpen
+                  ? "cursor-pointer transition hover:border-moss/40 hover:bg-moss/[0.04] focus:outline-none focus:ring-2 focus:ring-moss/25 dark:hover:border-sea/40"
+                  : ""
+              }`}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-moss/10 text-[11px] font-bold text-moss dark:bg-sea/15 dark:text-sea">
+                  {index + 1}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink dark:text-white">{source.bookName}</span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-moss/10 px-2 py-0.5 text-xs font-semibold text-moss dark:bg-sea/15 dark:text-sea">
+                  <FileText className="h-3 w-3" />
+                  Page {source.pageNumber}
+                </span>
+              </div>
+              {source.supportingText ? (
+                <p dir="auto" className="book-text mt-2 border-t border-line/70 pt-2 text-sm text-ink/70 dark:border-white/10 dark:text-white/70">
+                  <EvidenceText text={source.supportingText} highlights={answerOverlapHighlights(source.supportingText, answer)} tone="answer" />
+                </p>
+              ) : null}
+              {canOpen ? (
+                <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-moss opacity-0 transition group-hover/src:opacity-100 dark:text-sea">
+                  <ExternalLink className="h-3 w-3" />
+                  Open at page {source.pageNumber}
+                </span>
+              ) : null}
+            </article>
+          );
+        })}
 
         {evidence.length ? (
-          <details className="rounded-md border border-line bg-white">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink">
-              Show Evidence
-              <ChevronDown className="h-4 w-4" />
+          <details className="group/ev rounded-lg border border-dashed border-line dark:border-white/10">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ink/55 dark:text-white/55">
+              Raw retrieved chunks ({evidence.length})
+              <ChevronDown className="h-3.5 w-3.5 transition group-open/ev:rotate-180" />
             </summary>
-            <div className="space-y-3 border-t border-line p-4">
+            <div className="space-y-2 border-t border-line p-3 dark:border-white/10">
               {evidence.map((chunk) => (
-                <article key={chunk.id} className="rounded-md border border-line bg-paper p-4">
-                  <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase text-ink/55">
-                    <span>{chunk.bookName}</span>
+                <div key={chunk.id} className="rounded-md bg-paper p-3 dark:bg-white/5">
+                  <div className="mb-1.5 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-ink/55 dark:text-white/55">
+                    <span className="truncate uppercase">{chunk.bookName}</span>
+                    <span className="text-ink/30 dark:text-white/30">·</span>
                     <span>Page {chunk.pageNumber}</span>
-                    <span>Score {chunk.score}</span>
+                    <span className="ms-auto rounded-full bg-moss/10 px-2 py-0.5 font-bold text-moss dark:bg-sea/15 dark:text-sea">
+                      {scorePercent(chunk.score)} match
+                    </span>
                   </div>
-                  <p className="text-sm leading-6 text-ink/75">
+                  <p dir="auto" className="book-text text-sm text-ink/75 dark:text-white/75">
                     <EvidenceText text={chunk.chunkText} highlights={chunk.highlights} />
                   </p>
-                </article>
+                </div>
               ))}
             </div>
           </details>
         ) : null}
-
-        <p className="text-xs text-ink/50">
-          Retrieved {response.usage.retrievedChunks} chunks
-          {response.usage.model ? ` with ${response.usage.model}` : ""}.
-        </p>
       </div>
+    </details>
+  );
+}
+
+function Composer({
+  input,
+  depth,
+  busy,
+  textareaRef,
+  onChange,
+  onDepthChange,
+  onSubmit,
+  onKeyDown,
+  onStop
+}: {
+  input: string;
+  depth: number;
+  busy: boolean;
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  onChange: (value: string) => void;
+  onDepthChange: (value: number) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onStop: () => void;
+}) {
+  return (
+    <div className="border-t border-line bg-white px-3 py-3 dark:border-white/10 dark:bg-[#0c0c0e] sm:px-5">
+      <form onSubmit={onSubmit} className="mx-auto max-w-3xl">
+        <div className="flex items-end gap-2 rounded-xl border border-line bg-paper p-2 transition focus-within:border-moss focus-within:ring-2 focus-within:ring-moss/15 dark:border-white/10 dark:bg-white/5">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            dir="auto"
+            rows={1}
+            onChange={(event) => onChange(event.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="Ask about a fact, page, topic, name, or quote…"
+            className="max-h-[200px] min-h-[2.75rem] flex-1 resize-none bg-transparent px-2 py-2 text-[0.97rem] leading-7 text-ink outline-none placeholder:text-ink/35 dark:text-white dark:placeholder:text-white/35"
+            maxLength={2000}
+          />
+          {busy ? (
+            <button
+              type="button"
+              onClick={onStop}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-line bg-white text-ink/70 transition hover:border-moss hover:text-moss dark:border-white/10 dark:bg-white/10 dark:text-white/70"
+              title="Stop generating"
+              aria-label="Stop generating"
+            >
+              <Square className="h-4 w-4 fill-current" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!input.trim()}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-moss text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-40"
+              title="Send"
+              aria-label="Send"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-ink/45 dark:text-white/45">
+          <span className="hidden sm:inline">
+            <kbd className="rounded border border-line px-1 font-sans dark:border-white/15">Enter</kbd> to send ·{" "}
+            <kbd className="rounded border border-line px-1 font-sans dark:border-white/15">Shift</kbd>+
+            <kbd className="rounded border border-line px-1 font-sans dark:border-white/15">Enter</kbd> for a new line
+          </span>
+          <label className="ms-auto flex items-center gap-1.5 font-medium">
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin text-moss dark:text-sea" /> : null}
+            Depth
+            <select
+              value={depth}
+              onChange={(event) => onDepthChange(Number(event.target.value))}
+              className="rounded border border-line bg-white px-1.5 py-0.5 font-semibold text-ink outline-none dark:border-white/15 dark:bg-white/5 dark:text-white"
+            >
+              {[5, 8, 10, 12, 15].map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </form>
     </div>
   );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      className="inline-flex items-center gap-1.5 rounded-md border border-line bg-white px-2.5 py-1 text-xs font-semibold text-ink/65 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:bg-white/5 dark:text-white/65 dark:hover:text-sea"
+    >
+      {copied ? <Check className="h-3.5 w-3.5 text-moss dark:text-sea" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? "Copied" : "Copy"}
+    </button>
+  );
+}
+
+function MetaChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-full border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink/55 dark:border-white/10 dark:bg-white/5 dark:text-white/55">
+      {children}
+    </span>
+  );
+}
+
+function scorePercent(score: number) {
+  const value = score > 1 ? score / 100 : score;
+  return `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`;
 }

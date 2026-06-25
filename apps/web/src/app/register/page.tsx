@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
-import { AlertCircle, Loader2, UserPlus } from "lucide-react";
+import { Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
+import { AuthField, AuthShell, ErrorBanner, authInputClass } from "@/components/auth-shell";
 import { ApiClientError } from "@/lib/api";
 
 export default function RegisterPage() {
@@ -13,6 +14,7 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -42,15 +44,9 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="mx-auto max-w-xl overflow-hidden border border-line bg-white shadow-soft dark:border-white/10 dark:bg-white/8">
-      <div className="bg-moss px-6 py-5 text-white">
-        <p className="text-sm font-semibold uppercase text-white/75">User access</p>
-        <h1 className="mt-1 text-2xl font-semibold">Create a BookBot account</h1>
-      </div>
-
-      <form onSubmit={submit} className="space-y-5 p-6">
-        <label className="block text-sm font-semibold text-ink dark:text-white">
-          Name
+    <AuthShell title="Create your account" subtitle="Start asking questions grounded in your own library.">
+      <form onSubmit={submit} className="space-y-4">
+        <AuthField label="Name">
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -58,61 +54,66 @@ export default function RegisterPage() {
             autoComplete="name"
             minLength={2}
             maxLength={120}
-            className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-ink/80 dark:text-white"
+            placeholder="Your name"
+            className={authInputClass}
             required
           />
-        </label>
+        </AuthField>
 
-        <label className="block text-sm font-semibold text-ink dark:text-white">
-          Email
+        <AuthField label="Email">
           <input
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             type="email"
             autoComplete="email"
-            className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-ink/80 dark:text-white"
+            placeholder="you@example.com"
+            className={authInputClass}
             required
           />
-        </label>
+        </AuthField>
 
-        <label className="block text-sm font-semibold text-ink dark:text-white">
-          Password
-          <input
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            type="password"
-            autoComplete="new-password"
-            minLength={6}
-            maxLength={128}
-            className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-ink/80 dark:text-white"
-            required
-          />
-        </label>
-
-        {error ? (
-          <div className="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <p>{error}</p>
+        <AuthField label="Password">
+          <div className="relative">
+            <input
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              minLength={6}
+              maxLength={128}
+              placeholder="At least 6 characters"
+              className={`${authInputClass} pr-11`}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((value) => !value)}
+              className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-ink/40 transition hover:bg-ink/5 hover:text-ink dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
           </div>
-        ) : null}
+        </AuthField>
+
+        {error ? <ErrorBanner message={error} /> : null}
 
         <button
           type="submit"
           disabled={submitting || loading}
-          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-moss px-4 text-sm font-semibold text-white shadow-sm shadow-moss/20 transition hover:bg-[#064b26] disabled:cursor-not-allowed disabled:opacity-55"
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
           Create account
         </button>
-
-        <p className="text-sm text-ink/60 dark:text-white/60">
-          Already have an account?{" "}
-          <Link href="/login" className="font-semibold text-moss hover:underline dark:text-sea">
-            Sign in
-          </Link>
-          .
-        </p>
       </form>
-    </div>
+
+      <p className="mt-5 text-center text-sm text-ink/55 dark:text-white/55">
+        Already have an account?{" "}
+        <Link href="/login" className="font-medium text-moss hover:underline dark:text-sea">
+          Sign in
+        </Link>
+      </p>
+    </AuthShell>
   );
 }

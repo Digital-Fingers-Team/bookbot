@@ -2,7 +2,18 @@
 
 import { ChangeEvent, DragEvent, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, CheckCircle2, FileText, Loader2, Trash2, UploadCloud } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  FileText,
+  Layers,
+  Loader2,
+  Lock,
+  ScanLine,
+  Trash2,
+  UploadCloud
+} from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { ApiClientError, type UploadedBook, uploadPdfs } from "@/lib/api";
 
@@ -75,10 +86,10 @@ export default function UploadPage() {
 
   if (authLoading) {
     return (
-      <div className="mx-auto max-w-xl border border-line bg-white p-6 shadow-soft dark:border-white/10 dark:bg-white/8">
-        <div className="flex items-center gap-3 text-sm font-medium text-ink/65 dark:text-white/65">
+      <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-6 dark:border-white/10 dark:bg-[#0c0c0e]">
+        <div className="flex items-center gap-3 text-sm font-medium text-ink/60 dark:text-white/60">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Checking admin access...
+          Checking admin access…
         </div>
       </div>
     );
@@ -88,134 +99,164 @@ export default function UploadPage() {
     return <AdminOnlyUpload userName={user?.name} />;
   }
 
+  const totalBytes = files.reduce((total, file) => total + file.size, 0);
+
   return (
-    <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <section className="border border-line bg-white shadow-soft dark:border-white/10 dark:bg-white/8">
-        <div className="flex items-center justify-between bg-gradient-to-b from-[#74b66f] to-moss px-5 py-4 text-white">
-          <h1 className="text-xl font-semibold">Upload a new book</h1>
-          <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-moss/45 shadow-inner">
-            <UploadCloud className="h-5 w-5" />
-          </span>
-        </div>
-        <div className="p-5 sm:p-6">
-          <p className="mb-5 text-sm leading-7 text-ink/65 dark:text-white/65">
-            Upload PDFs so BookBot can extract text, split each book into searchable chunks, and preserve source pages.
-          </p>
+    <div className="mx-auto max-w-2xl space-y-7">
+      <header className="text-center">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-white">Add to your library</h1>
+        <p className="mx-auto mt-1.5 max-w-md text-sm leading-6 text-ink/55 dark:text-white/55">
+          Drop in PDFs and BookBot extracts the text, splits each book into searchable chunks, and keeps every source page
+          for citations.
+        </p>
+      </header>
 
-          <label
-            onDragEnter={() => setIsDragging(true)}
-            onDragLeave={() => setIsDragging(false)}
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={onDrop}
-            className={`flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed p-8 text-center transition ${
-              isDragging
-                ? "border-moss bg-moss/10"
-                : "border-line bg-paper hover:border-moss dark:border-white/10 dark:bg-ink/60"
-            }`}
+      <label
+        onDragEnter={() => setIsDragging(true)}
+        onDragLeave={() => setIsDragging(false)}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={onDrop}
+        className={`flex min-h-72 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-10 text-center transition ${
+          isDragging
+            ? "border-moss bg-moss/[0.06] dark:border-sea"
+            : "border-line bg-white hover:border-moss/40 dark:border-white/15 dark:bg-[#0c0c0e] dark:hover:border-sea/40"
+        }`}
+      >
+        <span
+          className={`inline-flex h-14 w-14 items-center justify-center rounded-2xl transition ${
+            isDragging
+              ? "bg-moss text-white"
+              : "bg-moss/10 text-moss dark:bg-sea/15 dark:text-sea"
+          }`}
+        >
+          <UploadCloud className="h-7 w-7" />
+        </span>
+        <span className="mt-5 text-base font-semibold text-ink dark:text-white">
+          {isDragging ? "Drop to add" : "Drag & drop PDFs here"}
+        </span>
+        <span className="mt-1.5 text-sm text-ink/50 dark:text-white/50">
+          or <span className="font-medium text-moss dark:text-sea">browse your files</span> · text-based PDFs cite best
+        </span>
+        <input
+          type="file"
+          accept="application/pdf,.pdf"
+          multiple
+          className="sr-only"
+          onChange={(event: ChangeEvent<HTMLInputElement>) => {
+            if (event.target.files) {
+              chooseFiles(event.target.files);
+              event.target.value = "";
+            }
+          }}
+        />
+      </label>
+
+      {files.length ? (
+        <div className="rounded-2xl border border-line bg-white dark:border-white/10 dark:bg-[#0c0c0e]">
+          <div className="flex flex-col gap-3 border-b border-line px-4 py-3.5 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-ink dark:text-white">
+                {files.length} {files.length === 1 ? "book" : "books"} ready
+              </p>
+              <p className="mt-0.5 text-xs text-ink/45 dark:text-white/45">{formatBytes(totalBytes)} · added as separate books</p>
+            </div>
+            <button
+              type="button"
+              onClick={submit}
+              disabled={loading}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+              {loading ? "Processing…" : `Process ${files.length === 1 ? "book" : `${files.length} books`}`}
+            </button>
+          </div>
+
+          <ul className="divide-y divide-line dark:divide-white/10">
+            {files.map((file) => (
+              <li key={fileKey(file)} className="flex items-center gap-3 px-4 py-3">
+                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-paper text-moss dark:bg-white/5 dark:text-sea">
+                  <FileText className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink dark:text-white">{file.name}</span>
+                <span className="shrink-0 text-xs text-ink/45 dark:text-white/45">{formatBytes(file.size)}</span>
+                <button
+                  type="button"
+                  onClick={() => removeFile(file)}
+                  disabled={loading}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink/40 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:text-white/40 dark:hover:bg-red-500/10 dark:hover:text-red-300"
+                  aria-label={`Remove ${file.name}`}
+                  title={`Remove ${file.name}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>{error}</p>
+        </div>
+      ) : null}
+
+      {results.length ? (
+        <div className="rounded-2xl border border-moss/25 bg-moss/[0.05] p-4 dark:border-sea/25 dark:bg-sea/[0.08]">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-moss dark:text-sea" />
+            <p className="text-sm font-semibold text-ink dark:text-white">
+              Queued {results.length} {results.length === 1 ? "book" : "books"} for processing
+            </p>
+          </div>
+          <ul className="mt-3 space-y-1.5">
+            {results.map((result) => (
+              <li key={result.bookId} className="flex items-center gap-2 truncate text-sm text-ink/65 dark:text-white/65">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-moss/50 dark:bg-sea/60" />
+                <span className="truncate">{result.title}</span>
+              </li>
+            ))}
+          </ul>
+          <Link
+            href="/library"
+            className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-moss transition hover:gap-2.5 dark:text-sea"
           >
-            <UploadCloud className="h-10 w-10 text-moss dark:text-sea" />
-            <span className="mt-4 text-base font-semibold text-ink dark:text-white">Drop PDFs or choose files</span>
-            <span className="mt-2 text-sm text-ink/55 dark:text-white/55">Text-based books work best for page citations.</span>
-            <input
-              type="file"
-              accept="application/pdf,.pdf"
-              multiple
-              className="sr-only"
-              onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                if (event.target.files) {
-                  chooseFiles(event.target.files);
-                  event.target.value = "";
-                }
-              }}
-            />
-          </label>
-
-        {files.length ? (
-          <div className="mt-4 rounded-md border border-line bg-paper p-4 dark:border-white/10 dark:bg-ink/60">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold text-ink dark:text-white">
-                  {files.length} {files.length === 1 ? "book" : "books"} ready to process
-                </p>
-                <p className="mt-1 text-xs text-ink/50 dark:text-white/50">Each PDF will be added as a separate library book.</p>
-              </div>
-              <button
-                type="button"
-                onClick={submit}
-                disabled={loading}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-moss px-4 text-sm font-semibold text-white shadow-sm shadow-moss/20 transition hover:bg-[#064b26] disabled:cursor-not-allowed disabled:opacity-55"
-              >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
-                Process {files.length === 1 ? "book" : "books"}
-              </button>
-            </div>
-
-            <div className="mt-4 divide-y divide-line overflow-hidden rounded-md border border-line bg-white dark:divide-white/10 dark:border-white/10 dark:bg-ink/75">
-              {files.map((file) => (
-                <div key={fileKey(file)} className="flex items-center gap-3 px-3 py-3">
-                  <FileText className="h-5 w-5 shrink-0 text-moss dark:text-sea" />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink dark:text-white">{file.name}</span>
-                  <span className="shrink-0 text-xs text-ink/45 dark:text-white/45">{formatBytes(file.size)}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeFile(file)}
-                    disabled={loading}
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-500/10"
-                    aria-label={`Remove ${file.name}`}
-                    title={`Remove ${file.name}`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        {error ? (
-          <div className="mt-4 flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <p>{error}</p>
-          </div>
-        ) : null}
-
-        {results.length ? (
-          <div className="mt-4 flex items-start gap-3 rounded-md border border-moss/30 bg-moss/10 p-4 text-sm text-moss dark:text-white">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-            <div className="min-w-0">
-              <p className="font-semibold">
-                Queued {results.length} {results.length === 1 ? "book" : "books"} for processing.
-              </p>
-              <ul className="mt-2 space-y-1">
-                {results.map((result) => (
-                  <li key={result.bookId} className="truncate">
-                    {result.title} — extracting text &amp; running OCR where needed
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-2">
-                Large or scanned books take a few minutes.{" "}
-                <Link href="/library" className="font-semibold underline">
-                  Track progress in the Library
-                </Link>
-                .
-              </p>
-            </div>
-          </div>
-        ) : null}
+            Track progress in the Library
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
-      </section>
+      ) : null}
 
-      <aside className="border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-white/8">
-        <h2 className="text-base font-semibold text-ink dark:text-white">Access</h2>
-        <div className="mt-3 rounded-md border border-moss/20 bg-moss/10 p-4 text-sm text-moss dark:border-sea/25 dark:bg-sea/10 dark:text-sea">
-          Signed in as admin. Uploads will be attached to the shared BookBot library.
-        </div>
-        <div className="mt-6 space-y-4 text-sm text-ink/65 dark:text-white/65">
-          <p>Uploaded PDFs are split by page and stored with source metadata for every chunk.</p>
-          <p>The full book is never sent to OpenRouter; only retrieved evidence chunks are used.</p>
-        </div>
-      </aside>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <InfoCard icon={Layers} title="Split by page">
+          Each PDF is chunked with its source page kept for citations.
+        </InfoCard>
+        <InfoCard icon={ScanLine} title="OCR fallback">
+          Scanned or image-only pages are read with OCR automatically.
+        </InfoCard>
+        <InfoCard icon={Lock} title="Privacy">
+          The full book never leaves your store — only matched chunks reach the AI.
+        </InfoCard>
+      </div>
+    </div>
+  );
+}
+
+function InfoCard({
+  icon: Icon,
+  title,
+  children
+}: {
+  icon: typeof Layers;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-line bg-white p-4 dark:border-white/10 dark:bg-[#0c0c0e]">
+      <Icon className="h-4 w-4 text-moss dark:text-sea" />
+      <p className="mt-2.5 text-sm font-semibold text-ink dark:text-white">{title}</p>
+      <p className="mt-1 text-xs leading-5 text-ink/50 dark:text-white/50">{children}</p>
     </div>
   );
 }
@@ -233,33 +274,29 @@ function formatBytes(bytes: number) {
 
 function AdminOnlyUpload({ userName }: { userName?: string }) {
   return (
-    <div className="mx-auto max-w-2xl overflow-hidden border border-line bg-white shadow-soft dark:border-white/10 dark:bg-white/8">
-      <div className="flex items-center justify-between bg-moss px-5 py-4 text-white">
-        <h1 className="text-xl font-semibold">Admin upload only</h1>
-        <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/15">
-          <UploadCloud className="h-5 w-5" />
-        </span>
-      </div>
-      <div className="space-y-4 p-6">
-        <p className="text-sm leading-7 text-ink/70 dark:text-white/70">
-          {userName
-            ? `${userName}, your account can ask questions and view the library, but only admins can upload books.`
-            : "Please sign in as an admin to upload books."}
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/login?next=/upload"
-            className="inline-flex h-10 items-center justify-center rounded-md bg-moss px-4 text-sm font-semibold text-white transition hover:bg-[#064b26]"
-          >
-            Sign in as admin
-          </Link>
-          <Link
-            href="/"
-            className="inline-flex h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-semibold text-ink transition hover:border-moss hover:text-moss dark:border-white/10 dark:bg-ink/70 dark:text-white"
-          >
-            Back to chat
-          </Link>
-        </div>
+    <div className="mx-auto max-w-md rounded-2xl border border-line bg-white p-8 text-center dark:border-white/10 dark:bg-[#0c0c0e]">
+      <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300">
+        <Lock className="h-6 w-6" />
+      </span>
+      <h1 className="mt-4 text-lg font-semibold text-ink dark:text-white">Admins only</h1>
+      <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-ink/55 dark:text-white/55">
+        {userName
+          ? `${userName}, you can ask questions and browse the library, but uploading books needs an admin account.`
+          : "Please sign in as an admin to upload books."}
+      </p>
+      <div className="mt-5 flex flex-wrap justify-center gap-2.5">
+        <Link
+          href="/login?next=/upload"
+          className="inline-flex h-10 items-center justify-center rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90"
+        >
+          Sign in as admin
+        </Link>
+        <Link
+          href="/"
+          className="inline-flex h-10 items-center justify-center rounded-lg border border-line bg-white px-4 text-sm font-medium text-ink transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:text-sea"
+        >
+          Back to chat
+        </Link>
       </div>
     </div>
   );

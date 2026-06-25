@@ -15,7 +15,7 @@ describe("prompt builder", () => {
       }
     ]);
 
-    expect(STRICT_RAG_SYSTEM_PROMPT).toContain("Use ONLY provided context");
+    expect(STRICT_RAG_SYSTEM_PROMPT).toContain("ONLY the excerpts retrieved from the user's own library");
     expect(prompt).toContain("Use only retrieved chunks.");
     expect(prompt).not.toContain("database");
   });

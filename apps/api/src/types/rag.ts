@@ -21,6 +21,7 @@ export type EvidenceChunk = {
   text: string;
   chunkId: string;
   score: number;
+  highlights?: Highlight[];
 };
 
 export type EvidenceBook = {
@@ -32,6 +33,7 @@ export type EvidenceBook = {
 
 export type StructuredSource = {
   bookTitle: string;
+  bookId: string;
   pageNumber: number;
   bookName?: string;
   supportingText?: string;

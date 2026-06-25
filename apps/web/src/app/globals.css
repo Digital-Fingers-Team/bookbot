@@ -10,21 +10,135 @@
   color-scheme: dark;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   min-height: 100vh;
-  background:
-    linear-gradient(180deg, rgba(7, 95, 47, 0.045), transparent 20rem),
-    #faf9f4;
-  color: #263238;
+  background: #ffffff;
+  color: #1c2227;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 .dark body {
-  background:
-    linear-gradient(180deg, rgba(79, 154, 95, 0.14), transparent 24rem),
-    #162019;
-  color: #faf9f4;
+  background: #0a0a0b;
+  color: #f4f4f5;
 }
 
 ::selection {
-  background: rgba(245, 160, 0, 0.32);
+  background: rgba(10, 107, 55, 0.16);
+}
+
+/* Arabic / mixed-direction book content reads better with a touch more leading
+   and word spacing. Apply with the `book-text` class alongside dir="auto". */
+.book-text {
+  line-height: 2;
+  word-spacing: 0.04em;
+}
+
+/* Quiet, neutral scrollbars for the minimal surface treatment. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(24, 24, 27, 0.18) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(24, 24, 27, 0.16);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(24, 24, 27, 0.28);
+}
+
+.dark *::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.16);
+  background-clip: content-box;
+}
+
+.dark *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.26);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(7, 95, 47, 0.07);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: shimmer 1.5s infinite;
+}
+
+.dark .skeleton {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.dark .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+}
+
+/* Evidence reveal: the answer streams in first, then the source cards slide in
+   from the left one after another, like search results surfacing in ChatGPT. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out both;
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-1.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-slide-in-left {
+    animation: none;
+  }
 }

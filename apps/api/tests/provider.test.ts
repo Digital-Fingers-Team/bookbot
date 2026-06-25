@@ -39,7 +39,7 @@ describe("LLM providers", () => {
 
     expect(result.answer).toBe("OpenRouter answer.");
     expect(body.response_format).toEqual({ type: "json_object" });
-    expect(body.messages[0].content).toContain("Do not cite books");
+    expect(body.messages[0].content).toContain("Do not mention excerpts, chunks, context, book titles, page numbers, or ids");
   });
 
   it("rejects non-OpenRouter providers until another API key is available", async () => {
