@@ -17,8 +17,22 @@ const chatSchema = z.object({
   knownChunkIds: z.array(z.string().trim().min(1)).max(200).optional(),
   previousAnswer: z.string().trim().max(8000).optional(),
   provider: z.enum(["openrouter"]).optional(),
-  model: z.string().trim().min(3).max(120).optional()
+  model: z.string().trim().min(3).max(120).optional(),
+  // Scope retrieval to a single book ("ask within this book").
+  bookId: z.string().trim().min(1).max(64).optional(),
+  // Recent turns so follow-up questions can resolve context.
+  history: z
+    .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().trim().max(8000) }))
+    .max(20)
+    .optional()
 });
+
+// For follow-ups, fold the previous question into the retrieval query so a
+// contextual question ("وما الفرق بينهما؟") still finds the right chunks.
+function buildRetrievalQuery(question: string, history?: { role: string; content: string }[]) {
+  const lastUser = history?.filter((turn) => turn.role === "user").at(-1)?.content?.trim();
+  return lastUser ? `${lastUser} ${question}` : question;
+}
 
 export const chatRouter: ExpressRouter = Router();
 
@@ -33,7 +47,8 @@ chatRouter.post(
     }
 
     const topK = parsed.data.topK ?? parsed.data.limit ?? 15;
-    const retrieval = await retrieveRelevantChunks(parsed.data.question, topK);
+    const retrievalQuery = buildRetrievalQuery(parsed.data.question, parsed.data.history);
+    const retrieval = await retrieveRelevantChunks(retrievalQuery, topK, undefined, parsed.data.bookId);
     const chunks = retrieval.chunks;
     const books = buildEvidenceBooks(chunks);
     const sources = buildStructuredSources(books);
@@ -70,7 +85,8 @@ chatRouter.post(
       : await createLLMProvider(parsed.data.provider).generateAnswer({
           question: parsed.data.question,
           chunks,
-          model: parsed.data.model
+          model: parsed.data.model,
+          history: parsed.data.history
         });
     const generationUsage = generation.usage ?? {};
 
@@ -133,7 +149,8 @@ chatRouter.post("/stream", async (req, res) => {
 
   try {
     const topK = parsed.data.topK ?? parsed.data.limit ?? 15;
-    const retrieval = await retrieveRelevantChunks(parsed.data.question, topK);
+    const retrievalQuery = buildRetrievalQuery(parsed.data.question, parsed.data.history);
+    const retrieval = await retrieveRelevantChunks(retrievalQuery, topK, undefined, parsed.data.bookId);
     const chunks = retrieval.chunks;
     const books = buildEvidenceBooks(chunks);
     const sources = buildStructuredSources(books);
@@ -157,7 +174,12 @@ chatRouter.post("/stream", async (req, res) => {
     let answer = "";
 
     if (provider.streamAnswer) {
-      for await (const delta of provider.streamAnswer({ question: parsed.data.question, chunks, model: parsed.data.model })) {
+      for await (const delta of provider.streamAnswer({
+        question: parsed.data.question,
+        chunks,
+        model: parsed.data.model,
+        history: parsed.data.history
+      })) {
         if (aborted) {
           break;
         }
@@ -165,7 +187,12 @@ chatRouter.post("/stream", async (req, res) => {
         send("token", { delta });
       }
     } else {
-      const generated = await provider.generateAnswer({ question: parsed.data.question, chunks, model: parsed.data.model });
+      const generated = await provider.generateAnswer({
+        question: parsed.data.question,
+        chunks,
+        model: parsed.data.model,
+        history: parsed.data.history
+      });
       answer = generated.answer;
       send("token", { delta: answer });
     }

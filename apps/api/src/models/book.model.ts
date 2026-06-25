@@ -22,7 +22,8 @@ const bookSchema = new Schema(
     },
     processedPages: { type: Number, required: true, default: 0 },
     error: { type: String, trim: true },
-    category: { type: String, trim: true, default: "" }
+    category: { type: String, trim: true, default: "" },
+    author: { type: String, trim: true, default: "" }
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );

@@ -65,6 +65,8 @@ export const STRINGS = {
   "ask.enterToSend": { ar: "للإرسال", en: "to send" },
   "ask.shiftEnter": { ar: "لسطر جديد", en: "for a new line" },
   "ask.depth": { ar: "العمق", en: "Depth" },
+  "ask.allBooks": { ar: "كل الكتب", en: "All books" },
+  "ask.scope": { ar: "النطاق", en: "Scope" },
   "ask.history": { ar: "سجل المحادثات", en: "History" },
   "ask.noHistory": { ar: "لا توجد محادثات محفوظة بعد", en: "No saved conversations yet" },
   "ask.deleteChat": { ar: "حذف المحادثة", en: "Delete conversation" },
@@ -98,6 +100,9 @@ export const STRINGS = {
   "lib.uncategorized": { ar: "غير مصنّف", en: "Uncategorized" },
   "lib.addCategory": { ar: "إضافة تصنيف", en: "Add category" },
   "lib.categoryPrompt": { ar: "أدخل التصنيف (اتركه فارغًا للإزالة):", en: "Enter a category (leave empty to remove):" },
+  "lib.author": { ar: "المؤلف", en: "Author" },
+  "lib.addAuthor": { ar: "إضافة مؤلف", en: "Add author" },
+  "lib.authorPrompt": { ar: "أدخل اسم المؤلف (اتركه فارغًا للإزالة):", en: "Enter the author (leave empty to remove):" },
   "lib.previewFallback": {
     ar: "ستظهر معاينة الصفحة الأولى هنا بعد استخراج النص.",
     en: "First page preview appears here after text is extracted."

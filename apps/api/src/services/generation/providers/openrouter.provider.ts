@@ -22,6 +22,18 @@ type OpenRouterStreamChunk = {
   choices?: Array<{ delta?: { content?: string } }>;
 };
 
+// Map recent conversation turns into chat messages so follow-up questions keep
+// context. Capped to the last few turns to bound the prompt size.
+function toHistoryMessages(history?: GenerateAnswerInput["history"]) {
+  if (!history?.length) {
+    return [] as Array<{ role: "user" | "assistant"; content: string }>;
+  }
+  return history
+    .filter((turn) => turn.content?.trim())
+    .slice(-6)
+    .map((turn) => ({ role: turn.role, content: turn.content }));
+}
+
 export class OpenRouterProvider implements LLMProvider {
   async generateAnswer(input: GenerateAnswerInput): Promise<GenerateAnswerResult> {
     if (!env.OPENROUTER_API_KEY) {
@@ -49,6 +61,7 @@ export class OpenRouterProvider implements LLMProvider {
           response_format: { type: "json_object" },
           messages: [
             { role: "system", content: STRICT_RAG_SYSTEM_PROMPT },
+            ...toHistoryMessages(input.history),
             { role: "user", content: buildUserPrompt(input.question, input.chunks) }
           ]
         })
@@ -114,6 +127,7 @@ export class OpenRouterProvider implements LLMProvider {
           stream: true,
           messages: [
             { role: "system", content: STREAMING_RAG_SYSTEM_PROMPT },
+            ...toHistoryMessages(input.history),
             { role: "user", content: buildUserPrompt(input.question, input.chunks) }
           ]
         })

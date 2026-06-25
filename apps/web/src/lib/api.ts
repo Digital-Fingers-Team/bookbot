@@ -49,7 +49,17 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return response.json() as Promise<T>;
 }
 
-export function askQuestion(input: { question: string; limit?: number; model?: string }) {
+export type ChatTurn = { role: "user" | "assistant"; content: string };
+
+export type ChatInput = {
+  question: string;
+  limit?: number;
+  model?: string;
+  bookId?: string;
+  history?: ChatTurn[];
+};
+
+export function askQuestion(input: ChatInput) {
   return request<ChatResponse>("/api/chat", {
     method: "POST",
     body: input
@@ -75,10 +85,7 @@ export type StreamHandlers = {
   signal?: AbortSignal;
 };
 
-export async function streamQuestion(
-  input: { question: string; limit?: number; model?: string },
-  handlers: StreamHandlers
-): Promise<void> {
+export async function streamQuestion(input: ChatInput, handlers: StreamHandlers): Promise<void> {
   let response: Response;
   try {
     response = await fetch(`${API_URL}/api/chat/stream`, {
@@ -251,10 +258,10 @@ export function deleteBook(id: string, token?: string) {
   });
 }
 
-export function updateBookCategory(id: string, category: string, token?: string) {
-  return request<{ id: string; category: string }>(`/api/books/${id}`, {
+export function updateBook(id: string, patch: { category?: string; author?: string }, token?: string) {
+  return request<{ id: string; category: string; author: string }>(`/api/books/${id}`, {
     method: "PATCH",
-    body: { category },
+    body: patch,
     token
   });
 }

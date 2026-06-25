@@ -53,10 +53,16 @@ export type ChatUsage = {
   retrievedChunks: number;
 };
 
+export type ChatTurn = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 export type GenerateAnswerInput = {
   question: string;
   chunks: RetrievedChunk[];
   model?: string;
+  history?: ChatTurn[];
 };
 
 export type GenerateAnswerResult = {

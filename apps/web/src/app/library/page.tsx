@@ -14,10 +14,11 @@ import {
   Search,
   Tag,
   Trash2,
+  User,
   X
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { ApiClientError, deleteBook, getBookPdf, getStats, listBooks, updateBookCategory } from "@/lib/api";
+import { ApiClientError, deleteBook, getBookPdf, getStats, listBooks, updateBook } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
 import { useT, type StringKey } from "@/lib/i18n";
 
@@ -147,7 +148,20 @@ export default function LibraryPage() {
       return;
     }
     try {
-      await updateBookCategory(book.id, next.trim(), token);
+      await updateBook(book.id, { category: next.trim() }, token);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : t("lib.deleteError"));
+    }
+  }
+
+  async function setAuthor(book: Book) {
+    const next = window.prompt(t("lib.authorPrompt"), book.author ?? "");
+    if (next === null) {
+      return;
+    }
+    try {
+      await updateBook(book.id, { author: next.trim() }, token);
       await refresh();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : t("lib.deleteError"));
@@ -422,6 +436,7 @@ export default function LibraryPage() {
                   onOpen={() => openBook(book)}
                   onDelete={() => removeBook(book)}
                   onSetCategory={() => setCategory(book)}
+                  onSetAuthor={() => setAuthor(book)}
                 />
               ))}
             </div>
@@ -436,6 +451,7 @@ export default function LibraryPage() {
                   onOpen={() => openBook(book)}
                   onDelete={() => removeBook(book)}
                   onSetCategory={() => setCategory(book)}
+                  onSetAuthor={() => setAuthor(book)}
                 />
               ))}
             </div>
@@ -500,7 +516,8 @@ function BookCard({
   deleting,
   onOpen,
   onDelete,
-  onSetCategory
+  onSetCategory,
+  onSetAuthor
 }: {
   book: Book;
   isAdmin: boolean;
@@ -508,6 +525,7 @@ function BookCard({
   onOpen: () => void;
   onDelete: () => void;
   onSetCategory: () => void;
+  onSetAuthor: () => void;
 }) {
   const t = useT();
   return (
@@ -556,15 +574,27 @@ function BookCard({
           <h2 dir="auto" className="line-clamp-2 text-[0.95rem] font-semibold leading-6 text-ink dark:text-white">
             {book.title}
           </h2>
-          <p className="mt-1 truncate text-xs text-ink/45 dark:text-white/45">
-            {book.author ? `${book.author} · ` : ""}
-            {book.originalFileName}
-          </p>
+          <p className="mt-1 truncate text-xs text-ink/45 dark:text-white/45">{book.originalFileName}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge book={book} />
-          <CategoryControl book={book} isAdmin={isAdmin} onSetCategory={onSetCategory} />
+          <MetaControl
+            value={book.author}
+            icon={User}
+            addLabel={t("lib.addAuthor")}
+            editTitle={t("lib.author")}
+            isAdmin={isAdmin}
+            onEdit={onSetAuthor}
+          />
+          <MetaControl
+            value={book.category}
+            icon={Tag}
+            addLabel={t("lib.addCategory")}
+            editTitle={t("lib.category")}
+            isAdmin={isAdmin}
+            onEdit={onSetCategory}
+          />
         </div>
 
         <div className="mt-auto flex items-center justify-between border-t border-line/70 pt-3 dark:border-white/10">
@@ -587,7 +617,8 @@ function BookRow({
   deleting,
   onOpen,
   onDelete,
-  onSetCategory
+  onSetCategory,
+  onSetAuthor
 }: {
   book: Book;
   isAdmin: boolean;
@@ -595,6 +626,7 @@ function BookRow({
   onOpen: () => void;
   onDelete: () => void;
   onSetCategory: () => void;
+  onSetAuthor: () => void;
 }) {
   const t = useT();
   return (
@@ -615,13 +647,25 @@ function BookRow({
       </span>
       <div className="min-w-0 flex-1">
         <p dir="auto" className="truncate text-sm font-semibold text-ink dark:text-white">{book.title}</p>
-        <p className="truncate text-xs text-ink/45 dark:text-white/45">
-          {book.author ? `${book.author} · ` : ""}
-          {book.originalFileName}
-        </p>
+        <p className="truncate text-xs text-ink/45 dark:text-white/45">{book.originalFileName}</p>
       </div>
       <div className="hidden shrink-0 items-center gap-2 sm:flex">
-        <CategoryControl book={book} isAdmin={isAdmin} onSetCategory={onSetCategory} />
+        <MetaControl
+          value={book.author}
+          icon={User}
+          addLabel={t("lib.addAuthor")}
+          editTitle={t("lib.author")}
+          isAdmin={isAdmin}
+          onEdit={onSetAuthor}
+        />
+        <MetaControl
+          value={book.category}
+          icon={Tag}
+          addLabel={t("lib.addCategory")}
+          editTitle={t("lib.category")}
+          isAdmin={isAdmin}
+          onEdit={onSetCategory}
+        />
         <StatusBadge book={book} compact />
       </div>
       <div className="hidden w-28 shrink-0 text-end text-xs text-ink/55 dark:text-white/55 md:block">
@@ -757,18 +801,22 @@ function Reader({
   );
 }
 
-function CategoryControl({
-  book,
+function MetaControl({
+  value,
   isAdmin,
-  onSetCategory
+  onEdit,
+  icon: Icon,
+  addLabel,
+  editTitle
 }: {
-  book: Book;
+  value: string;
   isAdmin: boolean;
-  onSetCategory: () => void;
+  onEdit: () => void;
+  icon: typeof Tag;
+  addLabel: string;
+  editTitle: string;
 }) {
-  const t = useT();
-
-  if (!book.category && !isAdmin) {
+  if (!value && !isAdmin) {
     return null;
   }
 
@@ -777,20 +825,20 @@ function CategoryControl({
       return;
     }
     event.stopPropagation();
-    onSetCategory();
+    onEdit();
   };
 
-  if (book.category) {
+  if (value) {
     return (
       <button
         type="button"
         onClick={handleClick}
         disabled={!isAdmin}
         className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink/60 transition enabled:hover:border-moss/40 enabled:hover:text-moss disabled:cursor-default dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:enabled:hover:text-sea"
-        title={isAdmin ? t("lib.category") : undefined}
+        title={isAdmin ? editTitle : undefined}
       >
-        <Tag className="h-3 w-3" />
-        {book.category}
+        <Icon className="h-3 w-3" />
+        {value}
       </button>
     );
   }
@@ -801,8 +849,8 @@ function CategoryControl({
       onClick={handleClick}
       className="inline-flex items-center gap-1 rounded-full border border-dashed border-line px-2.5 py-1 text-xs font-medium text-ink/45 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/45 dark:hover:text-sea"
     >
-      <Tag className="h-3 w-3" />
-      {t("lib.addCategory")}
+      <Icon className="h-3 w-3" />
+      {addLabel}
     </button>
   );
 }

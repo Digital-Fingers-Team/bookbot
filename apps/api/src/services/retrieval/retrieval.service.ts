@@ -53,7 +53,8 @@ async function embedQuery(question: string): Promise<number[]> {
 export async function retrieveRelevantChunks(
   question: string,
   topK = 15,
-  reranker: Reranker = createReranker()
+  reranker: Reranker = createReranker(),
+  bookId?: string
 ): Promise<RetrievalResult> {
   const boundedTopK = boundTopK(topK);
   const queryVector = await embedQuery(question);
@@ -71,7 +72,12 @@ export async function retrieveRelevantChunks(
   // Drop table-of-contents / index (فهرس) pages: they match many queries on
   // keywords but never answer them, and look like noise as evidence.
   const retrieved = candidates.map(toRetrievedChunk);
-  const usable = retrieved.filter((chunk) => !isLikelyTableOfContents(chunk.chunkText));
+  let usable = retrieved.filter((chunk) => !isLikelyTableOfContents(chunk.chunkText));
+
+  // Scope to a single book when the user asked within one.
+  if (bookId) {
+    usable = usable.filter((chunk) => chunk.bookId === bookId);
+  }
 
   const chunks = await reranker.rerank({
     question,
