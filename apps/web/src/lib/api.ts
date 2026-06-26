@@ -284,6 +284,10 @@ export function getStats(token?: string) {
   return request<Stats>("/api/stats", { token });
 }
 
+export function sendFeedback(input: { vote: "up" | "down"; note?: string; question?: string; answer?: string }) {
+  return request<{ received: true }>("/api/feedback", { method: "POST", body: input });
+}
+
 export type StoredSource = {
   bookId?: string;
   bookName?: string;

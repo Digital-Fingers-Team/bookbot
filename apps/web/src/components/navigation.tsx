@@ -27,8 +27,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (loading || !user) {
     return (
       <>
+        <SkipLink />
         <PublicHeader loading={loading} />
-        <main className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <main id="main-content" className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           {children}
           <SiteFooter />
         </main>
@@ -37,6 +38,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return <AuthenticatedShell>{children}</AuthenticatedShell>;
+}
+
+function SkipLink() {
+  const t = useT();
+  return (
+    <a href="#main-content" className="skip-link">
+      {t("nav.skipToContent")}
+    </a>
+  );
 }
 
 function PublicHeader({ loading = false }: { loading?: boolean }) {
@@ -118,6 +128,7 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
+      <SkipLink />
       <aside className="hidden border-e border-line bg-white dark:border-white/10 dark:bg-[#0a0a0b] lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
         <div className="px-5 py-5">
           <Brand stacked />
@@ -211,7 +222,7 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
           </nav>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <main id="main-content" className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           {children}
           <SiteFooter />
         </main>

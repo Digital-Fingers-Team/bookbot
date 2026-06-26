@@ -26,7 +26,7 @@ export function Landing() {
         </h1>
         <p className="mt-4 max-w-xl text-base leading-7 text-ink/60 dark:text-white/60">{t("landing.heroSubtitle")}</p>
 
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <div className="mt-8 flex w-full max-w-xs flex-col items-stretch gap-3 sm:w-auto sm:max-w-none sm:flex-row sm:items-center sm:justify-center">
           <Link
             href="/register"
             className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-moss px-5 text-sm font-semibold text-white transition hover:bg-moss/90"

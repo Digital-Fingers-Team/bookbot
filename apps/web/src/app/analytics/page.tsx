@@ -13,6 +13,7 @@ import {
   Loader2,
   Lock,
   MessageSquareText,
+  ThumbsUp,
   UploadCloud,
   XCircle
 } from "lucide-react";
@@ -165,6 +166,35 @@ export default function AnalyticsPage() {
               ) : (
                 <p className="px-4 py-8 text-center text-sm text-ink/45 dark:text-white/45">{t("an.noUnanswered")}</p>
               )}
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold text-ink/70 dark:text-white/70">{t("an.feedback")}</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ActivityCard
+                icon={ThumbsUp}
+                label={t("an.helpfulVotes")}
+                total={stats.feedback?.up ?? 0}
+                successful={stats.feedback?.up ?? 0}
+                failed={stats.feedback?.down ?? 0}
+                successLabel={t("an.helpfulVotes")}
+                failLabel={t("an.notHelpfulVotes")}
+              />
+              <div className="rounded-2xl border border-line bg-white p-5 dark:border-white/10 dark:bg-[#0c0c0e]">
+                <p className="text-sm font-semibold text-ink dark:text-white">{t("an.reports")}</p>
+                {stats.reports && stats.reports.length ? (
+                  <ul className="mt-3 space-y-2">
+                    {stats.reports.map((report, index) => (
+                      <li key={index} dir="auto" className="border-s-2 border-red-300 ps-2.5 text-xs text-ink/70 dark:border-red-500/40 dark:text-white/70">
+                        {report.note}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-3 text-sm text-ink/45 dark:text-white/45">{t("an.noReports")}</p>
+                )}
+              </div>
             </div>
           </section>
         </>

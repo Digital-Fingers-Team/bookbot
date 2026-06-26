@@ -25,6 +25,7 @@ export const STRINGS = {
   "nav.appearance": { ar: "المظهر", en: "Appearance" },
   "nav.language": { ar: "اللغة", en: "Language" },
   "nav.profileSettings": { ar: "إعدادات الحساب", en: "Profile settings" },
+  "nav.skipToContent": { ar: "تخطّي إلى المحتوى", en: "Skip to content" },
   "role.admin": { ar: "مدير", en: "admin" },
   "role.user": { ar: "مستخدم", en: "user" },
 
@@ -57,6 +58,8 @@ export const STRINGS = {
   "ask.closeReader": { ar: "إغلاق القارئ", en: "Close reader" },
   "ask.helpful": { ar: "هل كانت الإجابة مفيدة؟", en: "Was this helpful?" },
   "ask.feedbackThanks": { ar: "شكرًا لملاحظتك", en: "Thanks for your feedback" },
+  "ask.reportPlaceholder": { ar: "ما المشكلة؟ (اختياري)", en: "What went wrong? (optional)" },
+  "ask.send": { ar: "إرسال", en: "Send" },
   "ask.print": { ar: "طباعة / حفظ PDF", en: "Print / save PDF" },
   "ask.placeholder": {
     ar: "اسأل عن معلومة أو صفحة أو موضوع أو اسم أو اقتباس…",
@@ -269,6 +272,11 @@ export const STRINGS = {
     en: "Questions the library couldn't answer — signals of gaps you could fill."
   },
   "an.noUnanswered": { ar: "لا توجد أسئلة بلا إجابة بعد.", en: "No unanswered questions yet." },
+  "an.feedback": { ar: "تقييم الإجابات", en: "Answer feedback" },
+  "an.helpfulVotes": { ar: "مفيدة", en: "Helpful" },
+  "an.notHelpfulVotes": { ar: "غير مفيدة", en: "Not helpful" },
+  "an.reports": { ar: "بلاغات الأخطاء", en: "Error reports" },
+  "an.noReports": { ar: "لا توجد بلاغات بعد.", en: "No reports yet." },
   "an.adminOnly": { ar: "هذه الصفحة للمديرين فقط.", en: "This page is for admins only." },
   "an.loading": { ar: "جارٍ تحميل التحليلات…", en: "Loading analytics…" },
   "an.loadError": { ar: "تعذّر تحميل التحليلات.", en: "Could not load analytics." }

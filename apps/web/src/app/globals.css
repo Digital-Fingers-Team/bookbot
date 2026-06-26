@@ -31,6 +31,36 @@ body {
   background: rgba(10, 107, 55, 0.16);
 }
 
+/* Keyboard focus ring (a11y) — visible only for keyboard users. */
+:focus-visible {
+  outline: 2px solid #0a6b37;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.dark :focus-visible {
+  outline-color: #4f9a5f;
+}
+
+/* Skip-to-content link, revealed on keyboard focus. */
+.skip-link {
+  position: fixed;
+  top: -48px;
+  inset-inline-start: 1rem;
+  z-index: 100;
+  background: #0a6b37;
+  color: #ffffff;
+  padding: 0.5rem 0.9rem;
+  border-radius: 0 0 0.5rem 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
 /* Arabic / mixed-direction book content reads better with a touch more leading
    and word spacing. Apply with the `book-text` class alongside dir="auto". */
 .book-text {

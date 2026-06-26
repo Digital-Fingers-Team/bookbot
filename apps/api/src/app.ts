@@ -8,6 +8,7 @@ import { authRouter } from "./routes/auth.routes.js";
 import { booksRouter } from "./routes/books.routes.js";
 import { chatRouter } from "./routes/chat.routes.js";
 import { conversationsRouter } from "./routes/conversations.routes.js";
+import { feedbackRouter } from "./routes/feedback.routes.js";
 import { statsRouter } from "./routes/stats.routes.js";
 import { uploadRouter } from "./routes/upload.routes.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware.js";
@@ -42,6 +43,7 @@ export function createApp(): Express {
   app.use("/api/chat", chatRouter);
   app.use("/api/books", booksRouter);
   app.use("/api/conversations", conversationsRouter);
+  app.use("/api/feedback", feedbackRouter);
   app.use("/api/stats", statsRouter);
 
   app.use(notFoundHandler);

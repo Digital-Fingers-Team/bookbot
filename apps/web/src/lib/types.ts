@@ -79,5 +79,7 @@ export type Stats = {
   totalChunks: number;
   totalPages: number;
   unansweredQuestions?: { question: string; createdAt: string }[];
+  feedback?: { up: number; down: number };
+  reports?: { note: string; answer: string; createdAt: string }[];
   usage: Record<string, { total: number; successful: number; failed: number; totalTokens: number }>;
 };

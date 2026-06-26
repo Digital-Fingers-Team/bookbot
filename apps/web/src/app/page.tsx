@@ -34,6 +34,7 @@ import {
   getConversation,
   listBooks,
   listConversations,
+  sendFeedback,
   type StoredMessage,
   streamQuestion,
   type StreamMeta,
@@ -384,7 +385,7 @@ function ChatExperience() {
 
   return (
     <section className="relative flex h-[calc(100dvh-10rem)] min-h-[30rem] flex-col overflow-hidden rounded-xl border border-line bg-white shadow-soft dark:border-white/10 dark:bg-[#0c0c0e] lg:h-[calc(100dvh-6rem)]">
-      <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-4 dark:border-white/10">
+      <header className="flex items-center justify-between gap-2 border-b border-line px-4 py-3.5 dark:border-white/10 sm:gap-3 sm:px-5 sm:py-4">
         <div className="flex min-w-0 items-center gap-3">
           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-moss/10 text-moss dark:bg-sea/15 dark:text-sea">
             <MessageSquareText className="h-[18px] w-[18px]" />
@@ -508,7 +509,7 @@ function HistoryDrawer({
   }, [onClose]);
 
   return (
-    <div className="absolute inset-0 z-40 flex" onClick={onClose}>
+    <div className="absolute inset-0 z-40 flex" onClick={onClose} role="dialog" aria-modal="true" aria-label={t("ask.history")}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" />
       <aside
         className="relative ms-auto flex h-full w-full max-w-xs flex-col border-s border-line bg-white shadow-soft dark:border-white/10 dark:bg-[#0c0c0e]"
@@ -609,7 +610,13 @@ function BookReader({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 p-3 backdrop-blur-sm sm:p-6" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 bg-black/70 p-3 backdrop-blur-sm sm:p-6"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={bookName}
+    >
       <div
         className="mx-auto flex h-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-soft dark:border-white/10 dark:bg-[#0c0c0e]"
         onClick={(event) => event.stopPropagation()}
@@ -759,7 +766,11 @@ function AssistantBubble({ message, onOpenSource }: { message: ChatMessage; onOp
               <Thinking />
             ) : (
               <>
-                <p dir="auto" className="book-text whitespace-pre-wrap text-[0.97rem] text-ink dark:text-white">
+                <p
+                  dir="auto"
+                  aria-live="polite"
+                  className="book-text whitespace-pre-wrap text-[0.97rem] text-ink dark:text-white"
+                >
                   {failed ? <AlertCircle className="me-1.5 inline h-4 w-4 align-text-bottom" /> : null}
                   {message.status === "done" && message.sources.length && !failed ? (
                     <CitedAnswer text={message.content} sources={message.sources} onOpenSource={onOpenSource} />
@@ -773,7 +784,7 @@ function AssistantBubble({ message, onOpenSource }: { message: ChatMessage; onOp
                   <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line/70 pt-3 dark:border-white/10">
                     <CopyButton text={message.content} />
                     <PrintButton message={message} />
-                    <Feedback />
+                    <Feedback answer={message.content} />
                     {message.usage?.retrievedChunks ? (
                       <MetaChip>
                         {message.usage.retrievedChunks} {t("ask.chunks")}
@@ -1145,7 +1156,13 @@ function HelpButton() {
         <HelpCircle className="h-4 w-4" />
       </button>
       {open ? (
-        <div className="absolute inset-0 z-40 flex items-center justify-center p-4" onClick={() => setOpen(false)}>
+        <div
+          className="absolute inset-0 z-40 flex items-center justify-center p-4"
+          onClick={() => setOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("ask.howTitle")}
+        >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" />
           <div
             className="relative w-full max-w-md rounded-2xl border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-[#0c0c0e]"
@@ -1191,12 +1208,40 @@ function HelpButton() {
   );
 }
 
-function Feedback() {
+function Feedback({ answer }: { answer: string }) {
   const t = useT();
-  const [vote, setVote] = useState<"up" | "down" | null>(null);
+  const [state, setState] = useState<"idle" | "report" | "done">("idle");
+  const [note, setNote] = useState("");
 
-  if (vote) {
+  function submit(vote: "up" | "down", reportNote?: string) {
+    setState("done");
+    void sendFeedback({ vote, note: reportNote, answer: answer.slice(0, 2000) }).catch(() => undefined);
+  }
+
+  if (state === "done") {
     return <span className="text-xs font-medium text-moss dark:text-sea">{t("ask.feedbackThanks")}</span>;
+  }
+
+  if (state === "report") {
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <input
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+          placeholder={t("ask.reportPlaceholder")}
+          aria-label={t("ask.reportPlaceholder")}
+          maxLength={1000}
+          className="h-7 w-44 rounded-md border border-line bg-white px-2 text-xs text-ink outline-none focus:border-moss dark:border-white/10 dark:bg-white/5 dark:text-white"
+        />
+        <button
+          type="button"
+          onClick={() => submit("down", note.trim() || undefined)}
+          className="inline-flex h-7 items-center rounded-md bg-moss px-2.5 text-xs font-semibold text-white transition hover:bg-moss/90"
+        >
+          {t("ask.send")}
+        </button>
+      </span>
+    );
   }
 
   return (
@@ -1204,16 +1249,16 @@ function Feedback() {
       <span className="text-xs text-ink/45 dark:text-white/45">{t("ask.helpful")}</span>
       <button
         type="button"
-        onClick={() => setVote("up")}
-        aria-label="👍"
+        onClick={() => submit("up")}
+        aria-label={t("an.helpfulVotes")}
         className="inline-flex h-6 w-6 items-center justify-center rounded-md text-ink/50 transition hover:bg-moss/10 hover:text-moss dark:text-white/50 dark:hover:bg-sea/15 dark:hover:text-sea"
       >
         <ThumbsUp className="h-3.5 w-3.5" />
       </button>
       <button
         type="button"
-        onClick={() => setVote("down")}
-        aria-label="👎"
+        onClick={() => setState("report")}
+        aria-label={t("an.notHelpfulVotes")}
         className="inline-flex h-6 w-6 items-center justify-center rounded-md text-ink/50 transition hover:bg-red-50 hover:text-red-600 dark:text-white/50 dark:hover:bg-red-500/10 dark:hover:text-red-300"
       >
         <ThumbsDown className="h-3.5 w-3.5" />

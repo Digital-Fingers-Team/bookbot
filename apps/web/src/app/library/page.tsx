@@ -758,7 +758,13 @@ function Reader({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 p-3 backdrop-blur-sm sm:p-6" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 bg-black/70 p-3 backdrop-blur-sm sm:p-6"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={book.title}
+    >
       <div
         className="mx-auto flex h-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-soft dark:border-white/10 dark:bg-[#0c0c0e]"
         onClick={(event) => event.stopPropagation()}
