@@ -22,6 +22,8 @@ const messageSchema = new Schema(
 const conversationSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    // Set for the in-book assistant; null/absent for the main chat history.
+    bookId: { type: Schema.Types.ObjectId, ref: "Book", default: null },
     title: { type: String, default: "محادثة جديدة" },
     messages: { type: [messageSchema], default: [] }
   },
@@ -29,6 +31,7 @@ const conversationSchema = new Schema(
 );
 
 conversationSchema.index({ userId: 1, updatedAt: -1 });
+conversationSchema.index({ userId: 1, bookId: 1 });
 
 export type ConversationDocument = InferSchemaType<typeof conversationSchema>;
 export const Conversation = model("Conversation", conversationSchema);

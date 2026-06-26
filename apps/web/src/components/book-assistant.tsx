@@ -2,7 +2,8 @@
 
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { FileText, Loader2, Search, Send, Sparkles, Trash2 } from "lucide-react";
-import { streamQuestion } from "@/lib/api";
+import { getBookConversation, saveBookConversation, streamQuestion } from "@/lib/api";
+import { useAuth } from "@/components/auth-provider";
 import type { Source } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 
@@ -16,7 +17,7 @@ type Msg = {
 
 export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJumpToPage: (page: number) => void }) {
   const t = useT();
-  const storageKey = `bookbot-bookchat-${bookId}`;
+  const { token } = useAuth();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -24,27 +25,48 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Remember this book's conversation (per device).
+  // Remember this book's conversation per account (synced via the server).
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      setMessages(raw ? (JSON.parse(raw) as Msg[]) : []);
-    } catch {
-      setMessages([]);
-    }
-    setLoaded(true);
-  }, [storageKey]);
-
-  useEffect(() => {
-    if (!loaded) {
+    if (!token) {
       return;
     }
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(messages.slice(-20)));
-    } catch {
-      // storage may be full or unavailable; ignore.
+    setLoaded(false);
+    getBookConversation(bookId, token)
+      .then((result) =>
+        setMessages(
+          result.messages.map((message) => ({
+            id: crypto.randomUUID(),
+            role: message.role,
+            content: message.content,
+            sources: (message.sources ?? []).map((source) => ({
+              bookId: source.bookId,
+              bookName: source.bookName ?? "",
+              pageNumber: source.pageNumber ?? 0,
+              supportingText: source.supportingText ?? ""
+            })),
+            status: "done"
+          }))
+        )
+      )
+      .catch(() => setMessages([]))
+      .finally(() => setLoaded(true));
+  }, [bookId, token]);
+
+  // Persist once a turn finishes (not on every streamed token).
+  useEffect(() => {
+    if (!loaded || busy || !token) {
+      return;
     }
-  }, [messages, loaded, storageKey]);
+    void saveBookConversation(
+      bookId,
+      messages.map((message) => ({
+        role: message.role,
+        content: message.content,
+        sources: message.role === "assistant" ? message.sources : []
+      })),
+      token
+    ).catch(() => undefined);
+  }, [messages, busy, loaded, token, bookId]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -54,11 +76,6 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
 
   function clearChat() {
     setMessages([]);
-    try {
-      localStorage.removeItem(storageKey);
-    } catch {
-      // ignore
-    }
   }
 
   function patch(id: string, update: (message: Msg) => Msg) {

@@ -352,3 +352,11 @@ export function updateConversation(id: string, input: { title?: string; messages
 export function deleteConversation(id: string, token: string) {
   return request<{ deleted: true }>(`/api/conversations/${id}`, { method: "DELETE", token });
 }
+
+export function getBookConversation(bookId: string, token: string) {
+  return request<{ messages: StoredMessage[] }>(`/api/conversations/book/${bookId}`, { token });
+}
+
+export function saveBookConversation(bookId: string, messages: StoredMessage[], token: string) {
+  return request<{ ok: true }>(`/api/conversations/book/${bookId}`, { method: "PUT", body: { messages }, token });
+}

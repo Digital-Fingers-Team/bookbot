@@ -25,6 +25,7 @@ import {
   Trash2,
   X
 } from "lucide-react";
+import Link from "next/link";
 import {
   ApiClientError,
   type ConversationSummary,
@@ -32,7 +33,9 @@ import {
   deleteConversation,
   getBookPdf,
   getConversation,
+  getMyBooks,
   listConversations,
+  type MyBook,
   sendFeedback,
   type StoredMessage,
   streamQuestion,
@@ -94,6 +97,7 @@ function ChatExperience() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [lastRead, setLastRead] = useState<MyBook | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -122,6 +126,16 @@ function ChatExperience() {
   useEffect(() => {
     refreshConversations();
   }, [refreshConversations]);
+
+  // The most recently opened book, for the "continue reading" shortcut.
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+    getMyBooks(token)
+      .then((result) => setLastRead(result.continueReading[0] ?? null))
+      .catch(() => undefined);
+  }, [token]);
 
   // Persist the conversation whenever a turn finishes (busy returns to false).
   useEffect(() => {
@@ -407,7 +421,7 @@ function ChatExperience() {
 
       <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto px-3 py-5 sm:px-5">
         {messages.length === 0 ? (
-          <EmptyState onPick={(prompt) => send(prompt)} disabled={busy} />
+          <EmptyState onPick={(prompt) => send(prompt)} disabled={busy} lastRead={lastRead} />
         ) : (
           <div className="mx-auto flex max-w-5xl flex-col gap-6">
             {messages.map((message) =>
@@ -644,7 +658,15 @@ function BookReader({
   );
 }
 
-function EmptyState({ onPick, disabled }: { onPick: (prompt: string) => void; disabled: boolean }) {
+function EmptyState({
+  onPick,
+  disabled,
+  lastRead
+}: {
+  onPick: (prompt: string) => void;
+  disabled: boolean;
+  lastRead: MyBook | null;
+}) {
   const t = useT();
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center px-4 text-center">
@@ -653,6 +675,24 @@ function EmptyState({ onPick, disabled }: { onPick: (prompt: string) => void; di
       </span>
       <h2 className="mt-5 text-2xl font-bold text-moss dark:text-white">{t("ask.emptyTitle")}</h2>
       <p className="mt-2 max-w-md text-sm leading-6 text-ink/60 dark:text-white/60">{t("ask.emptyBody")}</p>
+
+      {lastRead ? (
+        <Link
+          href={`/read/${lastRead.id}`}
+          className="mt-6 flex w-full items-center gap-3 rounded-xl border border-line bg-paper px-4 py-3 text-start transition hover:border-moss/40 hover:bg-moss/5 dark:border-white/10 dark:bg-white/5 dark:hover:border-sea/40"
+        >
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-moss/10 text-moss dark:bg-sea/15 dark:text-sea">
+            <BookOpen className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs font-medium text-ink/45 dark:text-white/45">{t("mb.continueReading")}</span>
+            <span dir="auto" className="block truncate text-sm font-semibold text-ink dark:text-white">{lastRead.title}</span>
+          </span>
+          <span className="shrink-0 text-xs font-medium text-moss dark:text-sea">
+            {t("ask.page")} {lastRead.lastPage}
+          </span>
+        </Link>
+      ) : null}
       <div className="mt-7 grid w-full gap-2.5 sm:grid-cols-1">
         {EXAMPLES.map((example) => (
           <button

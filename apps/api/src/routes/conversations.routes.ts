@@ -37,7 +37,7 @@ conversationsRouter.get(
   "/",
   asyncHandler(async (req, res) => {
     const conversations = await Conversation.aggregate([
-      { $match: { userId: userObjectId(req) } },
+      { $match: { userId: userObjectId(req), bookId: null } },
       { $sort: { updatedAt: -1 } },
       { $limit: 100 },
       { $project: { title: 1, updatedAt: 1, messageCount: { $size: "$messages" } } }
@@ -72,6 +72,43 @@ conversationsRouter.get(
       messages: conversation.messages,
       updatedAt: conversation.updatedAt
     });
+  })
+);
+
+// The in-book assistant conversation for a given book (one per user + book).
+conversationsRouter.get(
+  "/book/:bookId",
+  asyncHandler(async (req, res) => {
+    if (!isValidObjectId(req.params.bookId)) {
+      throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
+    }
+    const conversation = await Conversation.findOne({ userId: req.user!.id, bookId: req.params.bookId }).lean();
+    res.json({ messages: conversation?.messages ?? [] });
+  })
+);
+
+conversationsRouter.put(
+  "/book/:bookId",
+  asyncHandler(async (req, res) => {
+    if (!isValidObjectId(req.params.bookId)) {
+      throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
+    }
+    const parsed = saveSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ApiError(400, "INVALID_CONVERSATION", "The conversation payload is invalid.", parsed.error.flatten());
+    }
+
+    await Conversation.findOneAndUpdate(
+      { userId: req.user!.id, bookId: req.params.bookId },
+      {
+        bookId: req.params.bookId,
+        title: parsed.data.title ?? firstUserTitle(parsed.data.messages),
+        messages: parsed.data.messages
+      },
+      { upsert: true, setDefaultsOnInsert: true }
+    );
+
+    res.json({ ok: true });
   })
 );
 
