@@ -149,6 +149,7 @@ export const STRINGS = {
   "read.opening": { ar: "جارٍ فتح الكتاب…", en: "Opening book…" },
   "read.notFound": { ar: "تعذّر فتح هذا الكتاب.", en: "Could not open this book." },
   "read.goToPage": { ar: "اذهب للصفحة", en: "Go to page" },
+  "read.clearChat": { ar: "مسح", en: "Clear" },
   "lib.previewFallback": {
     ar: "ستظهر معاينة الصفحة الأولى هنا بعد استخراج النص.",
     en: "First page preview appears here after text is extracted."

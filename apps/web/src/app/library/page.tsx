@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   AlertCircle,
   BookOpenText,
+  Heart,
   LayoutGrid,
   List as ListIcon,
   Loader2,
@@ -18,7 +19,7 @@ import {
   X
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { ApiClientError, deleteBook, getStats, listBooks, updateBook } from "@/lib/api";
+import { ApiClientError, deleteBook, getStats, listBooks, setFavorite, updateBook } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
 import { useT, type StringKey } from "@/lib/i18n";
 
@@ -148,6 +149,16 @@ export default function LibraryPage() {
 
   function openBook(book: Book) {
     router.push(`/read/${book.id}`);
+  }
+
+  async function toggleFavorite(book: Book) {
+    const next = !book.favorite;
+    setBooks((prev) => prev.map((item) => (item.id === book.id ? { ...item, favorite: next } : item)));
+    try {
+      await setFavorite(book.id, next, token);
+    } catch {
+      setBooks((prev) => prev.map((item) => (item.id === book.id ? { ...item, favorite: !next } : item)));
+    }
   }
 
   const statusCounts = useMemo(
@@ -399,6 +410,7 @@ export default function LibraryPage() {
                   onDelete={() => removeBook(book)}
                   onSetCategory={() => setCategory(book)}
                   onSetAuthor={() => setAuthor(book)}
+                  onToggleFavorite={() => toggleFavorite(book)}
                 />
               ))}
             </div>
@@ -414,6 +426,7 @@ export default function LibraryPage() {
                   onDelete={() => removeBook(book)}
                   onSetCategory={() => setCategory(book)}
                   onSetAuthor={() => setAuthor(book)}
+                  onToggleFavorite={() => toggleFavorite(book)}
                 />
               ))}
             </div>
@@ -469,7 +482,8 @@ function BookCard({
   onOpen,
   onDelete,
   onSetCategory,
-  onSetAuthor
+  onSetAuthor,
+  onToggleFavorite
 }: {
   book: Book;
   isAdmin: boolean;
@@ -478,6 +492,7 @@ function BookCard({
   onDelete: () => void;
   onSetCategory: () => void;
   onSetAuthor: () => void;
+  onToggleFavorite: () => void;
 }) {
   const t = useT();
   return (
@@ -494,6 +509,9 @@ function BookCard({
       className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-white text-left transition hover:border-moss/30 hover:shadow-soft focus:outline-none focus:ring-2 focus:ring-moss/25 dark:border-white/10 dark:bg-[#0c0c0e]"
     >
       <div className="relative border-b border-line bg-paper p-4 dark:border-white/10 dark:bg-white/[0.03]">
+        <div className="absolute start-3 top-3 z-10">
+          <FavoriteButton favorite={Boolean(book.favorite)} onToggle={onToggleFavorite} />
+        </div>
         {isAdmin ? (
           <button
             type="button"
@@ -502,7 +520,7 @@ function BookCard({
               onDelete();
             }}
             disabled={deleting}
-            className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-white/90 text-ink/50 opacity-0 backdrop-blur transition hover:border-red-300 hover:text-red-600 focus:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-[#0c0c0e]/80 dark:text-white/50 dark:hover:border-red-500/40 dark:hover:text-red-300"
+            className="absolute end-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-white/90 text-ink/50 opacity-0 backdrop-blur transition hover:border-red-300 hover:text-red-600 focus:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-[#0c0c0e]/80 dark:text-white/50 dark:hover:border-red-500/40 dark:hover:text-red-300"
             aria-label={`Delete ${book.title}`}
             title={`Delete ${book.title}`}
           >
@@ -570,7 +588,8 @@ function BookRow({
   onOpen,
   onDelete,
   onSetCategory,
-  onSetAuthor
+  onSetAuthor,
+  onToggleFavorite
 }: {
   book: Book;
   isAdmin: boolean;
@@ -579,6 +598,7 @@ function BookRow({
   onDelete: () => void;
   onSetCategory: () => void;
   onSetAuthor: () => void;
+  onToggleFavorite: () => void;
 }) {
   const t = useT();
   return (
@@ -626,6 +646,7 @@ function BookRow({
       <div className="hidden w-28 shrink-0 text-end text-xs text-ink/55 dark:text-white/55 md:block">
         {nf.format(book.chunkCount)} {t("lib.chunks")}
       </div>
+      <FavoriteButton favorite={Boolean(book.favorite)} onToggle={onToggleFavorite} />
       {isAdmin ? (
         <button
           type="button"
@@ -682,6 +703,27 @@ function EmptyState({ filtering, isAdmin, onClear }: { filtering: boolean; isAdm
         </>
       )}
     </div>
+  );
+}
+
+function FavoriteButton({ favorite, onToggle }: { favorite: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        onToggle();
+      }}
+      aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
+      aria-pressed={favorite}
+      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-white/90 backdrop-blur transition dark:border-white/10 dark:bg-[#0c0c0e]/80 ${
+        favorite
+          ? "text-moss dark:text-sea"
+          : "text-ink/40 hover:border-moss/40 hover:text-moss dark:text-white/40 dark:hover:text-sea"
+      }`}
+    >
+      <Heart className={`h-4 w-4 ${favorite ? "fill-current" : ""}`} />
+    </button>
   );
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
-import { FileText, Loader2, Search, Send, Sparkles } from "lucide-react";
+import { FileText, Loader2, Search, Send, Sparkles, Trash2 } from "lucide-react";
 import { streamQuestion } from "@/lib/api";
 import type { Source } from "@/lib/types";
 import { useT } from "@/lib/i18n";
@@ -16,17 +16,50 @@ type Msg = {
 
 export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJumpToPage: (page: number) => void }) {
   const t = useT();
+  const storageKey = `bookbot-bookchat-${bookId}`;
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Remember this book's conversation (per device).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      setMessages(raw ? (JSON.parse(raw) as Msg[]) : []);
+    } catch {
+      setMessages([]);
+    }
+    setLoaded(true);
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!loaded) {
+      return;
+    }
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(messages.slice(-20)));
+    } catch {
+      // storage may be full or unavailable; ignore.
+    }
+  }, [messages, loaded, storageKey]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  function clearChat() {
+    setMessages([]);
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {
+      // ignore
+    }
+  }
 
   function patch(id: string, update: (message: Msg) => Msg) {
     setMessages((prev) => prev.map((message) => (message.id === id ? update(message) : message)));
@@ -80,9 +113,22 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
 
   return (
     <div className="flex h-full flex-col bg-white dark:bg-[#0c0c0e]">
-      <div className="flex items-center gap-2 border-b border-line px-4 py-3 dark:border-white/10">
-        <Sparkles className="h-4 w-4 text-moss dark:text-sea" />
-        <span className="text-sm font-semibold text-ink dark:text-white">{t("read.askTitle")}</span>
+      <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3 dark:border-white/10">
+        <span className="flex items-center gap-2 text-sm font-semibold text-ink dark:text-white">
+          <Sparkles className="h-4 w-4 text-moss dark:text-sea" />
+          {t("read.askTitle")}
+        </span>
+        {messages.length ? (
+          <button
+            type="button"
+            onClick={clearChat}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-ink/45 transition hover:text-red-600 dark:text-white/45 dark:hover:text-red-300"
+            title={t("read.clearChat")}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {t("read.clearChat")}
+          </button>
+        ) : null}
       </div>
 
       <div ref={scrollRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">

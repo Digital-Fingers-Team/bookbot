@@ -16,7 +16,7 @@ export const booksRouter: ExpressRouter = Router();
 booksRouter.get(
   "/",
   requireAuth,
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (req, res) => {
     const books = await Book.find(
       {},
       { title: 1, originalFileName: 1, createdAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, author: 1 }
@@ -24,12 +24,12 @@ booksRouter.get(
       .sort({ createdAt: -1 })
       .lean();
     const bookIds = books.map((book) => book._id);
-    const firstPageChunks = await Chunk.find(
-      { bookId: { $in: bookIds }, pageNumber: 1 },
-      { bookId: 1, chunkText: 1 },
-      { lean: true }
-    );
+    const [firstPageChunks, favoriteStates] = await Promise.all([
+      Chunk.find({ bookId: { $in: bookIds }, pageNumber: 1 }, { bookId: 1, chunkText: 1 }, { lean: true }),
+      BookState.find({ userId: req.user!.id, favorite: true }, { bookId: 1 }).lean()
+    ]);
     const firstPageByBookId = new Map(firstPageChunks.map((chunk) => [String(chunk.bookId), excerpt(chunk.chunkText, 220)]));
+    const favoriteIds = new Set(favoriteStates.map((state) => String(state.bookId)));
 
     res.json({
       books: books.map((book) => {
@@ -51,6 +51,7 @@ booksRouter.get(
           error: book.error ?? "",
           author: book.author ?? "",
           category: book.category ?? "",
+          favorite: favoriteIds.has(String(book._id)),
           firstPageText
         };
       })

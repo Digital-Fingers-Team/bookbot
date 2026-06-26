@@ -35,6 +35,7 @@ export type Book = {
   error: string;
   author: string;
   category: string;
+  favorite?: boolean;
   firstPageText: string;
 };
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { AlertCircle, ArrowRight, BookOpenText, Heart, Loader2, MessageSquareText } from "lucide-react";
+import { AlertCircle, ArrowRight, BookOpenText, ChevronLeft, ChevronRight, Heart, Loader2, MessageSquareText } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { ApiClientError, getBook, getBookPdf, setFavorite, setProgress, type MyBook } from "@/lib/api";
 import { BookAssistant } from "@/components/book-assistant";
@@ -18,10 +18,15 @@ export default function ReadPage() {
   const [book, setBook] = useState<MyBook | null>(null);
   const [url, setUrl] = useState("");
   const [page, setPage] = useState(1);
+  const [pageInput, setPageInput] = useState("1");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [favorite, setFav] = useState(false);
   const [tab, setTab] = useState<"book" | "assistant">("book");
+
+  useEffect(() => {
+    setPageInput(String(page));
+  }, [page]);
 
   useEffect(() => {
     if (authLoading) {
@@ -72,9 +77,14 @@ export default function ReadPage() {
   }, [authLoading, user, id, token]);
 
   function jumpTo(targetPage: number) {
-    setPage(targetPage);
+    const max = book?.pageCount || targetPage;
+    const next = Math.min(Math.max(1, Math.floor(targetPage)), max);
+    if (!Number.isFinite(next)) {
+      return;
+    }
+    setPage(next);
     setTab("book");
-    void setProgress(id, targetPage, token).catch(() => undefined);
+    void setProgress(id, next, token).catch(() => undefined);
   }
 
   async function toggleFavorite() {
@@ -136,22 +146,64 @@ export default function ReadPage() {
       </div>
 
       <div className="min-h-0 flex-1 lg:grid lg:grid-cols-[minmax(0,1fr)_400px]">
-        <div className={`min-h-0 bg-paper dark:bg-[#08080a] ${tab === "book" ? "block" : "hidden"} h-full lg:block`}>
-          {loading ? (
-            <div className="flex h-full items-center justify-center text-sm text-ink/60 dark:text-white/60">
-              <Loader2 className="me-2 h-4 w-4 animate-spin" />
-              {t("read.opening")}
+        <div className={`flex min-h-0 flex-col bg-paper dark:bg-[#08080a] ${tab === "book" ? "flex" : "hidden"} h-full lg:flex`}>
+          {url && !loading && !error ? (
+            <div className="flex items-center justify-center gap-2 border-b border-line bg-white px-3 py-1.5 text-xs dark:border-white/10 dark:bg-[#0c0c0e]">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => jumpTo(page - 1)}
+                aria-label={t("read.goToPage")}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-ink/60 transition enabled:hover:text-moss disabled:opacity-30 dark:text-white/60 dark:enabled:hover:text-sea"
+              >
+                <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
+              </button>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const value = Number(pageInput);
+                  if (Number.isFinite(value)) jumpTo(value);
+                }}
+                className="flex items-center gap-1"
+              >
+                <input
+                  value={pageInput}
+                  onChange={(event) => setPageInput(event.target.value)}
+                  inputMode="numeric"
+                  aria-label={t("read.goToPage")}
+                  className="h-7 w-12 rounded border border-line bg-white text-center text-ink outline-none focus:border-moss dark:border-white/10 dark:bg-white/5 dark:text-white"
+                />
+                <span className="text-ink/45 dark:text-white/45">/ {book?.pageCount ?? "?"}</span>
+              </form>
+              <button
+                type="button"
+                disabled={book ? page >= book.pageCount : false}
+                onClick={() => jumpTo(page + 1)}
+                aria-label={t("read.goToPage")}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-ink/60 transition enabled:hover:text-moss disabled:opacity-30 dark:text-white/60 dark:enabled:hover:text-sea"
+              >
+                <ChevronRight className="h-4 w-4 rtl:rotate-180" />
+              </button>
             </div>
-          ) : error ? (
-            <div className="flex h-full items-center justify-center p-6 text-center">
-              <div className="max-w-md rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
-                <AlertCircle className="mx-auto mb-2 h-5 w-5" />
-                {error}
-              </div>
-            </div>
-          ) : url ? (
-            <iframe key={page} src={`${url}#page=${page}`} title={book?.title ?? "book"} className="h-full w-full bg-white" />
           ) : null}
+
+          <div className="min-h-0 flex-1">
+            {loading ? (
+              <div className="flex h-full items-center justify-center text-sm text-ink/60 dark:text-white/60">
+                <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                {t("read.opening")}
+              </div>
+            ) : error ? (
+              <div className="flex h-full items-center justify-center p-6 text-center">
+                <div className="max-w-md rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+                  <AlertCircle className="mx-auto mb-2 h-5 w-5" />
+                  {error}
+                </div>
+              </div>
+            ) : url ? (
+              <iframe key={page} src={`${url}#page=${page}`} title={book?.title ?? "book"} className="h-full w-full bg-white" />
+            ) : null}
+          </div>
         </div>
 
         <div className={`min-h-0 border-s border-line dark:border-white/10 ${tab === "assistant" ? "block" : "hidden"} h-full lg:block`}>
