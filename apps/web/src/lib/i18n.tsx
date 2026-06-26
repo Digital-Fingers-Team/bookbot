@@ -67,6 +67,21 @@ export const STRINGS = {
   "ask.depth": { ar: "العمق", en: "Depth" },
   "ask.allBooks": { ar: "كل الكتب", en: "All books" },
   "ask.scope": { ar: "النطاق", en: "Scope" },
+  "ask.howTitle": { ar: "كيف يعمل؟", en: "How it works" },
+  "ask.gotIt": { ar: "تمام", en: "Got it" },
+  "ask.howStep1": { ar: "اكتب سؤالك بالعربية أو الإنجليزية.", en: "Type your question in Arabic or English." },
+  "ask.howStep2": {
+    ar: "نبحث في كتب المنظمة المرفوعة عن أكثر المقاطع صلة بسؤالك.",
+    en: "We search the organization's uploaded books for the passages most relevant to your question."
+  },
+  "ask.howStep3": {
+    ar: "نجيب فقط بما نجده في الكتب، مع تظليل النص الذي استند إليه الجواب.",
+    en: "We answer only from what we find, highlighting the text the answer relied on."
+  },
+  "ask.howStep4": {
+    ar: "انقر أي مصدر لفتح الكتاب عند الصفحة، أو اطبع الإجابة مع مصادرها.",
+    en: "Click any source to open the book at that page, or print the answer with its sources."
+  },
   "ask.history": { ar: "سجل المحادثات", en: "History" },
   "ask.noHistory": { ar: "لا توجد محادثات محفوظة بعد", en: "No saved conversations yet" },
   "ask.deleteChat": { ar: "حذف المحادثة", en: "Delete conversation" },
@@ -248,6 +263,12 @@ export const STRINGS = {
   "an.failed": { ar: "فاشلة", en: "failed" },
   "an.totalTokens": { ar: "إجمالي الرموز", en: "Total tokens" },
   "an.tokensNote": { ar: "إجمالي الرموز المعالَجة عبر مزوّد الذكاء الاصطناعي.", en: "Total tokens processed by the AI provider." },
+  "an.unanswered": { ar: "أسئلة بلا إجابة", en: "Unanswered questions" },
+  "an.unansweredNote": {
+    ar: "أسئلة لم تجد لها المكتبة إجابة — مؤشرات على محتوى ناقص يمكن إضافته.",
+    en: "Questions the library couldn't answer — signals of gaps you could fill."
+  },
+  "an.noUnanswered": { ar: "لا توجد أسئلة بلا إجابة بعد.", en: "No unanswered questions yet." },
   "an.adminOnly": { ar: "هذه الصفحة للمديرين فقط.", en: "This page is for admins only." },
   "an.loading": { ar: "جارٍ تحميل التحليلات…", en: "Loading analytics…" },
   "an.loadError": { ar: "تعذّر تحميل التحليلات.", en: "Could not load analytics." }

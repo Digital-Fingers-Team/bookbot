@@ -11,10 +11,17 @@ statsRouter.get(
   "/",
   requireAdmin,
   asyncHandler(async (_req, res) => {
-    const [totalBooks, totalChunks, pageAggregation, usageAggregation] = await Promise.all([
+    const [totalBooks, totalChunks, pageAggregation, unanswered, usageAggregation] = await Promise.all([
       Book.countDocuments(),
       Chunk.countDocuments(),
       Book.aggregate([{ $group: { _id: null, totalPages: { $sum: "$pageCount" } } }]),
+      UsageEvent.find(
+        { type: "chat", answered: false, question: { $nin: [null, ""] } },
+        { question: 1, createdAt: 1 }
+      )
+        .sort({ createdAt: -1 })
+        .limit(15)
+        .lean(),
       UsageEvent.aggregate([
         {
           $group: {
@@ -32,6 +39,10 @@ statsRouter.get(
       totalBooks,
       totalChunks,
       totalPages: pageAggregation[0]?.totalPages ?? 0,
+      unansweredQuestions: unanswered.map((event) => ({
+        question: event.question ?? "",
+        createdAt: event.createdAt
+      })),
       usage: usageAggregation.reduce<Record<string, unknown>>((acc, item) => {
         acc[item._id] = {
           total: item.total,

@@ -58,7 +58,9 @@ chatRouter.post(
         type: "chat",
         status: "success",
         latencyMs: Date.now() - startedAt,
-        chunkCount: 0
+        chunkCount: 0,
+        question: parsed.data.question.slice(0, 300),
+        answered: false
       });
 
       res.json({
@@ -96,6 +98,8 @@ chatRouter.post(
       model: generation.model,
       chunkCount: chunks.length,
       latencyMs: Date.now() - startedAt,
+      question: parsed.data.question.slice(0, 300),
+      answered: true,
       promptTokens: generationUsage.promptTokens,
       completionTokens: generationUsage.completionTokens,
       totalTokens: generationUsage.totalTokens
@@ -165,7 +169,14 @@ chatRouter.post("/stream", async (req, res) => {
     if (!chunks.length) {
       send("token", { delta: NOT_FOUND_ANSWER });
       send("done", { answer: NOT_FOUND_ANSWER, usage: { model, retrievedChunks: 0 } });
-      await UsageEvent.create({ type: "chat", status: "success", latencyMs: Date.now() - startedAt, chunkCount: 0 });
+      await UsageEvent.create({
+        type: "chat",
+        status: "success",
+        latencyMs: Date.now() - startedAt,
+        chunkCount: 0,
+        question: parsed.data.question.slice(0, 300),
+        answered: false
+      });
       res.end();
       return;
     }
@@ -208,7 +219,9 @@ chatRouter.post("/stream", async (req, res) => {
         status: "success",
         model,
         chunkCount: chunks.length,
-        latencyMs: Date.now() - startedAt
+        latencyMs: Date.now() - startedAt,
+        question: parsed.data.question.slice(0, 300),
+        answered: true
       });
     }
 

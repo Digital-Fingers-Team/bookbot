@@ -8,6 +8,7 @@ import {
   BookOpenText,
   CheckCircle2,
   FileText,
+  HelpCircle,
   Layers,
   Loader2,
   Lock,
@@ -141,6 +142,29 @@ export default function AnalyticsPage() {
                 failLabel={t("an.failed")}
               />
               <StatCard icon={BarChart3} label={t("an.totalTokens")} value={totalTokens} note={t("an.tokensNote")} />
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <div>
+              <h2 className="text-sm font-semibold text-ink/70 dark:text-white/70">{t("an.unanswered")}</h2>
+              <p className="mt-0.5 text-xs text-ink/45 dark:text-white/45">{t("an.unansweredNote")}</p>
+            </div>
+            <div className="rounded-2xl border border-line bg-white dark:border-white/10 dark:bg-[#0c0c0e]">
+              {stats.unansweredQuestions && stats.unansweredQuestions.length ? (
+                <ul className="divide-y divide-line dark:divide-white/10">
+                  {stats.unansweredQuestions.map((item, index) => (
+                    <li key={index} className="flex items-start gap-2 px-4 py-3">
+                      <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500 dark:text-amber-400" />
+                      <span dir="auto" className="min-w-0 flex-1 text-sm text-ink/80 dark:text-white/80">
+                        {item.question}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="px-4 py-8 text-center text-sm text-ink/45 dark:text-white/45">{t("an.noUnanswered")}</p>
+              )}
             </div>
           </section>
         </>

@@ -10,7 +10,10 @@ const usageEventSchema = new Schema(
     latencyMs: { type: Number, default: 0 },
     promptTokens: { type: Number, default: 0 },
     completionTokens: { type: Number, default: 0 },
-    totalTokens: { type: Number, default: 0 }
+    totalTokens: { type: Number, default: 0 },
+    // For chat events: the question asked and whether the library could answer it.
+    question: { type: String, trim: true },
+    answered: { type: Boolean }
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );

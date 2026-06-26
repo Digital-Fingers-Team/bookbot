@@ -9,6 +9,7 @@ import {
   Copy,
   ExternalLink,
   FileText,
+  HelpCircle,
   Loader2,
   History,
   MessageSquareText,
@@ -43,7 +44,7 @@ import type { Book, EvidenceChunk, Source } from "@/lib/types";
 import { EvidenceText } from "@/components/evidence-text";
 import { answerOverlapHighlights, citeSentences } from "@/lib/highlight";
 import { Landing } from "@/components/landing";
-import { useT } from "@/lib/i18n";
+import { useLang, useT } from "@/lib/i18n";
 
 type ChatMessage = {
   id: string;
@@ -394,6 +395,7 @@ function ChatExperience() {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <HelpButton />
           <button
             type="button"
             onClick={() => setHistoryOpen(true)}
@@ -770,7 +772,7 @@ function AssistantBubble({ message, onOpenSource }: { message: ChatMessage; onOp
                 {message.status === "done" && message.content ? (
                   <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line/70 pt-3 dark:border-white/10">
                     <CopyButton text={message.content} />
-                    <PrintButton />
+                    <PrintButton message={message} />
                     <Feedback />
                     {message.usage?.retrievedChunks ? (
                       <MetaChip>
@@ -1074,17 +1076,118 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function PrintButton() {
-  const t = useT();
+function PrintButton({ message }: { message: ChatMessage }) {
+  const { t, lang } = useLang();
+
+  function exportPdf() {
+    const dir = lang === "ar" ? "rtl" : "ltr";
+    const esc = (value: string) =>
+      value.replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char] as string);
+
+    const sources = message.sources
+      .map(
+        (source, index) =>
+          `<li><span class="n">[${index + 1}]</span> <b>${esc(source.bookName)}</b> — ${esc(t("ask.page"))} ${source.pageNumber}${
+            source.supportingText ? `<div class="src">${esc(source.supportingText)}</div>` : ""
+          }</li>`
+      )
+      .join("");
+
+    const win = window.open("", "_blank", "width=820,height=900");
+    if (!win) {
+      return;
+    }
+    win.document.write(
+      `<!doctype html><html dir="${dir}" lang="${lang}"><head><meta charset="utf-8"><title>${esc(t("brand.orgShort"))}</title><style>` +
+        "body{font-family:'Cairo','Segoe UI',system-ui,Tahoma,sans-serif;color:#1c2227;margin:40px;line-height:1.9}" +
+        ".org{font-size:13px;color:#0a6b37;font-weight:700;margin-bottom:18px}" +
+        ".answer{font-size:15px;white-space:pre-wrap;border-inline-start:3px solid #0a6b37;padding-inline-start:14px}" +
+        "h3{font-size:13px;margin-top:28px;color:#555;text-transform:uppercase;letter-spacing:.04em}" +
+        "ol{padding-inline-start:18px}li{margin-bottom:10px;font-size:13px}" +
+        ".n{color:#0a6b37;font-weight:700}.src{color:#555;font-size:12px;margin-top:4px}" +
+        "@media print{body{margin:24px}}" +
+        `</style></head><body><div class="org">${esc(t("brand.org"))}</div>` +
+        `<div class="answer">${esc(message.content)}</div>` +
+        (sources ? `<h3>${esc(t("ask.evidence"))}</h3><ol>${sources}</ol>` : "") +
+        "</body></html>"
+    );
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 350);
+  }
+
   return (
     <button
       type="button"
-      onClick={() => window.print()}
+      onClick={exportPdf}
       className="inline-flex items-center gap-1.5 rounded-md border border-line bg-white px-2.5 py-1 text-xs font-semibold text-ink/65 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:bg-white/5 dark:text-white/65 dark:hover:text-sea"
     >
       <Printer className="h-3.5 w-3.5" />
       {t("ask.print")}
     </button>
+  );
+}
+
+function HelpButton() {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const steps = [t("ask.howStep1"), t("ask.howStep2"), t("ask.howStep3"), t("ask.howStep4")];
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:text-sea"
+        title={t("ask.howTitle")}
+        aria-label={t("ask.howTitle")}
+      >
+        <HelpCircle className="h-4 w-4" />
+      </button>
+      {open ? (
+        <div className="absolute inset-0 z-40 flex items-center justify-center p-4" onClick={() => setOpen(false)}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" />
+          <div
+            className="relative w-full max-w-md rounded-2xl border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-[#0c0c0e]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-base font-semibold text-ink dark:text-white">
+                <HelpCircle className="h-5 w-5 text-moss dark:text-sea" />
+                {t("ask.howTitle")}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/50 transition hover:bg-ink/5 hover:text-ink dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white"
+                aria-label={t("ask.gotIt")}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <ol className="mt-4 space-y-3">
+              {steps.map((step, index) => (
+                <li key={index} className="flex gap-3">
+                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-moss/10 text-xs font-bold text-moss dark:bg-sea/15 dark:text-sea">
+                    {index + 1}
+                  </span>
+                  <span dir="auto" className="text-sm leading-6 text-ink/75 dark:text-white/75">
+                    {step}
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-lg bg-moss text-sm font-medium text-white transition hover:bg-moss/90"
+            >
+              {t("ask.gotIt")}
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
