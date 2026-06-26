@@ -61,6 +61,8 @@ type ChatMessage = {
 
 const EXAMPLES = ["ما هو مفهوم القيادة؟", "ما الفرق بين الإدارة والقيادة؟", "اذكر أهمية القيادة الإدارية"];
 
+const RESPONSE_DEPTH = 3;
+
 export default function HomePage() {
   const { user, loading } = useAuth();
 
@@ -85,7 +87,6 @@ function ChatExperience() {
   const t = useT();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [depth, setDepth] = useState(8);
   const [busy, setBusy] = useState(false);
   const [stick, setStick] = useState(true);
 
@@ -303,7 +304,7 @@ function ChatExperience() {
 
     try {
       await streamQuestion(
-        { question, limit: depth, history },
+        { question, limit: RESPONSE_DEPTH, history },
         {
           signal: controller.signal,
           onMeta: (meta: StreamMeta) =>
@@ -437,14 +438,12 @@ function ChatExperience() {
 
       <Composer
         input={input}
-        depth={depth}
         busy={busy}
         textareaRef={textareaRef}
         onChange={(value) => {
           setInput(value);
           autoResize();
         }}
-        onDepthChange={setDepth}
         onSubmit={onSubmit}
         onKeyDown={onKeyDown}
         onStop={stop}
@@ -743,7 +742,7 @@ function CitedAnswer({
         const source = segment.source !== null ? sources[segment.source] : undefined;
         return (
           <span key={index}>
-            {segment.text}
+            <InlineMarkdown text={segment.text} />
             {source ? (
               <button
                 type="button"
@@ -756,6 +755,26 @@ function CitedAnswer({
             ) : null}
           </span>
         );
+      })}
+    </>
+  );
+}
+
+function InlineMarkdown({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+?\*\*)/g);
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+          return (
+            <strong key={index} className="font-bold">
+              {part.slice(2, -2)}
+            </strong>
+          );
+        }
+
+        return part;
       })}
     </>
   );
@@ -789,7 +808,7 @@ function AssistantBubble({ message, onOpenSource }: { message: ChatMessage; onOp
               <Thinking />
             ) : (
               <>
-                <p
+                <div
                   dir="auto"
                   aria-live="polite"
                   className="book-text whitespace-pre-wrap text-[0.97rem] text-ink dark:text-white"
@@ -798,10 +817,10 @@ function AssistantBubble({ message, onOpenSource }: { message: ChatMessage; onOp
                   {message.status === "done" && message.sources.length && !failed ? (
                     <CitedAnswer text={message.content} sources={message.sources} onOpenSource={onOpenSource} />
                   ) : (
-                    message.content
+                    <InlineMarkdown text={message.content} />
                   )}
                   {streaming ? <span className="ms-0.5 inline-block h-4 w-[2px] animate-pulse bg-moss align-middle dark:bg-sea" /> : null}
-                </p>
+                </div>
 
                 {message.status === "done" && message.content ? (
                   <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line/70 pt-3 dark:border-white/10">
@@ -973,21 +992,17 @@ function Evidence({
 
 function Composer({
   input,
-  depth,
   busy,
   textareaRef,
   onChange,
-  onDepthChange,
   onSubmit,
   onKeyDown,
   onStop
 }: {
   input: string;
-  depth: number;
   busy: boolean;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   onChange: (value: string) => void;
-  onDepthChange: (value: number) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onStop: () => void;
@@ -1037,21 +1052,7 @@ function Composer({
             · <kbd className="rounded border border-line px-1 font-sans dark:border-white/15">Shift</kbd>+
             <kbd className="rounded border border-line px-1 font-sans dark:border-white/15">Enter</kbd> {t("ask.shiftEnter")}
           </span>
-          <label className="ms-auto flex items-center gap-1.5 font-medium">
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin text-moss dark:text-sea" /> : null}
-            {t("ask.depth")}
-            <select
-              value={depth}
-              onChange={(event) => onDepthChange(Number(event.target.value))}
-              className="rounded border border-line bg-white px-1.5 py-0.5 font-semibold text-ink outline-none dark:border-white/15 dark:bg-white/5 dark:text-white"
-            >
-              {[5, 8, 10, 12, 15].map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
+          {busy ? <Loader2 className="ms-auto h-3.5 w-3.5 animate-spin text-moss dark:text-sea" /> : null}
         </div>
       </form>
     </div>

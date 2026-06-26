@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { AlertCircle, ArrowRight, BookOpenText, ChevronLeft, ChevronRight, Heart, Loader2, MessageSquareText } from "lucide-react";
+import { AlertCircle, ArrowRight, BookOpenText, Heart, Loader2, MessageSquareText } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { ApiClientError, getBook, getBookPdf, setFavorite, setProgress, type MyBook } from "@/lib/api";
 import { BookAssistant } from "@/components/book-assistant";
+import { PdfReader } from "@/components/pdf-reader";
 import { useT } from "@/lib/i18n";
 
 export default function ReadPage() {
@@ -18,15 +19,10 @@ export default function ReadPage() {
   const [book, setBook] = useState<MyBook | null>(null);
   const [url, setUrl] = useState("");
   const [page, setPage] = useState(1);
-  const [pageInput, setPageInput] = useState("1");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [favorite, setFav] = useState(false);
   const [tab, setTab] = useState<"book" | "assistant">("book");
-
-  useEffect(() => {
-    setPageInput(String(page));
-  }, [page]);
 
   useEffect(() => {
     if (authLoading) {
@@ -147,46 +143,6 @@ export default function ReadPage() {
 
       <div className="min-h-0 flex-1 lg:grid lg:grid-cols-[minmax(0,1fr)_400px]">
         <div className={`flex min-h-0 flex-col bg-paper dark:bg-[#08080a] ${tab === "book" ? "flex" : "hidden"} h-full lg:flex`}>
-          {url && !loading && !error ? (
-            <div className="flex items-center justify-center gap-2 border-b border-line bg-white px-3 py-1.5 text-xs dark:border-white/10 dark:bg-[#0c0c0e]">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => jumpTo(page - 1)}
-                aria-label={t("read.goToPage")}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-ink/60 transition enabled:hover:text-moss disabled:opacity-30 dark:text-white/60 dark:enabled:hover:text-sea"
-              >
-                <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
-              </button>
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  const value = Number(pageInput);
-                  if (Number.isFinite(value)) jumpTo(value);
-                }}
-                className="flex items-center gap-1"
-              >
-                <input
-                  value={pageInput}
-                  onChange={(event) => setPageInput(event.target.value)}
-                  inputMode="numeric"
-                  aria-label={t("read.goToPage")}
-                  className="h-7 w-12 rounded border border-line bg-white text-center text-ink outline-none focus:border-moss dark:border-white/10 dark:bg-white/5 dark:text-white"
-                />
-                <span className="text-ink/45 dark:text-white/45">/ {book?.pageCount ?? "?"}</span>
-              </form>
-              <button
-                type="button"
-                disabled={book ? page >= book.pageCount : false}
-                onClick={() => jumpTo(page + 1)}
-                aria-label={t("read.goToPage")}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-ink/60 transition enabled:hover:text-moss disabled:opacity-30 dark:text-white/60 dark:enabled:hover:text-sea"
-              >
-                <ChevronRight className="h-4 w-4 rtl:rotate-180" />
-              </button>
-            </div>
-          ) : null}
-
           <div className="min-h-0 flex-1">
             {loading ? (
               <div className="flex h-full items-center justify-center text-sm text-ink/60 dark:text-white/60">
@@ -201,7 +157,13 @@ export default function ReadPage() {
                 </div>
               </div>
             ) : url ? (
-              <iframe key={page} src={`${url}#page=${page}`} title={book?.title ?? "book"} className="h-full w-full bg-white" />
+              <PdfReader
+                url={url}
+                title={book?.title ?? "book"}
+                page={page}
+                totalPages={book?.pageCount}
+                onPageChange={jumpTo}
+              />
             ) : null}
           </div>
         </div>

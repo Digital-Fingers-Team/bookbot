@@ -64,6 +64,7 @@ function SkipLink() {
 function PublicHeader({ loading = false }: { loading?: boolean }) {
   const pathname = usePathname();
   const t = useT();
+  const showPrimaryNav = pathname ? !["/", "/login", "/register"].includes(pathname) : true;
 
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-white/80 backdrop-blur-md dark:border-white/10 dark:bg-[#0a0a0b]/80">
@@ -76,27 +77,29 @@ function PublicHeader({ loading = false }: { loading?: boolean }) {
         </div>
 
         <nav className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:flex-1 lg:justify-end">
-          <div className="flex items-center gap-1 rounded-xl border border-line bg-paper p-1 dark:border-white/10 dark:bg-white/5">
-            {baseNavItems.map((item) => {
-              const Icon = item.icon;
-              const active = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={clsx(
-                    "inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium transition sm:flex-none",
-                    active
-                      ? "bg-white text-ink shadow-sm dark:bg-white/10 dark:text-white"
-                      : "text-ink/55 hover:text-ink dark:text-white/55 dark:hover:text-white"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{t(item.key)}</span>
-                </Link>
-              );
-            })}
-          </div>
+          {showPrimaryNav ? (
+            <div className="flex items-center gap-1 rounded-xl border border-line bg-paper p-1 dark:border-white/10 dark:bg-white/5">
+              {baseNavItems.map((item) => {
+                const Icon = item.icon;
+                const active = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={clsx(
+                      "inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium transition sm:flex-none",
+                      active
+                        ? "bg-white text-ink shadow-sm dark:bg-white/10 dark:text-white"
+                        : "text-ink/55 hover:text-ink dark:text-white/55 dark:hover:text-white"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{t(item.key)}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : null}
 
           <div className="flex items-center gap-2">
             {loading ? (

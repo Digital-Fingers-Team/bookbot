@@ -7,6 +7,8 @@ import { useAuth } from "@/components/auth-provider";
 import type { Source } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 
+const RESPONSE_DEPTH = 3;
+
 type Msg = {
   id: string;
   role: "user" | "assistant";
@@ -103,7 +105,7 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
 
     try {
       await streamQuestion(
-        { question, limit: 8, bookId },
+        { question, limit: RESPONSE_DEPTH, bookId },
         {
           signal: controller.signal,
           onMeta: (meta) => patch(assistantId, (message) => ({ ...message, sources: meta.sources ?? [], status: "streaming" })),
@@ -174,7 +176,7 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
                     </span>
                   ) : (
                     <p dir="auto" className="book-text whitespace-pre-wrap text-sm text-ink dark:text-white">
-                      {message.content}
+                      <InlineMarkdown text={message.content} />
                     </p>
                   )}
                 </div>
@@ -223,5 +225,25 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
         </div>
       </form>
     </div>
+  );
+}
+
+function InlineMarkdown({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+?\*\*)/g);
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+          return (
+            <strong key={index} className="font-bold">
+              {part.slice(2, -2)}
+            </strong>
+          );
+        }
+
+        return part;
+      })}
+    </>
   );
 }
