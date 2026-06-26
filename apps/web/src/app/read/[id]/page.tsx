@@ -158,6 +158,7 @@ export default function ReadPage() {
               </div>
             ) : url ? (
               <PdfReader
+                bookId={id}
                 url={url}
                 title={book?.title ?? "book"}
                 page={page}

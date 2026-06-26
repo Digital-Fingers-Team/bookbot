@@ -298,6 +298,30 @@ export async function getBookPdf(id: string, token?: string) {
   return new Blob([bytes], { type: payload.mimeType || "application/pdf" });
 }
 
+export async function getBookPageImage(id: string, page: number, token?: string, signal?: AbortSignal) {
+  const headers = new Headers();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(`${API_URL}/api/books/${id}/pages/${page}/image?scale=2`, {
+    headers,
+    signal,
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as ApiErrorResponse | null;
+    throw new ApiClientError(
+      response.status,
+      payload?.error.code ?? "PAGE_IMAGE_FAILED",
+      payload?.error.message ?? "The page image could not be loaded."
+    );
+  }
+
+  return response.blob();
+}
+
 export function getStats(token?: string) {
   return request<Stats>("/api/stats", { token });
 }

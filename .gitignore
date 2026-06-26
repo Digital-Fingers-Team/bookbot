@@ -14,3 +14,8 @@ storage
 .tesseract-cache
 .DS_Store
 *.pdf
+*.log 
+# OMP (Open Monograph Press) — external PHP app, runs via omp-docker
+/omp/
+/omp-3.5.0-4/
+/omp-full.tar.gz

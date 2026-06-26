@@ -10,6 +10,7 @@ import { asyncHandler } from "../utils/async-handler.js";
 import { normalizeUploadedFileName, readableBookTitle } from "../utils/file-name.js";
 import { excerpt } from "../utils/text.js";
 import { deleteStoredPdf } from "../services/ingestion/pdf-storage.service.js";
+import { PdfJsRenderer } from "../services/ingestion/renderers/pdfjs.renderer.js";
 
 export const booksRouter: ExpressRouter = Router();
 
@@ -212,6 +213,32 @@ booksRouter.get(
       mimeType: "application/pdf",
       data: buffer.toString("base64")
     });
+  })
+);
+
+booksRouter.get(
+  "/:id/pages/:page/image",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const book = await findBookPdf(routeId(req.params.id));
+    const pageNumber = Math.max(1, Math.floor(Number(req.params.page) || 1));
+    const scale = Math.min(Math.max(Number(req.query.scale) || 2, 0.75), 3);
+    const buffer = await readFile(book.originalPdfPath);
+    const renderer = await new PdfJsRenderer().open(buffer);
+
+    try {
+      if (pageNumber > renderer.pageCount) {
+        throw new ApiError(404, "PAGE_NOT_FOUND", "This page was not found.");
+      }
+
+      const rendered = await renderer.renderPage(pageNumber, scale);
+      res.setHeader("Content-Type", rendered.mimeType);
+      res.setHeader("Cache-Control", "private, max-age=86400");
+      res.setHeader("X-Page-Number", String(rendered.pageNumber));
+      res.send(rendered.image);
+    } finally {
+      await renderer.close?.();
+    }
   })
 );
 
