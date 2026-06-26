@@ -121,6 +121,34 @@ export const STRINGS = {
   "lib.author": { ar: "المؤلف", en: "Author" },
   "lib.addAuthor": { ar: "إضافة مؤلف", en: "Add author" },
   "lib.authorPrompt": { ar: "أدخل اسم المؤلف (اتركه فارغًا للإزالة):", en: "Enter the author (leave empty to remove):" },
+
+  // My Books
+  "nav.myBooks": { ar: "كتبي", en: "My Books" },
+  "mb.title": { ar: "كتبي", en: "My Books" },
+  "mb.subtitle": { ar: "المفضّلة وما تتابع قراءته.", en: "Your favorites and what you're reading." },
+  "mb.continueReading": { ar: "متابعة القراءة", en: "Continue reading" },
+  "mb.favorites": { ar: "المفضّلة", en: "Favorites" },
+  "mb.empty": { ar: "لم تفتح أي كتاب بعد.", en: "You haven't opened any book yet." },
+  "mb.noFavorites": { ar: "لا توجد كتب مفضّلة بعد.", en: "No favorite books yet." },
+  "mb.browseLibrary": { ar: "تصفّح المكتبة", en: "Browse the library" },
+  "mb.continue": { ar: "متابعة", en: "Continue" },
+  "mb.read": { ar: "قراءة", en: "Read" },
+
+  // Reading view
+  "read.back": { ar: "رجوع", en: "Back" },
+  "read.favorite": { ar: "أضف للمفضّلة", en: "Add to favorites" },
+  "read.unfavorite": { ar: "إزالة من المفضّلة", en: "Remove from favorites" },
+  "read.book": { ar: "الكتاب", en: "Book" },
+  "read.assistant": { ar: "المساعد", en: "Assistant" },
+  "read.askTitle": { ar: "اسأل عن هذا الكتاب", en: "Ask about this book" },
+  "read.askPlaceholder": { ar: "اسأل عن أي شيء في هذا الكتاب…", en: "Ask anything about this book…" },
+  "read.askEmpty": {
+    ar: "اطرح سؤالاً وسنجيب من هذا الكتاب فقط، مع روابط تنقلك للصفحة.",
+    en: "Ask a question and we'll answer from this book only, with links that jump to the page."
+  },
+  "read.opening": { ar: "جارٍ فتح الكتاب…", en: "Opening book…" },
+  "read.notFound": { ar: "تعذّر فتح هذا الكتاب.", en: "Could not open this book." },
+  "read.goToPage": { ar: "اذهب للصفحة", en: "Go to page" },
   "lib.previewFallback": {
     ar: "ستظهر معاينة الصفحة الأولى هنا بعد استخراج النص.",
     en: "First page preview appears here after text is extracted."

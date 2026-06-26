@@ -266,6 +266,24 @@ export function updateBook(id: string, patch: { category?: string; author?: stri
   });
 }
 
+export type MyBook = Book & { favorite: boolean; lastPage: number; lastOpenedAt: string | null };
+
+export function getBook(id: string, token?: string) {
+  return request<MyBook>(`/api/books/${id}`, { token });
+}
+
+export function getMyBooks(token?: string) {
+  return request<{ favorites: MyBook[]; continueReading: MyBook[] }>("/api/books/my", { token });
+}
+
+export function setFavorite(id: string, favorite: boolean, token?: string) {
+  return request<{ favorite: boolean }>(`/api/books/${id}/favorite`, { method: "PUT", body: { favorite }, token });
+}
+
+export function setProgress(id: string, lastPage: number, token?: string) {
+  return request<{ ok: true }>(`/api/books/${id}/progress`, { method: "PUT", body: { lastPage }, token });
+}
+
 export async function getBookPdf(id: string, token?: string) {
   const payload = await request<{ fileName: string; mimeType: string; data: string }>(`/api/books/${id}/pdf-data`, {
     token

@@ -32,7 +32,6 @@ import {
   deleteConversation,
   getBookPdf,
   getConversation,
-  listBooks,
   listConversations,
   sendFeedback,
   type StoredMessage,
@@ -41,7 +40,7 @@ import {
   updateConversation
 } from "@/lib/api";
 import { useAuth } from "@/components/auth-provider";
-import type { Book, EvidenceChunk, Source } from "@/lib/types";
+import type { EvidenceChunk, Source } from "@/lib/types";
 import { EvidenceText } from "@/components/evidence-text";
 import { answerOverlapHighlights, citeSentences } from "@/lib/highlight";
 import { Landing } from "@/components/landing";
@@ -96,9 +95,6 @@ function ChatExperience() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  const [books, setBooks] = useState<Book[]>([]);
-  const [scopeBookId, setScopeBookId] = useState("");
-
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -126,16 +122,6 @@ function ChatExperience() {
   useEffect(() => {
     refreshConversations();
   }, [refreshConversations]);
-
-  // Ready books, for the "ask within this book" scope selector.
-  useEffect(() => {
-    if (!token) {
-      return;
-    }
-    listBooks(token)
-      .then((result) => setBooks(result.books.filter((book) => book.status === "ready")))
-      .catch(() => undefined);
-  }, [token]);
 
   // Persist the conversation whenever a turn finishes (busy returns to false).
   useEffect(() => {
@@ -303,7 +289,7 @@ function ChatExperience() {
 
     try {
       await streamQuestion(
-        { question, limit: depth, bookId: scopeBookId || undefined, history },
+        { question, limit: depth, history },
         {
           signal: controller.signal,
           onMeta: (meta: StreamMeta) =>
@@ -439,9 +425,6 @@ function ChatExperience() {
         input={input}
         depth={depth}
         busy={busy}
-        books={books}
-        scopeBookId={scopeBookId}
-        onScopeChange={setScopeBookId}
         textareaRef={textareaRef}
         onChange={(value) => {
           setInput(value);
@@ -952,9 +935,6 @@ function Composer({
   input,
   depth,
   busy,
-  books,
-  scopeBookId,
-  onScopeChange,
   textareaRef,
   onChange,
   onDepthChange,
@@ -965,9 +945,6 @@ function Composer({
   input: string;
   depth: number;
   busy: boolean;
-  books: Book[];
-  scopeBookId: string;
-  onScopeChange: (value: string) => void;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   onChange: (value: string) => void;
   onDepthChange: (value: number) => void;
@@ -1020,41 +997,21 @@ function Composer({
             · <kbd className="rounded border border-line px-1 font-sans dark:border-white/15">Shift</kbd>+
             <kbd className="rounded border border-line px-1 font-sans dark:border-white/15">Enter</kbd> {t("ask.shiftEnter")}
           </span>
-          <div className="ms-auto flex items-center gap-3">
-            {books.length ? (
-              <label className="flex items-center gap-1.5 font-medium">
-                {t("ask.scope")}
-                <select
-                  value={scopeBookId}
-                  onChange={(event) => onScopeChange(event.target.value)}
-                  className="max-w-[9rem] rounded border border-line bg-white px-1.5 py-0.5 font-semibold text-ink outline-none dark:border-white/15 dark:bg-white/5 dark:text-white"
-                  title={t("ask.scope")}
-                >
-                  <option value="">{t("ask.allBooks")}</option>
-                  {books.map((book) => (
-                    <option key={book.id} value={book.id}>
-                      {book.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-            <label className="flex items-center gap-1.5 font-medium">
-              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin text-moss dark:text-sea" /> : null}
-              {t("ask.depth")}
-              <select
-                value={depth}
-                onChange={(event) => onDepthChange(Number(event.target.value))}
-                className="rounded border border-line bg-white px-1.5 py-0.5 font-semibold text-ink outline-none dark:border-white/15 dark:bg-white/5 dark:text-white"
-              >
-                {[5, 8, 10, 12, 15].map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <label className="ms-auto flex items-center gap-1.5 font-medium">
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin text-moss dark:text-sea" /> : null}
+            {t("ask.depth")}
+            <select
+              value={depth}
+              onChange={(event) => onDepthChange(Number(event.target.value))}
+              className="rounded border border-line bg-white px-1.5 py-0.5 font-semibold text-ink outline-none dark:border-white/15 dark:bg-white/5 dark:text-white"
+            >
+              {[5, 8, 10, 12, 15].map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       </form>
     </div>

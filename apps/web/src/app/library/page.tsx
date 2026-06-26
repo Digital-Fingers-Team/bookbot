@@ -18,7 +18,7 @@ import {
   X
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { ApiClientError, deleteBook, getBookPdf, getStats, listBooks, updateBook } from "@/lib/api";
+import { ApiClientError, deleteBook, getStats, listBooks, updateBook } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
 import { useT, type StringKey } from "@/lib/i18n";
 
@@ -44,26 +44,12 @@ export default function LibraryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState("");
-  const [readerBook, setReaderBook] = useState<Book | null>(null);
-  const [readerUrl, setReaderUrl] = useState("");
-  const [readerLoading, setReaderLoading] = useState(false);
-  const [readerError, setReaderError] = useState("");
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sort, setSort] = useState<SortKey>("recent");
   const [view, setView] = useState<ViewMode>("grid");
-
-  const closeReader = useCallback(() => {
-    if (readerUrl) {
-      URL.revokeObjectURL(readerUrl);
-    }
-    setReaderBook(null);
-    setReaderUrl("");
-    setReaderError("");
-    setReaderLoading(false);
-  }, [readerUrl]);
 
   const refresh = useCallback(async () => {
     if (!token) {
@@ -96,14 +82,6 @@ export default function LibraryPage() {
 
     refresh();
   }, [authLoading, refresh, router, user]);
-
-  useEffect(() => {
-    return () => {
-      if (readerUrl) {
-        URL.revokeObjectURL(readerUrl);
-      }
-    };
-  }, [readerUrl]);
 
   // Poll while any book is still being processed so progress updates live.
   const hasProcessing = books.some((book) => book.status === "processing");
@@ -168,24 +146,8 @@ export default function LibraryPage() {
     }
   }
 
-  async function openBook(book: Book) {
-    if (readerUrl) {
-      URL.revokeObjectURL(readerUrl);
-    }
-
-    setReaderBook(book);
-    setReaderUrl("");
-    setReaderError("");
-    setReaderLoading(true);
-
-    try {
-      const blob = await getBookPdf(book.id, token);
-      setReaderUrl(URL.createObjectURL(blob));
-    } catch (err) {
-      setReaderError(err instanceof ApiClientError ? err.message : t("ask.openFailed"));
-    } finally {
-      setReaderLoading(false);
-    }
+  function openBook(book: Book) {
+    router.push(`/read/${book.id}`);
   }
 
   const statusCounts = useMemo(
@@ -468,16 +430,6 @@ export default function LibraryPage() {
           }}
         />
       )}
-
-      {readerBook ? (
-        <Reader
-          book={readerBook}
-          url={readerUrl}
-          loading={readerLoading}
-          error={readerError}
-          onClose={closeReader}
-        />
-      ) : null}
     </div>
   );
 }
@@ -729,80 +681,6 @@ function EmptyState({ filtering, isAdmin, onClear }: { filtering: boolean; isAdm
           ) : null}
         </>
       )}
-    </div>
-  );
-}
-
-function Reader({
-  book,
-  url,
-  loading,
-  error,
-  onClose
-}: {
-  book: Book;
-  url: string;
-  loading: boolean;
-  error: string;
-  onClose: () => void;
-}) {
-  const t = useT();
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-black/70 p-3 backdrop-blur-sm sm:p-6"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={book.title}
-    >
-      <div
-        className="mx-auto flex h-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-soft dark:border-white/10 dark:bg-[#0c0c0e]"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 dark:border-white/10">
-          <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold text-ink dark:text-white">{book.title}</h2>
-            <p className="truncate text-xs text-ink/45 dark:text-white/45">{book.originalFileName}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/70 dark:hover:text-sea"
-            aria-label={t("ask.closeReader")}
-            title={t("ask.closeReader")}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="min-h-0 flex-1 bg-paper dark:bg-[#08080a]">
-          {loading ? (
-            <div className="flex h-full items-center justify-center text-sm text-ink/60 dark:text-white/60">
-              <Loader2 className="me-2 h-4 w-4 animate-spin" />
-              {t("ask.opening")}
-            </div>
-          ) : error ? (
-            <div className="flex h-full items-center justify-center p-6 text-center">
-              <div className="max-w-md rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
-                <AlertCircle className="mx-auto mb-2 h-5 w-5" />
-                {error}
-              </div>
-            </div>
-          ) : url ? (
-            <iframe src={url} title={book.title} className="h-full w-full bg-white" />
-          ) : null}
-        </div>
-      </div>
     </div>
   );
 }

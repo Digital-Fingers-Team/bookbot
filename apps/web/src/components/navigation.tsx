@@ -3,7 +3,18 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Library, LogIn, MessageSquareText, ShieldCheck, UploadCloud, UserRound, UserPlus, BookOpenText } from "lucide-react";
+import {
+  BarChart3,
+  BookMarked,
+  Library,
+  LogIn,
+  MessageSquareText,
+  ShieldCheck,
+  UploadCloud,
+  UserRound,
+  UserPlus,
+  BookOpenText
+} from "lucide-react";
 import { clsx } from "clsx";
 import { ThemeToggle } from "./theme-toggle";
 import { LanguageToggle } from "./language-toggle";
@@ -13,6 +24,7 @@ import { useT, type StringKey } from "@/lib/i18n";
 
 const baseNavItems: { href: string; key: StringKey; icon: typeof Library }[] = [
   { href: "/", key: "nav.ask", icon: MessageSquareText },
+  { href: "/my-books", key: "nav.myBooks", icon: BookMarked },
   { href: "/library", key: "nav.library", icon: Library }
 ];
 
