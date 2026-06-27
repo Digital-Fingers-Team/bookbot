@@ -49,7 +49,15 @@ const schema = z.object({
   // Press path inside OMP ("index" = site-wide; otherwise the press's path).
   OMP_CONTEXT_PATH: z.string().default("index"),
   // API token generated in OMP (admin Profile → API Key). Optional until set.
-  OMP_API_TOKEN: z.string().optional()
+  OMP_API_TOKEN: z.string().optional(),
+  // Secret used to encrypt the OMP password we store per user (AES-256-GCM).
+  OMP_USER_SECRET: z.string().min(16).default("change-me-omp-user-secret-key"),
+  // Shared secret for signing one-time SSO login tokens handed to OMP's
+  // token-login handler. MUST match `bookbot_sso_secret` in OMP's config.
+  OMP_SSO_SECRET: z.string().min(16).default("change-me-omp-sso-shared-secret"),
+  // Default country (ISO) used when registering an OMP author for users whose
+  // country we don't collect in bookbot.
+  OMP_DEFAULT_COUNTRY: z.string().length(2).default("EG")
 });
 
 export const env = schema.parse(process.env);

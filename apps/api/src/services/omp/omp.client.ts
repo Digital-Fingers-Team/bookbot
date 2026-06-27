@@ -127,3 +127,105 @@ export async function fetchOmpCatalog(params: { count?: number } = {}): Promise<
   const items = (data.items ?? []).map(mapSubmission);
   return { configured: true, itemsCount: items.length, items };
 }
+
+// --- Author account provisioning ---------------------------------------------
+// OMP 3.5's REST API is read-only for users (GET/HEAD), so we create the author
+// through OMP's own public registration form. This runs OMP's native logic
+// (password hashing, role bootstrap); the Author role is then granted
+// automatically the first time the user starts a submission.
+
+const webPath = (suffix: string): string => `${env.OMP_BASE_URL}/index.php/${env.OMP_CONTEXT_PATH}/${suffix}`;
+
+/** Parse the csrfToken hidden input out of an OMP page. */
+function extractCsrf(html: string): string | null {
+  return html.match(/name="csrfToken"\s+value="([^"]+)"/)?.[1] ?? null;
+}
+
+/** Build a `Cookie` header (name=value pairs) from a Set-Cookie list. */
+function cookieHeader(setCookies: string[]): string {
+  return setCookies.map((c) => c.split(";")[0]).join("; ");
+}
+
+export interface OmpRegistrationInput {
+  username: string;
+  email: string;
+  givenName: string;
+  familyName: string;
+  password: string;
+  affiliation?: string;
+  country?: string;
+}
+
+export interface OmpRegistrationResult {
+  ok: boolean;
+  /** Present when ok: the new OMP user id resolved by email lookup. */
+  ompUserId?: number;
+  /** Present when !ok: a short reason (e.g. validation failure). */
+  reason?: string;
+}
+
+/**
+ * Register a new author in OMP via the public registration form.
+ * Returns ok=false (rather than throwing) for expected validation failures
+ * such as a taken username, so callers can retry with a different username.
+ */
+export async function registerOmpAuthor(input: OmpRegistrationInput): Promise<OmpRegistrationResult> {
+  // 1) GET the register page to obtain a session cookie + CSRF token.
+  const pageRes = await fetch(webPath("user/register"), { signal: withTimeout(DEFAULT_TIMEOUT_MS) });
+  const cookies = cookieHeader(pageRes.headers.getSetCookie());
+  const csrf = extractCsrf(await pageRes.text());
+  if (!csrf || !cookies) {
+    return { ok: false, reason: "Could not obtain a registration session from OMP." };
+  }
+
+  // 2) POST the registration with the same session.
+  const body = new URLSearchParams({
+    csrfToken: csrf,
+    username: input.username,
+    email: input.email,
+    givenName: input.givenName,
+    familyName: input.familyName,
+    affiliation: input.affiliation ?? "",
+    country: input.country ?? env.OMP_DEFAULT_COUNTRY,
+    password: input.password,
+    password2: input.password,
+    privacyConsent: "1",
+    emailConsent: "1"
+  });
+
+  const regRes = await fetch(webPath("user/register"), {
+    method: "POST",
+    redirect: "manual",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Cookie: cookies },
+    body,
+    signal: withTimeout(DEFAULT_TIMEOUT_MS)
+  });
+
+  // OMP redirects (302) on success and re-renders the form (200) on validation error.
+  if (regRes.status !== 302) {
+    return { ok: false, reason: "OMP rejected the registration (username may be taken or fields invalid)." };
+  }
+
+  // 3) Resolve the new user's id by exact email match via the read API.
+  const ompUserId = await findOmpUserIdByEmail(input.email);
+  if (!ompUserId) {
+    return { ok: false, reason: "Registration succeeded but the new OMP user could not be resolved." };
+  }
+  return { ok: true, ompUserId };
+}
+
+interface RawOmpUser {
+  id: number;
+  email: string;
+}
+
+/** Look up an OMP user id by exact (case-insensitive) email. */
+export async function findOmpUserIdByEmail(email: string): Promise<number | null> {
+  const res = await ompFetch(apiPath(`users?searchPhrase=${encodeURIComponent(email)}&count=10`));
+  if (!res.ok) {
+    return null;
+  }
+  const data = (await res.json()) as { items?: RawOmpUser[] };
+  const match = (data.items ?? []).find((u) => u.email?.toLowerCase() === email.toLowerCase());
+  return match?.id ?? null;
+}
