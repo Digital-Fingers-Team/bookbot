@@ -33,13 +33,14 @@ function withTimeout(ms: number): AbortSignal {
   return AbortSignal.timeout(ms);
 }
 
-/** Low-level call to the OMP REST API, attaching the token + JSON headers. */
+/** Low-level call to the OMP REST API. OMP reads the token from the
+ *  `apiToken` query parameter (not an Authorization header). */
 async function ompFetch(path: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<Response> {
-  const headers: Record<string, string> = { Accept: "application/json" };
+  const url = new URL(`${env.OMP_BASE_URL}${path}`);
   if (env.OMP_API_TOKEN) {
-    headers.Authorization = `Bearer ${env.OMP_API_TOKEN}`;
+    url.searchParams.set("apiToken", env.OMP_API_TOKEN);
   }
-  return fetch(`${env.OMP_BASE_URL}${path}`, { headers, signal: withTimeout(timeoutMs) });
+  return fetch(url, { headers: { Accept: "application/json" }, signal: withTimeout(timeoutMs) });
 }
 
 function apiPath(suffix: string): string {
