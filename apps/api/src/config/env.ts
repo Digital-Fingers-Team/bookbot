@@ -42,7 +42,14 @@ const schema = z.object({
   PROCESSING_CONCURRENCY: z.coerce.number().int().positive().max(8).default(2),
   PDF_STORAGE_DIR: z.string().default("storage/pdfs"),
   UPLOAD_MAX_MB: z.coerce.number().int().positive().default(25),
-  UPLOAD_MAX_FILES: z.coerce.number().int().positive().default(10)
+  UPLOAD_MAX_FILES: z.coerce.number().int().positive().default(10),
+  // --- OMP (Open Monograph Press) integration ---
+  // Base URL of the OMP install whose catalog/API we read from.
+  OMP_BASE_URL: z.string().url().default("http://localhost:8091"),
+  // Press path inside OMP ("index" = site-wide; otherwise the press's path).
+  OMP_CONTEXT_PATH: z.string().default("index"),
+  // API token generated in OMP (admin Profile → API Key). Optional until set.
+  OMP_API_TOKEN: z.string().optional()
 });
 
 export const env = schema.parse(process.env);

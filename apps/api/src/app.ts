@@ -9,6 +9,7 @@ import { booksRouter } from "./routes/books.routes.js";
 import { chatRouter } from "./routes/chat.routes.js";
 import { conversationsRouter } from "./routes/conversations.routes.js";
 import { feedbackRouter } from "./routes/feedback.routes.js";
+import { ompRouter } from "./routes/omp.routes.js";
 import { statsRouter } from "./routes/stats.routes.js";
 import { uploadRouter } from "./routes/upload.routes.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware.js";
@@ -45,6 +46,7 @@ export function createApp(): Express {
   app.use("/api/conversations", conversationsRouter);
   app.use("/api/feedback", feedbackRouter);
   app.use("/api/stats", statsRouter);
+  app.use("/api/omp", ompRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
