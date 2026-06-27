@@ -108,6 +108,13 @@
 - بعد أي تعديل PHP: `docker compose build omp-app && up -d` + مسح `omp/cache/*.php` (opcache validate_timestamps=0).
 - [x] مرحلة 3 — واجهة الويب ✅ (قسم "النشر مع آرادو" في صفحة الإعدادات: زرار تفعيل
       → زرار "ادخل على منصة النشر"؛ عربي/إنجليزي؛ typecheck + الصفحة بتخدم 200)
-- [ ] مرحلة 4 — تشطيب وتوثيق
+- [x] مرحلة 4 — تشطيب وتوثيق ✅ (.env.example محدّث؛ SETUP.md بتاع OMP فيه تحذير
+      api_key_secret + قسم SSO؛ معالجة أخطاء: يوزر OMP موجود/username متكرر/OMP غير واصل)
+
+### ⚠️ Gotcha مهم اتكشف (موثّق في omp/SETUP.md)
+إعادة بناء image OMP (`--build`) بتمسح `[security] api_key_secret` لو مش متظبّط في
+`config.inc.php` بتاع الهوست → كل التوكنات بتبطل (رسالة "site administrator has not
+configured a secret key"). الحل: السر متظبّط دلوقتي في host config (يفضل عبر الـrebuilds)،
+وOMP_API_TOKEN في bookbot `.env` موقّع بنفسه. **مهم:** config.inc.php و.env مش في git.
 
 **القاعدة:** ما نخلّص مرحلة (DoD + commit) حتى ندخل اللي بعدها. نحدّث السجل ده كل مرة.
