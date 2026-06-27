@@ -102,6 +102,8 @@ export async function activateAuthorAccount(userId: string): Promise<OmpAuthorLi
   const password = generatePassword();
 
   // Try a few usernames in case of a collision with an existing account.
+  // Retry ONLY when OMP rejected the form (created=false) — never after a
+  // success, which would create a duplicate.
   const base = usernameBase(email);
   let lastReason = "Registration failed.";
   for (let attempt = 0; attempt < 4; attempt++) {
@@ -115,8 +117,14 @@ export async function activateAuthorAccount(userId: string): Promise<OmpAuthorLi
       affiliation: "Arado"
     });
 
-    if (result.ok && result.ompUserId) {
-      user.ompUserId = result.ompUserId;
+    if (result.created) {
+      // The OMP account now exists. Persist the link; the id should resolve,
+      // but a successful registration must not fall through to a retry.
+      const ompUserId = result.ompUserId ?? (await findOmpUserIdByEmail(email));
+      if (!ompUserId) {
+        throw new ApiError(502, "OMP_USER_UNRESOLVED", "Your OMP account was created but could not be linked. Please try opening OMP again shortly.");
+      }
+      user.ompUserId = ompUserId;
       user.ompUsername = username;
       user.ompPasswordEnc = sealSecret(password);
       user.ompLinkedAt = new Date();

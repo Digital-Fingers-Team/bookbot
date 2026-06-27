@@ -157,17 +157,23 @@ export interface OmpRegistrationInput {
 }
 
 export interface OmpRegistrationResult {
-  ok: boolean;
-  /** Present when ok: the new OMP user id resolved by email lookup. */
+  /** True once OMP accepted the registration (the user now exists). */
+  created: boolean;
+  /** The new OMP user id, resolved by email lookup. */
   ompUserId?: number;
-  /** Present when !ok: a short reason (e.g. validation failure). */
+  /** Present when !created: why OMP rejected it (e.g. a taken username). */
   reason?: string;
 }
 
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
  * Register a new author in OMP via the public registration form.
- * Returns ok=false (rather than throwing) for expected validation failures
- * such as a taken username, so callers can retry with a different username.
+ *
+ * `created` distinguishes "OMP accepted it" (302) from a rejected form (a taken
+ * username), so callers retry registration ONLY when it was rejected — never
+ * after a success (which would duplicate the email). OMP's user search is
+ * eventually consistent, so the id lookup is retried briefly.
  */
 export async function registerOmpAuthor(input: OmpRegistrationInput): Promise<OmpRegistrationResult> {
   // 1) GET the register page to obtain a session cookie + CSRF token.
@@ -175,7 +181,7 @@ export async function registerOmpAuthor(input: OmpRegistrationInput): Promise<Om
   const cookies = cookieHeader(pageRes.headers.getSetCookie());
   const csrf = extractCsrf(await pageRes.text());
   if (!csrf || !cookies) {
-    return { ok: false, reason: "Could not obtain a registration session from OMP." };
+    return { created: false, reason: "Could not obtain a registration session from OMP." };
   }
 
   // 2) POST the registration with the same session.
@@ -203,15 +209,24 @@ export async function registerOmpAuthor(input: OmpRegistrationInput): Promise<Om
 
   // OMP redirects (302) on success and re-renders the form (200) on validation error.
   if (regRes.status !== 302) {
-    return { ok: false, reason: "OMP rejected the registration (username may be taken or fields invalid)." };
+    return { created: false, reason: "OMP rejected the registration (username may be taken or fields invalid)." };
   }
 
-  // 3) Resolve the new user's id by exact email match via the read API.
-  const ompUserId = await findOmpUserIdByEmail(input.email);
-  if (!ompUserId) {
-    return { ok: false, reason: "Registration succeeded but the new OMP user could not be resolved." };
+  // 3) Resolve the new user's id by exact email match (search is eventually consistent).
+  const ompUserId = await resolveOmpUserId(input.email);
+  return { created: true, ompUserId };
+}
+
+/** Resolve a user id by email, retrying to absorb OMP's search-index lag. */
+async function resolveOmpUserId(email: string, attempts = 4): Promise<number | undefined> {
+  for (let i = 0; i < attempts; i++) {
+    const id = await findOmpUserIdByEmail(email);
+    if (id) {
+      return id;
+    }
+    await sleep(400 * (i + 1));
   }
-  return { ok: true, ompUserId };
+  return undefined;
 }
 
 interface RawOmpUser {
