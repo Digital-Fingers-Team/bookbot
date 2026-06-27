@@ -326,6 +326,25 @@ export function getStats(token?: string) {
   return request<Stats>("/api/stats", { token });
 }
 
+export type OmpAuthorLink = {
+  linked: boolean;
+  ompUserId?: number;
+  ompUsername?: string;
+  linkedAt?: string;
+};
+
+export function getOmpAuthorAccount(token: string) {
+  return request<OmpAuthorLink>("/api/omp/author-account", { token });
+}
+
+export function activateOmpAuthorAccount(token: string) {
+  return request<OmpAuthorLink>("/api/omp/author-account", { method: "POST", token });
+}
+
+export function getOmpLoginLink(token: string) {
+  return request<{ url: string }>("/api/omp/login-link", { method: "POST", token });
+}
+
 export function sendFeedback(input: { vote: "up" | "down"; note?: string; question?: string; answer?: string }) {
   return request<{ received: true }>("/api/feedback", { method: "POST", body: input });
 }

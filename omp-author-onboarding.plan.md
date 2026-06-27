@@ -106,7 +106,8 @@
   - `versions`: صف لـ `bookbotSso`/`BookbotSsoPlugin` (plugins.generic, current=1).
   - `plugin_settings`: `bookbotssoplugin`, context_id=1, enabled=1.
 - بعد أي تعديل PHP: `docker compose build omp-app && up -d` + مسح `omp/cache/*.php` (opcache validate_timestamps=0).
-- [ ] مرحلة 3 — واجهة الويب
+- [x] مرحلة 3 — واجهة الويب ✅ (قسم "النشر مع آرادو" في صفحة الإعدادات: زرار تفعيل
+      → زرار "ادخل على منصة النشر"؛ عربي/إنجليزي؛ typecheck + الصفحة بتخدم 200)
 - [ ] مرحلة 4 — تشطيب وتوثيق
 
 **القاعدة:** ما نخلّص مرحلة (DoD + commit) حتى ندخل اللي بعدها. نحدّث السجل ده كل مرة.

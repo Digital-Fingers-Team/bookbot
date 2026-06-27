@@ -2,9 +2,16 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, CheckCircle2, KeyRound, Loader2, LogOut, ShieldCheck, UserRound } from "lucide-react";
+import { AlertCircle, BookOpen, CheckCircle2, ExternalLink, KeyRound, Loader2, LogOut, ShieldCheck, UserRound } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { ApiClientError, changePassword } from "@/lib/api";
+import {
+  ApiClientError,
+  activateOmpAuthorAccount,
+  changePassword,
+  getOmpAuthorAccount,
+  getOmpLoginLink,
+  type OmpAuthorLink
+} from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
 const inputClass =
@@ -202,7 +209,116 @@ export default function SettingsPage() {
           </form>
         </SectionCard>
       </div>
+
+      <OmpPublishingCard token={token} />
     </div>
+  );
+}
+
+function OmpPublishingCard({ token }: { token: string | null }) {
+  const t = useT();
+  const [link, setLink] = useState<OmpAuthorLink | null>(null);
+  const [loadingLink, setLoadingLink] = useState(true);
+  const [activating, setActivating] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+    let active = true;
+    getOmpAuthorAccount(token)
+      .then((result) => {
+        if (active) {
+          setLink(result);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setLink({ linked: false });
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoadingLink(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [token]);
+
+  async function activate() {
+    if (!token || activating) {
+      return;
+    }
+    setActivating(true);
+    setError("");
+    try {
+      setLink(await activateOmpAuthorAccount(token));
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : t("omp.activateError"));
+    } finally {
+      setActivating(false);
+    }
+  }
+
+  async function openOmp() {
+    if (!token || opening) {
+      return;
+    }
+    setOpening(true);
+    setError("");
+    try {
+      const { url } = await getOmpLoginLink(token);
+      window.open(url, "_blank", "noopener");
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : t("omp.openError"));
+    } finally {
+      setOpening(false);
+    }
+  }
+
+  return (
+    <SectionCard icon={BookOpen} title={t("omp.title")} description={t("omp.desc")}>
+      {error ? (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>{error}</p>
+        </div>
+      ) : null}
+
+      {loadingLink ? (
+        <div className="flex items-center gap-3 text-sm font-medium text-ink/60 dark:text-white/60">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          {t("set.loadingProfile")}
+        </div>
+      ) : link?.linked ? (
+        <div className="space-y-4">
+          <StatusMessage>{t("omp.linked")}</StatusMessage>
+          <button
+            type="button"
+            onClick={openOmp}
+            disabled={opening}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {opening ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
+            {opening ? t("omp.opening") : t("omp.enter")}
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={activate}
+          disabled={activating}
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {activating ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />}
+          {activating ? t("omp.activating") : t("omp.activate")}
+        </button>
+      )}
+    </SectionCard>
   );
 }
 
