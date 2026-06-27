@@ -232,15 +232,26 @@ async function resolveOmpUserId(email: string, attempts = 4): Promise<number | u
 interface RawOmpUser {
   id: number;
   email: string;
+  userName?: string;
 }
 
-/** Look up an OMP user id by exact (case-insensitive) email. */
-export async function findOmpUserIdByEmail(email: string): Promise<number | null> {
+export interface OmpUserRef {
+  id: number;
+  userName?: string;
+}
+
+/** Look up an OMP user (id + username) by exact (case-insensitive) email. */
+export async function findOmpUserByEmail(email: string): Promise<OmpUserRef | null> {
   const res = await ompFetch(apiPath(`users?searchPhrase=${encodeURIComponent(email)}&count=10`));
   if (!res.ok) {
     return null;
   }
   const data = (await res.json()) as { items?: RawOmpUser[] };
   const match = (data.items ?? []).find((u) => u.email?.toLowerCase() === email.toLowerCase());
-  return match?.id ?? null;
+  return match ? { id: match.id, userName: match.userName } : null;
+}
+
+/** Convenience: just the id. */
+export async function findOmpUserIdByEmail(email: string): Promise<number | null> {
+  return (await findOmpUserByEmail(email))?.id ?? null;
 }

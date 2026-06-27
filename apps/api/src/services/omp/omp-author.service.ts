@@ -3,7 +3,7 @@ import { env } from "../../config/env.js";
 import { User } from "../../models/user.model.js";
 import { ApiError } from "../../utils/api-error.js";
 import { sealSecret } from "../../utils/secret-box.js";
-import { findOmpUserIdByEmail, registerOmpAuthor } from "./omp.client.js";
+import { findOmpUserByEmail, findOmpUserIdByEmail, registerOmpAuthor } from "./omp.client.js";
 
 /** Seconds an SSO login token stays valid. Kept short — it's a one-shot launch. */
 const SSO_TOKEN_TTL_SECONDS = 120;
@@ -86,15 +86,16 @@ export async function activateAuthorAccount(userId: string): Promise<OmpAuthorLi
 
   const email = user.email.toLowerCase();
 
-  // If an OMP user already exists for this email (e.g. created before linking),
-  // we cannot recover its password — surface a clear, actionable error.
-  const existingId = await findOmpUserIdByEmail(email);
-  if (existingId) {
-    throw new ApiError(
-      409,
-      "OMP_USER_EXISTS",
-      "An OMP account already uses this email. Ask an admin to link it, or sign in to OMP directly."
-    );
+  // If an OMP account already exists for this email (e.g. created in an earlier
+  // attempt, or registered directly in OMP), link it instead of failing. SSO
+  // login is id-based and needs no password, so we just record the id.
+  const existing = await findOmpUserByEmail(email);
+  if (existing) {
+    user.ompUserId = existing.id;
+    user.ompUsername = existing.userName ?? user.ompUsername;
+    user.ompLinkedAt = new Date();
+    await user.save();
+    return toLink(user);
   }
 
   const [givenName, ...rest] = user.name.trim().split(/\s+/);
