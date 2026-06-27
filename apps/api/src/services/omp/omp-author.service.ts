@@ -25,7 +25,15 @@ export async function buildOmpLoginUrl(userId: string): Promise<string> {
     throw new ApiError(409, "OMP_NOT_LINKED", "Activate your author account before opening OMP.");
   }
 
-  const payload = b64url(JSON.stringify({ uid: user.ompUserId, exp: Math.floor(Date.now() / 1000) + SSO_TOKEN_TTL_SECONDS }));
+  const claims: { uid: number; exp: number; adm?: 1 } = {
+    uid: user.ompUserId,
+    exp: Math.floor(Date.now() / 1000) + SSO_TOKEN_TTL_SECONDS
+  };
+  // bookbot admins get OMP admin roles (site admin + press manager) on login.
+  if (user.role === "admin") {
+    claims.adm = 1;
+  }
+  const payload = b64url(JSON.stringify(claims));
   const sig = b64url(createHmac("sha256", env.OMP_SSO_SECRET).update(payload).digest());
   const token = `${payload}.${sig}`;
   return `${env.OMP_BASE_URL}/index.php/${env.OMP_CONTEXT_PATH}/bbsso/login?token=${token}`;
