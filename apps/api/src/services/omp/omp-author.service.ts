@@ -1,8 +1,35 @@
-import { randomBytes } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
+import { env } from "../../config/env.js";
 import { User } from "../../models/user.model.js";
 import { ApiError } from "../../utils/api-error.js";
 import { sealSecret } from "../../utils/secret-box.js";
 import { findOmpUserIdByEmail, registerOmpAuthor } from "./omp.client.js";
+
+/** Seconds an SSO login token stays valid. Kept short — it's a one-shot launch. */
+const SSO_TOKEN_TTL_SECONDS = 120;
+
+const b64url = (input: Buffer | string): string =>
+  Buffer.from(input).toString("base64url");
+
+/**
+ * Build a signed auto-login URL into OMP for a linked user. The bookbotSso
+ * plugin in OMP verifies the HMAC + expiry, opens a session, and grants the
+ * Author role. Token = base64url(JSON{uid,exp}) "." base64url(HMAC-SHA256).
+ */
+export async function buildOmpLoginUrl(userId: string): Promise<string> {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(401, "UNAUTHORIZED", "Your session is no longer valid.");
+  }
+  if (!user.ompUserId) {
+    throw new ApiError(409, "OMP_NOT_LINKED", "Activate your author account before opening OMP.");
+  }
+
+  const payload = b64url(JSON.stringify({ uid: user.ompUserId, exp: Math.floor(Date.now() / 1000) + SSO_TOKEN_TTL_SECONDS }));
+  const sig = b64url(createHmac("sha256", env.OMP_SSO_SECRET).update(payload).digest());
+  const token = `${payload}.${sig}`;
+  return `${env.OMP_BASE_URL}/index.php/${env.OMP_CONTEXT_PATH}/bbsso/login?token=${token}`;
+}
 
 export interface OmpAuthorLink {
   linked: boolean;

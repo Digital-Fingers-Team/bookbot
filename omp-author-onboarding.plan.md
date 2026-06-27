@@ -94,7 +94,18 @@
 ## سجل التقدّم
 - [x] مرحلة 0 — تحقق من API إنشاء اليوزر
 - [x] مرحلة 1 — backend إنشاء الحساب ✅ (مُتحقّق حيّ: أنشأ OMP user id=3 من زرار bookbot، idempotent)
-- [ ] مرحلة 2 — auto-login (token-login handler في OMP)
+- [x] مرحلة 2 — auto-login عبر bookbotSso plugin في OMP ✅ (مُتحقّق حيّ end-to-end:
+      `/api/omp/login-link` → جلسة OMP → dashboard 200؛ دور Author بيتسند تلقائياً؛
+      التوكن المتلاعب فيه/المنتهي مرفوض)
+
+#### تفاصيل تشغيل مرحلة 2 (مهمة للإعادة على بيئة جديدة)
+- plugin: `omp/plugins/generic/bookbotSso/` (BookbotSsoPlugin + BookbotSsoHandler).
+  بيوجّه `/<context>/bbsso/login?token=...`، يتحقق HMAC+exp، يفتح جلسة، يضمن دور Author.
+- السر المشترك: `[bookbot] sso_secret` في `omp/config.inc.php` = `OMP_SSO_SECRET` في bookbot `.env`.
+- تفعيل الـplugin (DB، مش في git — لازم يتعاد على بيئة جديدة):
+  - `versions`: صف لـ `bookbotSso`/`BookbotSsoPlugin` (plugins.generic, current=1).
+  - `plugin_settings`: `bookbotssoplugin`, context_id=1, enabled=1.
+- بعد أي تعديل PHP: `docker compose build omp-app && up -d` + مسح `omp/cache/*.php` (opcache validate_timestamps=0).
 - [ ] مرحلة 3 — واجهة الويب
 - [ ] مرحلة 4 — تشطيب وتوثيق
 

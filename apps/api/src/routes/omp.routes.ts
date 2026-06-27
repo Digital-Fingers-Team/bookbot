@@ -3,7 +3,7 @@ import { requireAuth } from "../middleware/auth.middleware.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { checkOmpHealth, fetchOmpCatalog } from "../services/omp/omp.client.js";
-import { activateAuthorAccount, getAuthorLink } from "../services/omp/omp-author.service.js";
+import { activateAuthorAccount, buildOmpLoginUrl, getAuthorLink } from "../services/omp/omp-author.service.js";
 
 export const ompRouter: ExpressRouter = Router();
 
@@ -51,5 +51,14 @@ ompRouter.post(
   asyncHandler(async (req, res) => {
     const link = await activateAuthorAccount(requireUserId(req));
     res.status(link.linkedAt ? 201 : 200).json(link);
+  })
+);
+
+/** Build a one-time auto-login URL into OMP for the current user. */
+ompRouter.post(
+  "/login-link",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    res.json({ url: await buildOmpLoginUrl(requireUserId(req)) });
   })
 );
