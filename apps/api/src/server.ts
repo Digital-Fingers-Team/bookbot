@@ -2,11 +2,13 @@ import { createApp } from "./app.js";
 import { connectDatabase } from "./config/database.js";
 import { env } from "./config/env.js";
 import { seedDefaultAdmin } from "./services/auth/auth.service.js";
+import { seedDefaultCategories } from "./models/category.model.js";
 import { failStaleProcessingBooks } from "./services/ingestion/ingestion.service.js";
 
 async function bootstrap() {
   await connectDatabase();
   await seedDefaultAdmin();
+  await seedDefaultCategories();
   await failStaleProcessingBooks();
   const app = createApp();
 

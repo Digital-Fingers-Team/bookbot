@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { BookCover } from "@/components/book-cover";
-import { ApiClientError, deleteBook, getStats, listBooks, setFavorite, updateBook } from "@/lib/api";
+import { ApiClientError, addCategory, deleteBook, getCategories, getStats, listBooks, setFavorite, updateBook } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
 import { useT, type StringKey } from "@/lib/i18n";
 
@@ -53,6 +53,8 @@ export default function LibraryPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sort, setSort] = useState<SortKey>("recent");
   const [view, setView] = useState<ViewMode>("grid");
+  const [categoryList, setCategoryList] = useState<string[]>([]);
+  const [pickerBook, setPickerBook] = useState<Book | null>(null);
 
   const refresh = useCallback(async () => {
     if (!token) {
@@ -63,9 +65,14 @@ export default function LibraryPage() {
     setError("");
 
     try {
-      const [bookResult, statsResult] = await Promise.all([listBooks(token), isAdmin ? getStats(token) : Promise.resolve(null)]);
+      const [bookResult, statsResult, catResult] = await Promise.all([
+        listBooks(token),
+        isAdmin ? getStats(token) : Promise.resolve(null),
+        getCategories(token).catch(() => ({ categories: [] }))
+      ]);
       setBooks(bookResult.books);
       setStats(statsResult);
+      setCategoryList(catResult.categories);
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : t("lib.loadError"));
     } finally {
@@ -123,17 +130,40 @@ export default function LibraryPage() {
     }
   }
 
-  async function setCategory(book: Book) {
-    const next = window.prompt(t("lib.categoryPrompt"), book.category ?? "");
-    if (next === null) {
+  function setCategory(book: Book) {
+    // Open the category picker (managed list + add new) instead of a free prompt.
+    setPickerBook(book);
+  }
+
+  // Assign a category to the picker's book (empty string clears it).
+  async function assignCategory(category: string) {
+    const book = pickerBook;
+    if (!book) {
+      return;
+    }
+    setBooks((prev) => prev.map((item) => (item.id === book.id ? { ...item, category } : item)));
+    setPickerBook(null);
+    try {
+      await updateBook(book.id, { category }, token);
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : t("lib.deleteError"));
+      await refresh();
+    }
+  }
+
+  // Add a new category to the managed list, then select it for the book.
+  async function createAndAssignCategory(name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) {
       return;
     }
     try {
-      await updateBook(book.id, { category: next.trim() }, token);
-      await refresh();
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t("lib.deleteError"));
+      const result = await addCategory(trimmed, token);
+      setCategoryList(result.categories);
+    } catch {
+      // Even if the list call fails, still try to assign the typed value.
     }
+    await assignCategory(trimmed);
   }
 
   async function setAuthor(book: Book) {
@@ -185,14 +215,14 @@ export default function LibraryPage() {
   );
 
   const categories = useMemo(() => {
-    const set = new Set<string>();
+    const set = new Set<string>(categoryList);
     for (const book of books) {
       if (book.category) {
         set.add(book.category);
       }
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [books]);
+  }, [books, categoryList]);
 
   const visibleBooks = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -458,6 +488,16 @@ export default function LibraryPage() {
           }}
         />
       )}
+
+      {pickerBook ? (
+        <CategoryPickerModal
+          book={pickerBook}
+          categories={categories}
+          onClose={() => setPickerBook(null)}
+          onSelect={assignCategory}
+          onCreate={createAndAssignCategory}
+        />
+      ) : null}
     </div>
   );
 }
@@ -788,6 +828,105 @@ function FeaturedToggle({ featured, onToggle, compact = false }: { featured: boo
     >
       <Sparkles className={`h-3 w-3 ${featured ? "fill-current" : ""}`} />
       {featured ? t("lib.featured") : t("lib.featureHome")}
+    </button>
+  );
+}
+
+function CategoryPickerModal({
+  book,
+  categories,
+  onClose,
+  onSelect,
+  onCreate
+}: {
+  book: Book;
+  categories: string[];
+  onClose: () => void;
+  onSelect: (category: string) => void;
+  onCreate: (name: string) => void;
+}) {
+  const t = useT();
+  const [newName, setNewName] = useState("");
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-[#0c0c0e]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-ink dark:text-white">{t("lib.category")}</h3>
+            <p dir="auto" className="truncate text-xs text-ink/45 dark:text-white/45">{book.title}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-ink/40 transition hover:bg-ink/5 hover:text-ink dark:text-white/40 dark:hover:bg-white/10"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="max-h-60 space-y-1 overflow-y-auto">
+          <CategoryOption label={t("lib.uncategorized")} active={!book.category} onClick={() => onSelect("")} />
+          {categories.map((category) => (
+            <CategoryOption
+              key={category}
+              label={category}
+              active={book.category === category}
+              onClick={() => onSelect(category)}
+            />
+          ))}
+        </div>
+
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            onCreate(newName);
+            setNewName("");
+          }}
+          className="mt-4 flex items-center gap-2 border-t border-line/70 pt-4 dark:border-white/10"
+        >
+          <input
+            value={newName}
+            onChange={(event) => setNewName(event.target.value)}
+            placeholder={t("lib.newCategory")}
+            maxLength={80}
+            className="h-9 flex-1 rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-white/5 dark:text-white"
+          />
+          <button
+            type="submit"
+            disabled={!newName.trim()}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-moss px-3 text-sm font-medium text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" />
+            {t("lib.add")}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function CategoryOption({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      dir="auto"
+      className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-start text-sm transition ${
+        active
+          ? "bg-moss/10 font-medium text-moss dark:bg-sea/15 dark:text-sea"
+          : "text-ink/70 hover:bg-ink/5 dark:text-white/70 dark:hover:bg-white/10"
+      }`}
+    >
+      <Tag className="h-3.5 w-3.5 shrink-0 opacity-70" />
+      {label}
     </button>
   );
 }

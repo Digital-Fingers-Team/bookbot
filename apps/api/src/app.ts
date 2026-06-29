@@ -6,6 +6,7 @@ import morgan from "morgan";
 import { env } from "./config/env.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { booksRouter } from "./routes/books.routes.js";
+import { categoriesRouter } from "./routes/categories.routes.js";
 import { chatRouter } from "./routes/chat.routes.js";
 import { conversationsRouter } from "./routes/conversations.routes.js";
 import { feedbackRouter } from "./routes/feedback.routes.js";
@@ -43,6 +44,7 @@ export function createApp(): Express {
   app.use("/api/upload", uploadRouter);
   app.use("/api/chat", chatRouter);
   app.use("/api/books", booksRouter);
+  app.use("/api/categories", categoriesRouter);
   app.use("/api/conversations", conversationsRouter);
   app.use("/api/feedback", feedbackRouter);
   app.use("/api/stats", statsRouter);

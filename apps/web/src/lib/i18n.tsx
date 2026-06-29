@@ -116,6 +116,8 @@ export const STRINGS = {
   "lib.category": { ar: "التصنيف", en: "Category" },
   "lib.allCategories": { ar: "كل التصنيفات", en: "All categories" },
   "lib.uncategorized": { ar: "غير مصنّف", en: "Uncategorized" },
+  "lib.newCategory": { ar: "تصنيف جديد…", en: "New category…" },
+  "lib.add": { ar: "إضافة", en: "Add" },
   "lib.addCategory": { ar: "إضافة تصنيف", en: "Add category" },
   "lib.featureHome": { ar: "تمييز للرئيسية", en: "Feature on home" },
   "lib.featured": { ar: "مميّز", en: "Featured" },

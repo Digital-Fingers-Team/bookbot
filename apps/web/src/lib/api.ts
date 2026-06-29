@@ -258,6 +258,14 @@ export function deleteBook(id: string, token?: string) {
   });
 }
 
+export function getCategories(token?: string) {
+  return request<{ categories: string[] }>("/api/categories", { token });
+}
+
+export function addCategory(name: string, token?: string) {
+  return request<{ categories: string[] }>("/api/categories", { method: "POST", body: { name }, token });
+}
+
 export function updateBook(id: string, patch: { category?: string; author?: string; featured?: boolean }, token?: string) {
   return request<{ id: string; category: string; author: string; featured: boolean }>(`/api/books/${id}`, {
     method: "PATCH",
