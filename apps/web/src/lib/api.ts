@@ -258,8 +258,8 @@ export function deleteBook(id: string, token?: string) {
   });
 }
 
-export function updateBook(id: string, patch: { category?: string; author?: string }, token?: string) {
-  return request<{ id: string; category: string; author: string }>(`/api/books/${id}`, {
+export function updateBook(id: string, patch: { category?: string; author?: string; featured?: boolean }, token?: string) {
+  return request<{ id: string; category: string; author: string; featured: boolean }>(`/api/books/${id}`, {
     method: "PATCH",
     body: patch,
     token

@@ -36,6 +36,7 @@ export type Book = {
   author: string;
   category: string;
   favorite?: boolean;
+  featured?: boolean;
   firstPageText: string;
 };
 

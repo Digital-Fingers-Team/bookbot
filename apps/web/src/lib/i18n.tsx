@@ -117,6 +117,8 @@ export const STRINGS = {
   "lib.allCategories": { ar: "كل التصنيفات", en: "All categories" },
   "lib.uncategorized": { ar: "غير مصنّف", en: "Uncategorized" },
   "lib.addCategory": { ar: "إضافة تصنيف", en: "Add category" },
+  "lib.featureHome": { ar: "تمييز للرئيسية", en: "Feature on home" },
+  "lib.featured": { ar: "مميّز", en: "Featured" },
   "lib.categoryPrompt": { ar: "أدخل التصنيف (اتركه فارغًا للإزالة):", en: "Enter a category (leave empty to remove):" },
   "lib.author": { ar: "المؤلف", en: "Author" },
   "lib.addAuthor": { ar: "إضافة مؤلف", en: "Add author" },

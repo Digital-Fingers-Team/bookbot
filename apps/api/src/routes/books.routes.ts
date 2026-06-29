@@ -22,7 +22,7 @@ booksRouter.get(
   asyncHandler(async (req, res) => {
     const books = await Book.find(
       {},
-      { title: 1, originalFileName: 1, createdAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, author: 1 }
+      { title: 1, originalFileName: 1, createdAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, author: 1, featured: 1 }
     )
       .sort({ createdAt: -1 })
       .lean();
@@ -55,6 +55,7 @@ booksRouter.get(
           author: book.author ?? "",
           category: book.category ?? "",
           favorite: favoriteIds.has(String(book._id)),
+          featured: Boolean(book.featured),
           firstPageText
         };
       })
@@ -72,14 +73,14 @@ booksRouter.get(
     const rawCount = Number(req.query.count);
     const count = Number.isFinite(rawCount) && rawCount > 0 ? Math.min(rawCount, 30) : 12;
     const books = await Book.find(
-      { status: "ready" },
+      { status: "ready", featured: true },
       { title: 1, originalFileName: 1, author: 1, createdAt: 1 }
     )
       .sort({ createdAt: -1 })
       .limit(count)
       .lean();
 
-    res.setHeader("Cache-Control", "public, max-age=300");
+    res.setHeader("Cache-Control", "public, max-age=60");
     res.json({
       books: books.map((book) => ({
         id: String(book._id),
@@ -302,12 +303,15 @@ booksRouter.patch(
       throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
     }
 
-    const update: { category?: string; author?: string } = {};
+    const update: { category?: string; author?: string; featured?: boolean } = {};
     if (typeof req.body?.category === "string") {
       update.category = req.body.category.trim().slice(0, 80);
     }
     if (typeof req.body?.author === "string") {
       update.author = req.body.author.trim().slice(0, 120);
+    }
+    if (typeof req.body?.featured === "boolean") {
+      update.featured = req.body.featured;
     }
     if (Object.keys(update).length === 0) {
       throw new ApiError(400, "INVALID_BOOK_UPDATE", "Nothing to update.");
@@ -318,7 +322,7 @@ booksRouter.patch(
       throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
     }
 
-    res.json({ id: String(book._id), category: book.category ?? "", author: book.author ?? "" });
+    res.json({ id: String(book._id), category: book.category ?? "", author: book.author ?? "", featured: Boolean(book.featured) });
   })
 );
 

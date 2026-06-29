@@ -24,6 +24,8 @@ const bookSchema = new Schema(
     error: { type: String, trim: true },
     category: { type: String, trim: true, default: "" },
     author: { type: String, trim: true, default: "" },
+    // Curated by an admin to appear in the homepage showcase carousel.
+    featured: { type: Boolean, default: false, index: true },
     // --- OMP (Arado) push: mirrors the processed book into OMP as a submission ---
     ompSubmissionId: { type: Number },
     ompPushStatus: { type: String, enum: ["pending", "pushed", "failed"], index: true },

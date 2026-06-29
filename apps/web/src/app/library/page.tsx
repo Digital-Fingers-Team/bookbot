@@ -13,6 +13,7 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Sparkles,
   Tag,
   Trash2,
   User,
@@ -159,6 +160,17 @@ export default function LibraryPage() {
       await setFavorite(book.id, next, token);
     } catch {
       setBooks((prev) => prev.map((item) => (item.id === book.id ? { ...item, favorite: !next } : item)));
+    }
+  }
+
+  // Admin-only: curate which books appear in the homepage showcase carousel.
+  async function toggleFeatured(book: Book) {
+    const next = !book.featured;
+    setBooks((prev) => prev.map((item) => (item.id === book.id ? { ...item, featured: next } : item)));
+    try {
+      await updateBook(book.id, { featured: next }, token);
+    } catch {
+      setBooks((prev) => prev.map((item) => (item.id === book.id ? { ...item, featured: !next } : item)));
     }
   }
 
@@ -412,6 +424,7 @@ export default function LibraryPage() {
                   onSetCategory={() => setCategory(book)}
                   onSetAuthor={() => setAuthor(book)}
                   onToggleFavorite={() => toggleFavorite(book)}
+                  onToggleFeatured={() => toggleFeatured(book)}
                 />
               ))}
             </div>
@@ -428,6 +441,7 @@ export default function LibraryPage() {
                   onSetCategory={() => setCategory(book)}
                   onSetAuthor={() => setAuthor(book)}
                   onToggleFavorite={() => toggleFavorite(book)}
+                  onToggleFeatured={() => toggleFeatured(book)}
                 />
               ))}
             </div>
@@ -484,7 +498,8 @@ function BookCard({
   onDelete,
   onSetCategory,
   onSetAuthor,
-  onToggleFavorite
+  onToggleFavorite,
+  onToggleFeatured
 }: {
   book: Book;
   isAdmin: boolean;
@@ -494,6 +509,7 @@ function BookCard({
   onSetCategory: () => void;
   onSetAuthor: () => void;
   onToggleFavorite: () => void;
+  onToggleFeatured: () => void;
 }) {
   const t = useT();
   return (
@@ -563,6 +579,7 @@ function BookCard({
             isAdmin={isAdmin}
             onEdit={onSetCategory}
           />
+          {isAdmin ? <FeaturedToggle featured={Boolean(book.featured)} onToggle={onToggleFeatured} /> : null}
         </div>
 
         <div className="mt-auto flex items-center justify-between border-t border-line/70 pt-3 dark:border-white/10">
@@ -587,7 +604,8 @@ function BookRow({
   onDelete,
   onSetCategory,
   onSetAuthor,
-  onToggleFavorite
+  onToggleFavorite,
+  onToggleFeatured
 }: {
   book: Book;
   isAdmin: boolean;
@@ -597,6 +615,7 @@ function BookRow({
   onSetCategory: () => void;
   onSetAuthor: () => void;
   onToggleFavorite: () => void;
+  onToggleFeatured: () => void;
 }) {
   const t = useT();
   return (
@@ -648,6 +667,7 @@ function BookRow({
       <div className="hidden w-28 shrink-0 text-end text-xs text-ink/55 dark:text-white/55 md:block">
         {nf.format(book.chunkCount)} {t("lib.chunks")}
       </div>
+      {isAdmin ? <FeaturedToggle featured={Boolean(book.featured)} onToggle={onToggleFeatured} compact /> : null}
       <FavoriteButton favorite={Boolean(book.favorite)} onToggle={onToggleFavorite} />
       {isAdmin ? (
         <button
@@ -725,6 +745,49 @@ function FavoriteButton({ favorite, onToggle }: { favorite: boolean; onToggle: (
       }`}
     >
       <Heart className={`h-4 w-4 ${favorite ? "fill-current" : ""}`} />
+    </button>
+  );
+}
+
+// Admin control to feature a book in the homepage showcase carousel.
+function FeaturedToggle({ featured, onToggle, compact = false }: { featured: boolean; onToggle: () => void; compact?: boolean }) {
+  const t = useT();
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggle();
+        }}
+        aria-pressed={featured}
+        title={t("lib.featureHome")}
+        className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition ${
+          featured
+            ? "text-copper"
+            : "text-ink/40 hover:bg-copper/10 hover:text-copper dark:text-white/40"
+        }`}
+      >
+        <Sparkles className={`h-4 w-4 ${featured ? "fill-current" : ""}`} />
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        onToggle();
+      }}
+      aria-pressed={featured}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+        featured
+          ? "border-copper/30 bg-copper/10 text-copper"
+          : "border-dashed border-line text-ink/45 hover:border-copper/40 hover:text-copper dark:border-white/10 dark:text-white/45"
+      }`}
+    >
+      <Sparkles className={`h-3 w-3 ${featured ? "fill-current" : ""}`} />
+      {featured ? t("lib.featured") : t("lib.featureHome")}
     </button>
   );
 }
