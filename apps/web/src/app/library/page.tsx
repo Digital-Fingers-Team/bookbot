@@ -19,6 +19,7 @@ import {
   X
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
+import { BookCover } from "@/components/book-cover";
 import { ApiClientError, deleteBook, getStats, listBooks, setFavorite, updateBook } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
 import { useT, type StringKey } from "@/lib/i18n";
@@ -527,16 +528,13 @@ function BookCard({
             {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
           </button>
         ) : null}
-        <div className="mx-auto flex aspect-[3/4] max-h-64 w-full max-w-44 flex-col rounded-md border border-black/[0.06] bg-white p-5 shadow-[8px_12px_26px_rgba(24,24,27,0.12)] transition group-hover:-translate-y-0.5 dark:border-black/10 dark:bg-paper">
-          <div className="h-1.5 w-12 rounded-full bg-moss/70" />
-          <p dir="auto" className="mt-5 line-clamp-5 text-xs leading-5 text-ink/60">
-            {book.firstPageText || t("lib.previewFallback")}
-          </p>
-          <div className="mt-auto space-y-2">
-            <div className="h-1.5 w-full rounded bg-moss/15" />
-            <div className="h-1.5 w-2/3 rounded bg-moss/15" />
-          </div>
-        </div>
+        <BookCover
+          bookId={book.id}
+          ready={book.status === "ready"}
+          alt={book.title}
+          className="mx-auto aspect-[3/4] max-h-64 w-full max-w-44 overflow-hidden rounded-md border border-black/[0.06] bg-white shadow-[8px_12px_26px_rgba(24,24,27,0.12)] transition group-hover:-translate-y-0.5 dark:border-black/10 dark:bg-paper"
+          iconClassName="h-10 w-10"
+        />
       </div>
 
       <div className="flex flex-1 flex-col gap-3 p-4">
@@ -614,9 +612,13 @@ function BookRow({
       }}
       className="group flex cursor-pointer items-center gap-4 px-4 py-3.5 transition hover:bg-paper focus:outline-none focus:ring-2 focus:ring-inset focus:ring-moss/25 dark:hover:bg-white/[0.03]"
     >
-      <span className="flex h-12 w-9 shrink-0 items-center justify-center rounded border border-line bg-paper text-moss dark:border-white/10 dark:bg-white/5 dark:text-sea">
-        <BookOpenText className="h-4 w-4" />
-      </span>
+      <BookCover
+        bookId={book.id}
+        ready={book.status === "ready"}
+        alt={book.title}
+        className="h-12 w-9 shrink-0 overflow-hidden rounded border border-line dark:border-white/10"
+        iconClassName="h-4 w-4"
+      />
       <div className="min-w-0 flex-1">
         <p dir="auto" className="truncate text-sm font-semibold text-ink dark:text-white">{book.title}</p>
         <p className="truncate text-xs text-ink/45 dark:text-white/45">{book.originalFileName}</p>

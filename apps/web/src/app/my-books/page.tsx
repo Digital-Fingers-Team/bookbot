@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BookOpenText, Clock, Heart, Loader2 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
+import { BookCover } from "@/components/book-cover";
 import { getMyBooks, type MyBook } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
@@ -117,9 +118,13 @@ function MyBookCard({ book, showProgress = false }: { book: MyBook; showProgress
       className="group flex flex-col rounded-2xl border border-line bg-white p-4 transition hover:border-moss/30 hover:shadow-soft dark:border-white/10 dark:bg-[#0c0c0e]"
     >
       <div className="flex items-start gap-3">
-        <span className="flex h-12 w-9 shrink-0 items-center justify-center rounded border border-line bg-paper text-moss dark:border-white/10 dark:bg-white/5 dark:text-sea">
-          <BookOpenText className="h-4 w-4" />
-        </span>
+        <BookCover
+          bookId={book.id}
+          ready={book.status === "ready"}
+          alt={book.title}
+          className="h-16 w-12 shrink-0 overflow-hidden rounded border border-line dark:border-white/10"
+          iconClassName="h-4 w-4"
+        />
         <div className="min-w-0 flex-1">
           <h3 dir="auto" className="line-clamp-2 text-sm font-semibold leading-5 text-ink dark:text-white">
             {book.title}
