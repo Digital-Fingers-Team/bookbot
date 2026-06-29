@@ -57,7 +57,14 @@ const schema = z.object({
   OMP_SSO_SECRET: z.string().min(16).default("change-me-omp-sso-shared-secret"),
   // Default country (ISO) used when registering an OMP author for users whose
   // country we don't collect in bookbot.
-  OMP_DEFAULT_COUNTRY: z.string().length(2).default("EG")
+  OMP_DEFAULT_COUNTRY: z.string().length(2).default("EG"),
+  // Push processed books into OMP as submissions when true.
+  OMP_PUSH_ENABLED: z
+    .string()
+    .default("true")
+    .transform((value) => value !== "false" && value !== "0"),
+  // OMP genre id used for the uploaded manuscript file (1 = first/manuscript genre).
+  OMP_SUBMISSION_GENRE_ID: z.coerce.number().int().positive().default(1)
 });
 
 export const env = schema.parse(process.env);

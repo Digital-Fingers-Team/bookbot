@@ -23,7 +23,12 @@ const bookSchema = new Schema(
     processedPages: { type: Number, required: true, default: 0 },
     error: { type: String, trim: true },
     category: { type: String, trim: true, default: "" },
-    author: { type: String, trim: true, default: "" }
+    author: { type: String, trim: true, default: "" },
+    // --- OMP (Arado) push: mirrors the processed book into OMP as a submission ---
+    ompSubmissionId: { type: Number },
+    ompPushStatus: { type: String, enum: ["pending", "pushed", "failed"], index: true },
+    ompPushedAt: { type: Date },
+    ompPushError: { type: String, trim: true }
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );

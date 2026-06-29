@@ -255,3 +255,81 @@ export async function findOmpUserByEmail(email: string): Promise<OmpUserRef | nu
 export async function findOmpUserIdByEmail(email: string): Promise<number | null> {
   return (await findOmpUserByEmail(email))?.id ?? null;
 }
+
+// --- Pushing a processed book into OMP as a submission -----------------------
+// OMP 3.5's API *does* allow creating submissions (POST), setting the
+// publication title (PUT), and uploading the file (multipart POST). We mirror a
+// finished book into OMP as a submission that can enter the editorial workflow.
+
+function ompApiUrl(suffix: string): URL {
+  const url = new URL(`${env.OMP_BASE_URL}/index.php/${env.OMP_CONTEXT_PATH}/api/v1/${suffix}`);
+  if (env.OMP_API_TOKEN) {
+    url.searchParams.set("apiToken", env.OMP_API_TOKEN);
+  }
+  return url;
+}
+
+export interface OmpSubmissionRef {
+  submissionId: number;
+  publicationId: number;
+}
+
+/** Create an empty submission (with its initial publication) in OMP. */
+export async function createOmpSubmission(locale = "en"): Promise<OmpSubmissionRef> {
+  const res = await fetch(ompApiUrl("submissions"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ locale }),
+    signal: withTimeout(DEFAULT_TIMEOUT_MS)
+  });
+  if (!res.ok) {
+    throw new Error(`OMP createSubmission failed (${res.status}): ${(await res.text()).slice(0, 200)}`);
+  }
+  const data = (await res.json()) as { id: number; currentPublicationId: number };
+  return { submissionId: data.id, publicationId: data.currentPublicationId };
+}
+
+/** Set the publication's localized title. */
+export async function setOmpPublicationTitle(
+  submissionId: number,
+  publicationId: number,
+  title: string,
+  locale = "en"
+): Promise<void> {
+  const res = await fetch(ompApiUrl(`submissions/${submissionId}/publications/${publicationId}`), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ title: { [locale]: title } }),
+    signal: withTimeout(DEFAULT_TIMEOUT_MS)
+  });
+  if (!res.ok) {
+    throw new Error(`OMP setPublicationTitle failed (${res.status}): ${(await res.text()).slice(0, 200)}`);
+  }
+}
+
+/** Upload a file to the submission stage (multipart). Returns the OMP file id. */
+export async function uploadOmpSubmissionFile(
+  submissionId: number,
+  fileBytes: Buffer,
+  fileName: string,
+  genreId = env.OMP_SUBMISSION_GENRE_ID
+): Promise<number> {
+  const form = new FormData();
+  form.set("fileStage", "2"); // SUBMISSION_FILE_SUBMISSION
+  form.set("genreId", String(genreId));
+  // Note: do NOT set "name" — OMP expects a localized array there and derives it
+  // from the filename when omitted.
+  const blob = new Blob([fileBytes as unknown as BlobPart], { type: "application/pdf" });
+  form.set("file", blob, fileName);
+
+  const res = await fetch(ompApiUrl(`submissions/${submissionId}/files`), {
+    method: "POST",
+    headers: { Accept: "application/json" },
+    body: form,
+    signal: withTimeout(30_000)
+  });
+  if (!res.ok) {
+    throw new Error(`OMP uploadFile failed (${res.status}): ${(await res.text()).slice(0, 200)}`);
+  }
+  return ((await res.json()) as { id: number }).id;
+}

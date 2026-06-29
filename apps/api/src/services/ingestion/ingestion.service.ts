@@ -17,6 +17,7 @@ import { cleanExtractedText, normalizeText } from "../../utils/text.js";
 import { chunkPages } from "./chunker.service.js";
 import { extractBook } from "./extraction.service.js";
 import { storePdfSource } from "./pdf-storage.service.js";
+import { pushBookToOmp } from "../omp/omp-push.service.js";
 
 const MAX_EMBEDDING_CHARS = 50000;
 const PROGRESS_INTERVAL_MS = 1500;
@@ -142,6 +143,10 @@ export async function processBook(bookId: string): Promise<void> {
     book.chunkCount = cleanedChunks.length;
     book.error = undefined;
     await book.save();
+
+    // Mirror the finished book into OMP (Arado). Best-effort: never blocks or
+    // fails ingestion, and records its own status on the book.
+    await pushBookToOmp(book);
 
     await recordUsage("success", { pageCount, chunkCount: cleanedChunks.length, startedAt });
   } catch (error) {
