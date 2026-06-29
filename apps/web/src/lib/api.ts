@@ -326,6 +326,18 @@ export function getStats(token?: string) {
   return request<Stats>("/api/stats", { token });
 }
 
+export type ShowcaseBook = { id: string; title: string; author: string };
+
+/** Public showcase books for the landing carousel (no auth required). */
+export function getShowcaseBooks(count = 12) {
+  return request<{ books: ShowcaseBook[] }>(`/api/books/showcase?count=${count}`);
+}
+
+/** Public cover image URL (first page) for a showcase book. */
+export function bookCoverUrl(id: string) {
+  return `${API_URL}/api/books/${id}/cover`;
+}
+
 export type OmpAuthorLink = {
   linked: boolean;
   ompUserId?: number;

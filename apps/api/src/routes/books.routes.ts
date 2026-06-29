@@ -1,6 +1,8 @@
 import { Router, type Router as ExpressRouter } from "express";
 import { access, readFile } from "node:fs/promises";
+import { basename, resolve } from "node:path";
 import { isValidObjectId } from "mongoose";
+import { env } from "../config/env.js";
 import { requireAdmin, requireAuth } from "../middleware/auth.middleware.js";
 import { Book } from "../models/book.model.js";
 import { BookState } from "../models/book-state.model.js";
@@ -56,6 +58,34 @@ booksRouter.get(
           firstPageText
         };
       })
+    });
+  })
+);
+
+/**
+ * Public showcase of ready books for the marketing landing carousel (no auth).
+ * Returns only display fields (id/title/author) — no content.
+ */
+booksRouter.get(
+  "/showcase",
+  asyncHandler(async (req, res) => {
+    const rawCount = Number(req.query.count);
+    const count = Number.isFinite(rawCount) && rawCount > 0 ? Math.min(rawCount, 30) : 12;
+    const books = await Book.find(
+      { status: "ready" },
+      { title: 1, originalFileName: 1, author: 1, createdAt: 1 }
+    )
+      .sort({ createdAt: -1 })
+      .limit(count)
+      .lean();
+
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.json({
+      books: books.map((book) => ({
+        id: String(book._id),
+        title: readableBookTitle({ title: book.title, originalFileName: book.originalFileName, firstPageText: "" }),
+        author: book.author ?? ""
+      }))
     });
   })
 );
@@ -242,6 +272,28 @@ booksRouter.get(
   })
 );
 
+/**
+ * Public cover image (first page) for the landing showcase carousel (no auth).
+ * Publicly cacheable since it only exposes a book's front page.
+ */
+booksRouter.get(
+  "/:id/cover",
+  asyncHandler(async (req, res) => {
+    const book = await findBookPdf(routeId(req.params.id));
+    const buffer = await readFile(book.originalPdfPath);
+    const renderer = await new PdfJsRenderer().open(buffer);
+
+    try {
+      const rendered = await renderer.renderPage(1, 1.5);
+      res.setHeader("Content-Type", rendered.mimeType);
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.send(rendered.image);
+    } finally {
+      await renderer.close?.();
+    }
+  })
+);
+
 booksRouter.patch(
   "/:id",
   requireAdmin,
@@ -315,14 +367,22 @@ async function findBookPdf(id: string) {
     throw new ApiError(404, "PDF_NOT_AVAILABLE", "The original PDF is not available for this book.");
   }
 
+  // Tolerate a stored absolute path that no longer exists (e.g. the repo moved)
+  // by falling back to the current storage dir + filename.
+  let pdfPath = book.originalPdfPath;
   try {
-    await access(book.originalPdfPath);
+    await access(pdfPath);
   } catch {
-    throw new ApiError(404, "PDF_NOT_AVAILABLE", "The original PDF file could not be found.");
+    pdfPath = resolve(env.PDF_STORAGE_DIR, basename(book.originalPdfPath));
+    try {
+      await access(pdfPath);
+    } catch {
+      throw new ApiError(404, "PDF_NOT_AVAILABLE", "The original PDF file could not be found.");
+    }
   }
 
   return {
-    originalPdfPath: book.originalPdfPath,
+    originalPdfPath: pdfPath,
     originalFileName: book.originalFileName
   };
 }

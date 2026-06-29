@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft, BookOpenText, Languages, Quote, Sparkles } from "lucide-react";
+import { BooksCarousel } from "@/components/books-carousel";
 import { useT } from "@/lib/i18n";
 
 export function Landing() {
@@ -42,6 +43,8 @@ export function Landing() {
           </Link>
         </div>
       </section>
+
+      <BooksCarousel />
 
       <section className="grid gap-4 pb-6 sm:grid-cols-3">
         {features.map((feature) => {

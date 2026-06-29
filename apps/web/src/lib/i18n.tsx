@@ -275,6 +275,7 @@ export const STRINGS = {
     en: "A knowledge platform that searches the organization's uploaded books and answers only from what it finds — with the source and page for every fact."
   },
   "landing.getStarted": { ar: "ابدأ الآن", en: "Get started" },
+  "landing.libraryTitle": { ar: "من المكتبة", en: "From the library" },
   "landing.f1Title": { ar: "إجابات من كتبك فقط", en: "Answers from your books only" },
   "landing.f1Body": {
     ar: "لا تخمين ولا معلومات خارجية — كل إجابة مبنية على مكتبتك.",
