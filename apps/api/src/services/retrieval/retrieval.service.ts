@@ -54,7 +54,10 @@ export async function retrieveRelevantChunks(
   question: string,
   topK = 15,
   reranker: Reranker = createReranker(),
-  bookId?: string
+  bookId?: string,
+  // Access scope: when a non-null array is passed, only chunks from these books
+  // are eligible (regular users see their granted books only). null = no limit.
+  allowedBookIds?: string[] | null
 ): Promise<RetrievalResult> {
   const boundedTopK = boundTopK(topK);
   const queryVector = await embedQuery(question);
@@ -73,6 +76,12 @@ export async function retrieveRelevantChunks(
   // keywords but never answer them, and look like noise as evidence.
   const retrieved = candidates.map(toRetrievedChunk);
   let usable = retrieved.filter((chunk) => !isLikelyTableOfContents(chunk.chunkText));
+
+  // Enforce access: drop chunks from books the user isn't allowed to read.
+  if (allowedBookIds) {
+    const allow = new Set(allowedBookIds);
+    usable = usable.filter((chunk) => allow.has(chunk.bookId));
+  }
 
   // Scope to a single book when the user asked within one.
   if (bookId) {

@@ -4,6 +4,8 @@ import { basename, resolve } from "node:path";
 import { isValidObjectId } from "mongoose";
 import { env } from "../config/env.js";
 import { requireAdmin, requireAuth } from "../middleware/auth.middleware.js";
+import { requireBookAccess } from "../middleware/access.middleware.js";
+import { allowedBookIdList, resolveAccessScope } from "../services/access/access.service.js";
 import { Book } from "../models/book.model.js";
 import { BookState } from "../models/book-state.model.js";
 import { Chunk } from "../models/chunk.model.js";
@@ -20,8 +22,11 @@ booksRouter.get(
   "/",
   requireAuth,
   asyncHandler(async (req, res) => {
+    // Regular users only see the books an admin has granted them.
+    const scope = await resolveAccessScope(req.user!);
+    const accessFilter = scope.all ? {} : { _id: { $in: allowedBookIdList(scope) } };
     const books = await Book.find(
-      {},
+      accessFilter,
       { title: 1, originalFileName: 1, createdAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, author: 1, featured: 1 }
     )
       .sort({ createdAt: -1 })
@@ -167,6 +172,7 @@ booksRouter.get(
 booksRouter.get(
   "/:id",
   requireAuth,
+  requireBookAccess,
   asyncHandler(async (req, res) => {
     if (!isValidObjectId(req.params.id)) {
       throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
@@ -189,6 +195,7 @@ booksRouter.get(
 booksRouter.put(
   "/:id/favorite",
   requireAuth,
+  requireBookAccess,
   asyncHandler(async (req, res) => {
     if (!isValidObjectId(req.params.id)) {
       throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
@@ -206,6 +213,7 @@ booksRouter.put(
 booksRouter.put(
   "/:id/progress",
   requireAuth,
+  requireBookAccess,
   asyncHandler(async (req, res) => {
     if (!isValidObjectId(req.params.id)) {
       throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
@@ -223,6 +231,7 @@ booksRouter.put(
 booksRouter.get(
   "/:id/pdf",
   requireAuth,
+  requireBookAccess,
   asyncHandler(async (req, res) => {
     const book = await findBookPdf(routeId(req.params.id));
 
@@ -235,6 +244,7 @@ booksRouter.get(
 booksRouter.get(
   "/:id/pdf-data",
   requireAuth,
+  requireBookAccess,
   asyncHandler(async (req, res) => {
     const book = await findBookPdf(routeId(req.params.id));
     const buffer = await readFile(book.originalPdfPath);
@@ -250,6 +260,7 @@ booksRouter.get(
 booksRouter.get(
   "/:id/pages/:page/image",
   requireAuth,
+  requireBookAccess,
   asyncHandler(async (req, res) => {
     const book = await findBookPdf(routeId(req.params.id));
     const pageNumber = Math.max(1, Math.floor(Number(req.params.page) || 1));

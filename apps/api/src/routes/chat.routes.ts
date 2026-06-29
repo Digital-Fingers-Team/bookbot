@@ -5,6 +5,7 @@ import { UsageEvent } from "../models/usage-event.model.js";
 import { createLLMProvider } from "../services/generation/llm-provider.service.js";
 import { buildEvidenceBooks, buildStructuredSources } from "../services/retrieval/evidence.service.js";
 import { retrieveRelevantChunks } from "../services/retrieval/retrieval.service.js";
+import { allowedBookIdList, resolveAccessScope } from "../services/access/access.service.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 
@@ -47,8 +48,9 @@ chatRouter.post(
     }
 
     const topK = parsed.data.topK ?? parsed.data.limit ?? 15;
+    const scope = await resolveAccessScope(req.user!);
     const retrievalQuery = buildRetrievalQuery(parsed.data.question, parsed.data.history);
-    const retrieval = await retrieveRelevantChunks(retrievalQuery, topK, undefined, parsed.data.bookId);
+    const retrieval = await retrieveRelevantChunks(retrievalQuery, topK, undefined, parsed.data.bookId, allowedBookIdList(scope));
     const chunks = retrieval.chunks;
     const books = buildEvidenceBooks(chunks);
     const sources = buildStructuredSources(books);
@@ -153,8 +155,9 @@ chatRouter.post("/stream", async (req, res) => {
 
   try {
     const topK = parsed.data.topK ?? parsed.data.limit ?? 15;
+    const scope = await resolveAccessScope(req.user!);
     const retrievalQuery = buildRetrievalQuery(parsed.data.question, parsed.data.history);
-    const retrieval = await retrieveRelevantChunks(retrievalQuery, topK, undefined, parsed.data.bookId);
+    const retrieval = await retrieveRelevantChunks(retrievalQuery, topK, undefined, parsed.data.bookId, allowedBookIdList(scope));
     const chunks = retrieval.chunks;
     const books = buildEvidenceBooks(chunks);
     const sources = buildStructuredSources(books);

@@ -59,10 +59,11 @@ export type ChatInput = {
   history?: ChatTurn[];
 };
 
-export function askQuestion(input: ChatInput) {
+export function askQuestion(input: ChatInput, token?: string) {
   return request<ChatResponse>("/api/chat", {
     method: "POST",
-    body: input
+    body: input,
+    token
   });
 }
 
@@ -85,12 +86,16 @@ export type StreamHandlers = {
   signal?: AbortSignal;
 };
 
-export async function streamQuestion(input: ChatInput, handlers: StreamHandlers): Promise<void> {
+export async function streamQuestion(input: ChatInput, handlers: StreamHandlers, token?: string): Promise<void> {
   let response: Response;
   try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
     response = await fetch(`${API_URL}/api/chat/stream`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(input),
       signal: handlers.signal
     });

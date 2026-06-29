@@ -326,7 +326,8 @@ function ChatExperience() {
             })),
           onError: (error) =>
             patch(assistantId, (message) => ({ ...message, status: "error", content: message.content || error.message }))
-        }
+        },
+        token
       );
     } finally {
       abortRef.current = null;

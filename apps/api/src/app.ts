@@ -14,6 +14,7 @@ import { ompRouter } from "./routes/omp.routes.js";
 import { statsRouter } from "./routes/stats.routes.js";
 import { uploadRouter } from "./routes/upload.routes.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware.js";
+import { requireAuth } from "./middleware/auth.middleware.js";
 
 export function createApp(): Express {
   const app = express();
@@ -42,7 +43,7 @@ export function createApp(): Express {
 
   app.use("/api/auth", authRouter);
   app.use("/api/upload", uploadRouter);
-  app.use("/api/chat", chatRouter);
+  app.use("/api/chat", requireAuth, chatRouter);
   app.use("/api/books", booksRouter);
   app.use("/api/categories", categoriesRouter);
   app.use("/api/conversations", conversationsRouter);
