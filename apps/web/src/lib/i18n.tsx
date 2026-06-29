@@ -238,12 +238,12 @@ export const STRINGS = {
 
   // Publishing (OMP)
   "omp.title": { ar: "النشر مع آرادو", en: "Publish with Arado" },
-  "omp.desc": { ar: "فعّل حساب مؤلف لتقديم أعمالك ومتابعة دورة المراجعة والتحرير.", en: "Activate an author account to submit your work and track the review & editing cycle." },
-  "omp.activate": { ar: "فعّل حساب مؤلف", en: "Activate author account" },
+  "omp.desc": { ar: "فعّل حساب OMP لتقديم أعمالك ومتابعة دورة المراجعة والتحرير.", en: "Activate your OMP account to submit your work and track the review & editing cycle." },
+  "omp.activate": { ar: "فعّل حساب OMP", en: "Activate OMP account" },
   "omp.activating": { ar: "جارٍ التفعيل…", en: "Activating…" },
   "omp.enter": { ar: "ادخل على منصة النشر", en: "Open publishing platform" },
   "omp.opening": { ar: "جارٍ الفتح…", en: "Opening…" },
-  "omp.linked": { ar: "حساب المؤلف مفعّل", en: "Author account active" },
+  "omp.linked": { ar: "حساب OMP مفعّل", en: "OMP account active" },
   "omp.activateError": { ar: "تعذّر تفعيل حساب المؤلف. حاول مرة أخرى.", en: "Could not activate the author account. Please try again." },
   "omp.openError": { ar: "تعذّر فتح منصة النشر. حاول مرة أخرى.", en: "Could not open the publishing platform. Please try again." },
 

@@ -301,7 +301,7 @@ function OmpPublishingCard({ token }: { token: string | null }) {
             type="button"
             onClick={openOmp}
             disabled={opening}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-9 w-fit items-center justify-center gap-2 rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {opening ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
             {opening ? t("omp.opening") : t("omp.enter")}
@@ -312,7 +312,7 @@ function OmpPublishingCard({ token }: { token: string | null }) {
           type="button"
           onClick={activate}
           disabled={activating}
-          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-9 w-fit items-center justify-center gap-2 rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {activating ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />}
           {activating ? t("omp.activating") : t("omp.activate")}
