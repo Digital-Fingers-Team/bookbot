@@ -58,7 +58,7 @@ export async function pushBookToOmp(book: HydratedDocument<BookDocument>): Promi
     const { submissionId, publicationId } = await createOmpSubmission();
     await setOmpPublicationTitle(submissionId, publicationId, book.title);
 
-    // Add the author. bookbot stores a single free-text name, so split it into
+    // Add the author. aradobot stores a single free-text name, so split it into
     // given/family parts and use a synthetic email (OMP requires one).
     const { givenName, familyName } = splitAuthorName(book.author || "");
     await addOmpPublicationAuthor(submissionId, publicationId, {

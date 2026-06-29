@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
 
 const commands = [
-  ["api", "pnpm", ["--filter", "@bookbot/api", "dev"]],
-  ["web", "pnpm", ["--filter", "@bookbot/web", "dev"]]
+  ["api", "pnpm", ["--filter", "@aradobot/api", "dev"]],
+  ["web", "pnpm", ["--filter", "@aradobot/web", "dev"]]
 ];
 
 const children = commands.map(([name, command, args]) => {

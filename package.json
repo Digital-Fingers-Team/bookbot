@@ -1,5 +1,5 @@
 {
-  "name": "bookbot",
+  "name": "aradobot",
   "private": true,
   "version": "1.0.0",
   "description": "Production-ready AI book knowledge SaaS with deterministic RAG over uploaded PDFs.",
@@ -7,9 +7,9 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "start": "node scripts/start.mjs",
-    "build": "pnpm --filter @bookbot/api build && pnpm --filter @bookbot/web build",
-    "typecheck": "pnpm --filter @bookbot/api typecheck && pnpm --filter @bookbot/web typecheck",
-    "test": "pnpm --filter @bookbot/api test && pnpm --filter @bookbot/web test"
+    "build": "pnpm --filter @aradobot/api build && pnpm --filter @aradobot/web build",
+    "typecheck": "pnpm --filter @aradobot/api typecheck && pnpm --filter @aradobot/web typecheck",
+    "test": "pnpm --filter @aradobot/api test && pnpm --filter @aradobot/web test"
   },
   "devDependencies": {
     "typescript": "^5.7.3"

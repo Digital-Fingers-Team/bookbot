@@ -13,7 +13,7 @@ async function bootstrap() {
   const app = createApp();
 
   app.listen(env.PORT, () => {
-    console.log(`BookBot API listening on http://localhost:${env.PORT}`);
+    console.log(`AradoBot API listening on http://localhost:${env.PORT}`);
   });
 }
 
@@ -21,7 +21,7 @@ bootstrap().catch((error) => {
   if (isMongoConnectionError(error)) {
     console.error(
       [
-        "Failed to start BookBot API: MongoDB is not reachable.",
+        "Failed to start AradoBot API: MongoDB is not reachable.",
         "",
         "Your .env points to MongoDB at:",
         `  ${safeMongoUri(env.MONGODB_URI)}`,

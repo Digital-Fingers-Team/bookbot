@@ -1,12 +1,12 @@
 services:
   mongo:
     image: mongo:7
-    container_name: bookbotd-mongo
+    container_name: aradobotd-mongo
     restart: unless-stopped
     ports:
       - "27017:27017"
     volumes:
-      - bookbotd-mongo-data:/data/db
+      - aradobotd-mongo-data:/data/db
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
@@ -14,4 +14,4 @@ services:
       retries: 6
 
 volumes:
-  bookbotd-mongo-data:
+  aradobotd-mongo-data:

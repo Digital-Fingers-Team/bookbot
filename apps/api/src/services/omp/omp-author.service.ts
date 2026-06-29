@@ -12,7 +12,7 @@ const b64url = (input: Buffer | string): string =>
   Buffer.from(input).toString("base64url");
 
 /**
- * Build a signed auto-login URL into OMP for a linked user. The bookbotSso
+ * Build a signed auto-login URL into OMP for a linked user. The aradobotSso
  * plugin in OMP verifies the HMAC + expiry, opens a session, and grants the
  * Author role. Token = base64url(JSON{uid,exp}) "." base64url(HMAC-SHA256).
  */
@@ -29,7 +29,7 @@ export async function buildOmpLoginUrl(userId: string): Promise<string> {
     uid: user.ompUserId,
     exp: Math.floor(Date.now() / 1000) + SSO_TOKEN_TTL_SECONDS
   };
-  // bookbot admins get OMP admin roles (site admin + press manager) on login.
+  // aradobot admins get OMP admin roles (site admin + press manager) on login.
   if (user.role === "admin") {
     claims.adm = 1;
   }
@@ -80,7 +80,7 @@ function generatePassword(): string {
 }
 
 /**
- * Ensure the bookbot user has a linked OMP author account, creating one if
+ * Ensure the aradobot user has a linked OMP author account, creating one if
  * needed. Idempotent: returns the existing link without re-registering.
  */
 export async function activateAuthorAccount(userId: string): Promise<OmpAuthorLink> {

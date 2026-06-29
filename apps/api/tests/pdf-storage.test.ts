@@ -8,7 +8,7 @@ describe("PDF source storage", () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    storageDir = await mkdtemp(join(tmpdir(), "bookbot-pdf-"));
+    storageDir = await mkdtemp(join(tmpdir(), "aradobot-pdf-"));
     vi.stubEnv("PDF_STORAGE_DIR", storageDir);
   });
 

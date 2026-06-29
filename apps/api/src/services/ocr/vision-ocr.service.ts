@@ -58,8 +58,8 @@ export async function visionOcr(image: Buffer, mimeType = "image/png"): Promise<
         headers: {
           Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://bookbot.local",
-          "X-Title": "BookBot OCR",
+          "HTTP-Referer": "https://aradobot.local",
+          "X-Title": "AradoBot OCR",
         },
         body,
       });

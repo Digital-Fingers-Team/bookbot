@@ -51,8 +51,8 @@ export class OpenRouterProvider implements LLMProvider {
         headers: {
           Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://bookbot.local",
-          "X-Title": "BookBot"
+          "HTTP-Referer": "https://aradobot.local",
+          "X-Title": "AradoBot"
         },
         body: JSON.stringify({
           model,
@@ -117,8 +117,8 @@ export class OpenRouterProvider implements LLMProvider {
         headers: {
           Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://bookbot.local",
-          "X-Title": "BookBot"
+          "HTTP-Referer": "https://aradobot.local",
+          "X-Title": "AradoBot"
         },
         body: JSON.stringify({
           model,

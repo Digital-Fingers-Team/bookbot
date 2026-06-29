@@ -20,7 +20,7 @@ async function main() {
     const message = error instanceof Error ? error.message : String(error);
     console.error(
       `Vector index check failed: ${message}\n` +
-        "BookBot requires MongoDB Atlas Vector Search for retrieval. Local Docker MongoDB may not support $vectorSearch."
+        "AradoBot requires MongoDB Atlas Vector Search for retrieval. Local Docker MongoDB may not support $vectorSearch."
     );
     process.exitCode = 1;
   } finally {

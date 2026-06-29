@@ -11,10 +11,10 @@ dotenv.config();
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(4000),
-  MONGODB_URI: z.string().min(1).default("mongodb://127.0.0.1:27017/bookbotd"),
+  MONGODB_URI: z.string().min(1).default("mongodb://127.0.0.1:27017/aradobotd"),
   CLIENT_ORIGIN: z.string().default("http://localhost:3000"),
   ADMIN_API_KEY: z.string().optional(),
-  AUTH_JWT_SECRET: z.string().min(16).default("change-me-bookbot-auth-secret"),
+  AUTH_JWT_SECRET: z.string().min(16).default("change-me-aradobot-auth-secret"),
   DEFAULT_ADMIN_EMAIL: z.string().email().default("admin@example.com"),
   DEFAULT_ADMIN_PASSWORD: z.string().min(6).default("admin123"),
   OPENROUTER_EMBEDDING_MODEL: z.string().default("openai/text-embedding-3-small"),
@@ -53,10 +53,10 @@ const schema = z.object({
   // Secret used to encrypt the OMP password we store per user (AES-256-GCM).
   OMP_USER_SECRET: z.string().min(16).default("change-me-omp-user-secret-key"),
   // Shared secret for signing one-time SSO login tokens handed to OMP's
-  // token-login handler. MUST match `bookbot_sso_secret` in OMP's config.
+  // token-login handler. MUST match `aradobot_sso_secret` in OMP's config.
   OMP_SSO_SECRET: z.string().min(16).default("change-me-omp-sso-shared-secret"),
   // Default country (ISO) used when registering an OMP author for users whose
-  // country we don't collect in bookbot.
+  // country we don't collect in aradobot.
   OMP_DEFAULT_COUNTRY: z.string().length(2).default("EG"),
   // Push processed books into OMP as submissions when true.
   OMP_PUSH_ENABLED: z

@@ -15,7 +15,7 @@ function requireUserId(req: { user?: { id: string } }): string {
   return id;
 }
 
-/** Liveness of the linked OMP install (proves the bookbot ↔ OMP channel). */
+/** Liveness of the linked OMP install (proves the aradobot ↔ OMP channel). */
 ompRouter.get(
   "/health",
   asyncHandler(async (_req, res) => {

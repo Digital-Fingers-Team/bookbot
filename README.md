@@ -1,4 +1,4 @@
-# BookBot
+# AradoBot
 
 Production-ready AI book knowledge SaaS architecture for PDF ingestion, deterministic hybrid retrieval, and strict RAG generation through OpenRouter.
 
@@ -33,7 +33,7 @@ If you do not want Docker, install MongoDB locally on Windows or use MongoDB Atl
 - `MONGODB_URI` - MongoDB connection string.
 - `OPENROUTER_API_KEY` - OpenRouter API key.
 - `OPENROUTER_MODEL` - Default model ID.
-- `AUTH_JWT_SECRET` - Secret used to sign BookBot login sessions.
+- `AUTH_JWT_SECRET` - Secret used to sign AradoBot login sessions.
 - `DEFAULT_ADMIN_EMAIL` - Seeded admin email, defaults to `admin@example.com`.
 - `DEFAULT_ADMIN_PASSWORD` - Seeded admin password, defaults to `admin123`.
 - `ADMIN_API_KEY` - Optional API-only fallback key for upload/delete/stats automation.
