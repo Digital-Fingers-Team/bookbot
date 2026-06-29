@@ -3,7 +3,22 @@ import { basename, resolve } from "node:path";
 import type { HydratedDocument } from "mongoose";
 import { env } from "../../config/env.js";
 import { Book, type BookDocument } from "../../models/book.model.js";
-import { createOmpSubmission, setOmpPublicationTitle, uploadOmpSubmissionFile } from "./omp.client.js";
+import {
+  addOmpPublicationAuthor,
+  createOmpSubmission,
+  setOmpPublicationTitle,
+  uploadOmpSubmissionFile
+} from "./omp.client.js";
+
+/** Split a free-text author name into given/family parts for OMP. */
+function splitAuthorName(raw: string): { givenName: string; familyName: string } {
+  const parts = raw.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return { givenName: "Unknown", familyName: "Author" };
+  }
+  const [first = "Author", ...rest] = parts;
+  return { givenName: first, familyName: rest.length ? rest.join(" ") : first };
+}
 
 /**
  * Read the book's PDF, tolerating a stored absolute path that no longer exists
@@ -42,6 +57,16 @@ export async function pushBookToOmp(book: HydratedDocument<BookDocument>): Promi
 
     const { submissionId, publicationId } = await createOmpSubmission();
     await setOmpPublicationTitle(submissionId, publicationId, book.title);
+
+    // Add the author. bookbot stores a single free-text name, so split it into
+    // given/family parts and use a synthetic email (OMP requires one).
+    const { givenName, familyName } = splitAuthorName(book.author || "");
+    await addOmpPublicationAuthor(submissionId, publicationId, {
+      givenName,
+      familyName,
+      email: `author+${book.id}@arado.local`
+    });
+
     await uploadOmpSubmissionFile(submissionId, fileBytes, book.originalFileName || `${book.title}.pdf`);
 
     book.ompSubmissionId = submissionId;

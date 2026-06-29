@@ -64,7 +64,9 @@ const schema = z.object({
     .default("true")
     .transform((value) => value !== "false" && value !== "0"),
   // OMP genre id used for the uploaded manuscript file (1 = first/manuscript genre).
-  OMP_SUBMISSION_GENRE_ID: z.coerce.number().int().positive().default(1)
+  OMP_SUBMISSION_GENRE_ID: z.coerce.number().int().positive().default(1),
+  // OMP user group id for the Author role (13 = Author in the arado press).
+  OMP_AUTHOR_GROUP_ID: z.coerce.number().int().positive().default(13)
 });
 
 export const env = schema.parse(process.env);

@@ -307,6 +307,42 @@ export async function setOmpPublicationTitle(
   }
 }
 
+export interface OmpAuthorInput {
+  givenName: string;
+  familyName: string;
+  email: string;
+  affiliation?: string;
+  country?: string;
+}
+
+/** Add an author (contributor) to a publication. Returns the contributor id. */
+export async function addOmpPublicationAuthor(
+  submissionId: number,
+  publicationId: number,
+  author: OmpAuthorInput,
+  locale = "en"
+): Promise<number> {
+  const body = {
+    givenName: { [locale]: author.givenName },
+    familyName: { [locale]: author.familyName },
+    email: author.email,
+    country: author.country ?? env.OMP_DEFAULT_COUNTRY,
+    affiliation: { [locale]: author.affiliation ?? "Arado" },
+    userGroupId: env.OMP_AUTHOR_GROUP_ID,
+    includeInBrowse: true
+  };
+  const res = await fetch(ompApiUrl(`submissions/${submissionId}/publications/${publicationId}/contributors`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+    signal: withTimeout(DEFAULT_TIMEOUT_MS)
+  });
+  if (!res.ok) {
+    throw new Error(`OMP addAuthor failed (${res.status}): ${(await res.text()).slice(0, 200)}`);
+  }
+  return ((await res.json()) as { id: number }).id;
+}
+
 /** Upload a file to the submission stage (multipart). Returns the OMP file id. */
 export async function uploadOmpSubmissionFile(
   submissionId: number,
