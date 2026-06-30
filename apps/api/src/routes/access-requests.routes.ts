@@ -4,6 +4,7 @@ import multer from "multer";
 import { isValidObjectId } from "mongoose";
 import { storage } from "../services/storage/storage.service.js";
 import { requireAdmin, requireAuth } from "../middleware/auth.middleware.js";
+import { cursorFilter, nextCursor, parsePageParams } from "../utils/pagination.js";
 import { AccessRequest } from "../models/access-request.model.js";
 import { Book } from "../models/book.model.js";
 import { Category } from "../models/category.model.js";
@@ -105,12 +106,17 @@ accessRequestsRouter.get(
       filter.status = req.query.status;
     }
 
-    const requests = await AccessRequest.find(filter).sort({ createdAt: -1 }).limit(200).lean();
+    const { limit, cursor } = parsePageParams(req.query, 50, 100);
+    const requests = await AccessRequest.find({ ...filter, ...cursorFilter(cursor) })
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(limit)
+      .lean();
     const userIds = [...new Set(requests.map((r) => String(r.userId)))];
     const users = isAdmin ? await User.find({ _id: { $in: userIds } }, { name: 1, email: 1 }).lean() : [];
     const userById = new Map(users.map((u) => [String(u._id), u]));
 
     res.json({
+      nextCursor: nextCursor(requests, limit),
       requests: requests.map((r) => ({
         id: String(r._id),
         targetType: r.targetType,

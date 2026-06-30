@@ -22,6 +22,8 @@ export default function RequestsPage() {
   const [filter, setFilter] = useState<StatusFilter>("pending");
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState("");
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [receipt, setReceipt] = useState<{ id: string; url: string } | null>(null);
 
   const refresh = useCallback(async () => {
@@ -30,12 +32,26 @@ export default function RequestsPage() {
     try {
       const result = await listAccessRequests(token, filter);
       setRequests(result.requests);
+      setCursor(result.nextCursor);
     } catch {
       setRequests([]);
+      setCursor(null);
     } finally {
       setLoading(false);
     }
   }, [token, filter]);
+
+  const loadMore = useCallback(async () => {
+    if (!token || !cursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const result = await listAccessRequests(token, filter, cursor);
+      setRequests((prev) => [...prev, ...result.requests]);
+      setCursor(result.nextCursor);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [token, filter, cursor, loadingMore]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -174,6 +190,20 @@ export default function RequestsPage() {
           ))}
         </ul>
       )}
+
+      {cursor ? (
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="inline-flex items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink/70 transition hover:text-moss disabled:opacity-50 dark:border-white/10 dark:text-white/70"
+          >
+            {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {t("common.loadMore")}
+          </button>
+        </div>
+      ) : null}
 
       {receipt ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={closeReceipt}>

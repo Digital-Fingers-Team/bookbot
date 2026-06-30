@@ -16,6 +16,8 @@ export default function UsersPage() {
   const [categories, setCategories] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!token) return;
@@ -23,12 +25,26 @@ export default function UsersPage() {
     try {
       const result = await listUsers(token, search.trim() || undefined);
       setUsers(result.users);
+      setCursor(result.nextCursor);
     } catch {
       setUsers([]);
+      setCursor(null);
     } finally {
       setLoading(false);
     }
   }, [token, search]);
+
+  const loadMore = useCallback(async () => {
+    if (!token || !cursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const result = await listUsers(token, search.trim() || undefined, cursor);
+      setUsers((prev) => [...prev, ...result.users]);
+      setCursor(result.nextCursor);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [token, search, cursor, loadingMore]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -87,11 +103,6 @@ export default function UsersPage() {
         <p className="py-12 text-center text-sm text-ink/45 dark:text-white/45">{t("users.empty")}</p>
       ) : (
         <>
-        {users.length >= 200 ? (
-          <p className="mb-3 rounded-lg border border-amber-300/40 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-300">
-            {t("users.truncated")}
-          </p>
-        ) : null}
         <ul className="space-y-3">
           {users.map((user) => (
             <li key={user.id} className="rounded-xl border border-line bg-white p-4 dark:border-white/10 dark:bg-[#0c0c0e]">
@@ -156,6 +167,19 @@ export default function UsersPage() {
             </li>
           ))}
         </ul>
+        {cursor ? (
+          <div className="mt-4 flex justify-center">
+            <button
+              type="button"
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="inline-flex items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink/70 transition hover:text-moss disabled:opacity-50 dark:border-white/10 dark:text-white/70"
+            >
+              {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {t("common.loadMore")}
+            </button>
+          </div>
+        ) : null}
         </>
       )}
     </div>

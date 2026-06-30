@@ -1,12 +1,20 @@
 import { Router, type Router as ExpressRouter } from "express";
 import { isValidObjectId } from "mongoose";
+import { z } from "zod";
 import { requireAdmin } from "../middleware/auth.middleware.js";
+import { validate } from "../middleware/validate.middleware.js";
 import { Book } from "../models/book.model.js";
 import { Category } from "../models/category.model.js";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { readableBookTitle } from "../utils/file-name.js";
+import { cursorFilter, nextCursor, parsePageParams } from "../utils/pagination.js";
+
+const targetSchema = z.object({
+  targetType: z.enum(["book", "category"]),
+  targetValue: z.string().trim().min(1).max(200)
+});
 
 export const adminUsersRouter: ExpressRouter = Router();
 
@@ -17,13 +25,19 @@ adminUsersRouter.get(
   "/",
   asyncHandler(async (req, res) => {
     const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
-    const filter = search
+    const searchFilter = search
       ? { $or: [{ name: { $regex: search, $options: "i" } }, { email: { $regex: search, $options: "i" } }] }
       : {};
 
-    const users = await User.find(filter, { name: 1, email: 1, role: 1, allowedBookIds: 1, allowedCategories: 1 })
-      .sort({ createdAt: -1 })
-      .limit(200)
+    // Combine the search $or and the cursor $or under $and so neither clobbers
+    // the other at the top level.
+    const { limit, cursor } = parsePageParams(req.query, 50, 100);
+    const clauses = [searchFilter, cursorFilter(cursor)].filter((clause) => Object.keys(clause).length);
+    const filter = clauses.length ? { $and: clauses } : {};
+
+    const users = await User.find(filter, { name: 1, email: 1, role: 1, allowedBookIds: 1, allowedCategories: 1, createdAt: 1 })
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(limit)
       .lean();
 
     // Resolve titles for every granted book in one query.
@@ -39,6 +53,7 @@ adminUsersRouter.get(
     );
 
     res.json({
+      nextCursor: nextCursor(users, limit),
       users: users.map((u) => ({
         id: String(u._id),
         name: u.name,
@@ -55,6 +70,7 @@ adminUsersRouter.get(
 /** Grant a book or category to a user directly (no payment request). */
 adminUsersRouter.post(
   "/:id/grant",
+  validate({ body: targetSchema }),
   asyncHandler(async (req, res) => {
     const { targetType, targetValue } = await parseTarget(req.body);
     const userId = requireUserId(req.params.id);
@@ -70,6 +86,7 @@ adminUsersRouter.post(
 /** Revoke a previously granted book or category. */
 adminUsersRouter.post(
   "/:id/revoke",
+  validate({ body: targetSchema }),
   asyncHandler(async (req, res) => {
     const { targetType, targetValue } = await parseTarget(req.body, { validate: false });
     const userId = requireUserId(req.params.id);

@@ -136,6 +136,7 @@ export const STRINGS = {
   "lib.setPrice": { ar: "تحديد السعر", en: "Set price" },
   "lib.pricePrompt": { ar: "أدخل سعر الكتاب (0 = مجاني):", en: "Enter the book price (0 = free):" },
   "common.currency": { ar: "ج.م", en: "EGP" },
+  "common.loadMore": { ar: "تحميل المزيد", en: "Load more" },
 
   // My Books
   "nav.myBooks": { ar: "كتبي", en: "My Books" },

@@ -298,9 +298,16 @@ export async function submitAccessRequest(
   return response.json() as Promise<{ id: string; status: string }>;
 }
 
-export function listAccessRequests(token?: string, status?: "pending" | "approved" | "rejected") {
-  const qs = status ? `?status=${status}` : "";
-  return request<{ requests: AccessRequest[] }>(`/api/access-requests${qs}`, { token });
+export function listAccessRequests(
+  token?: string,
+  status?: "pending" | "approved" | "rejected",
+  cursor?: string
+) {
+  const qs = new URLSearchParams();
+  if (status) qs.set("status", status);
+  if (cursor) qs.set("cursor", cursor);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return request<{ requests: AccessRequest[]; nextCursor: string | null }>(`/api/access-requests${suffix}`, { token });
 }
 
 /** Count of the user's requests that were decided but not yet seen. */
@@ -344,9 +351,12 @@ export type AdminUser = {
   allowedBooks: { id: string; title: string }[];
 };
 
-export function listUsers(token?: string, search?: string) {
-  const qs = search ? `?search=${encodeURIComponent(search)}` : "";
-  return request<{ users: AdminUser[] }>(`/api/admin/users${qs}`, { token });
+export function listUsers(token?: string, search?: string, cursor?: string) {
+  const qs = new URLSearchParams();
+  if (search) qs.set("search", search);
+  if (cursor) qs.set("cursor", cursor);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return request<{ users: AdminUser[]; nextCursor: string | null }>(`/api/admin/users${suffix}`, { token });
 }
 
 export function grantAccess(userId: string, targetType: "book" | "category", targetValue: string, token?: string) {
