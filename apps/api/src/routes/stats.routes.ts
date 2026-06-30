@@ -33,11 +33,13 @@ statsRouter.get(
       Chunk.countDocuments(),
       Book.aggregate([{ $group: { _id: null, totalPages: { $sum: "$pageCount" } } }]),
       UsageEvent.find(
-        { type: "chat", answered: false, question: { $nin: [null, ""] } },
+        // Exclude empty and mojibake questions (legacy bad-encoding rows whose
+        // text decoded to U+FFFD replacement characters).
+        { type: "chat", answered: false, question: { $nin: [null, ""], $not: /�/ } },
         { question: 1, createdAt: 1 }
       )
         .sort({ createdAt: -1 })
-        .limit(15)
+        .limit(40)
         .lean(),
       Feedback.aggregate([{ $group: { _id: "$vote", count: { $sum: 1 } } }]),
       Feedback.find({ vote: "down", note: { $nin: [null, ""] } }, { note: 1, answer: 1, createdAt: 1 })
@@ -76,10 +78,13 @@ statsRouter.get(
         currency: "EGP",
         pendingRequests
       },
-      unansweredQuestions: unanswered.map((event) => ({
-        question: event.question ?? "",
-        createdAt: event.createdAt
-      })),
+      unansweredQuestions: unanswered
+        .filter((event) => event.question && !event.question.includes("�"))
+        .slice(0, 15)
+        .map((event) => ({
+          question: event.question ?? "",
+          createdAt: event.createdAt
+        })),
       feedback: {
         up: feedbackAggregation.find((item) => item._id === "up")?.count ?? 0,
         down: feedbackAggregation.find((item) => item._id === "down")?.count ?? 0
