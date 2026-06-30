@@ -1,5 +1,5 @@
 import { createApp } from "./app.js";
-import { connectDatabase } from "./config/database.js";
+import { connectDatabase, ensureIndexes } from "./config/database.js";
 import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { initSentry } from "./config/sentry.js";
@@ -14,6 +14,9 @@ async function bootstrap() {
   await seedDefaultCategories();
   await failStaleProcessingBooks();
   const app = createApp();
+  // Models are all registered by now (createApp imports the routes). Build any
+  // missing indexes — required in production where autoIndex is disabled.
+  await ensureIndexes();
 
   app.listen(env.PORT, () => {
     logger.info(`AradoBot API listening on http://localhost:${env.PORT}`);
