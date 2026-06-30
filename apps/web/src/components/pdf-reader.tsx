@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, ChevronLeft, ChevronRight, Download, ExternalLink, Loader2, Minus, Plus, RotateCw } from "lucide-react";
+import { AlertCircle, ChevronLeft, ChevronRight, Download, ExternalLink, Loader2, Minus, Plus } from "lucide-react";
 import { ApiClientError, getBookPageImage } from "@/lib/api";
 import { useAuth } from "@/components/auth-provider";
 import { useT } from "@/lib/i18n";
@@ -27,7 +27,6 @@ export function PdfReader({ bookId, url, title, page, totalPages, onPageChange }
   const [pageInput, setPageInput] = useState(String(page));
   const [imageUrl, setImageUrl] = useState("");
   const [zoom, setZoom] = useState(initialZoom);
-  const [rotation, setRotation] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -154,14 +153,6 @@ export function PdfReader({ bookId, url, title, page, totalPages, onPageChange }
           >
             <Plus className="h-4 w-4" />
           </button>
-          <button
-            type="button"
-            onClick={() => setRotation((value) => (value + 90) % 360)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/60 transition hover:bg-ink/5 hover:text-moss dark:text-white/60 dark:hover:bg-white/10 dark:hover:text-sea"
-            aria-label="Rotate"
-          >
-            <RotateCw className="h-4 w-4" />
-          </button>
           <a
             href={`${url}#page=${page}`}
             target="_blank"
@@ -201,7 +192,6 @@ export function PdfReader({ bookId, url, title, page, totalPages, onPageChange }
               className="mx-auto block max-w-none bg-white shadow-xl ring-1 ring-black/10 dark:ring-white/10"
               style={{
                 width: `${zoom}%`,
-                transform: `rotate(${rotation}deg)`,
                 transformOrigin: "center top"
               }}
             />
