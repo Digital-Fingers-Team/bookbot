@@ -319,6 +319,13 @@ export const STRINGS = {
   "req.approve": { ar: "تفعيل", en: "Approve" },
   "req.reject": { ar: "رفض", en: "Reject" },
   "nav.requests": { ar: "طلبات الوصول", en: "Access requests" },
+  "nav.users": { ar: "المستخدمون", en: "Users" },
+  "users.title": { ar: "المستخدمون والصلاحيات", en: "Users & access" },
+  "users.search": { ar: "ابحث بالاسم أو الإيميل…", en: "Search by name or email…" },
+  "users.empty": { ar: "لا يوجد مستخدمون.", en: "No users found." },
+  "users.adminFull": { ar: "أدمن — وصول كامل لكل الكتب.", en: "Admin — full access to all books." },
+  "users.categories": { ar: "التصنيفات المتاحة", en: "Allowed categories" },
+  "users.books": { ar: "الكتب المتاحة", en: "Allowed books" },
   "landing.f1Title": { ar: "إجابات من كتبك فقط", en: "Answers from your books only" },
   "landing.f1Body": {
     ar: "لا تخمين ولا معلومات خارجية — كل إجابة مبنية على مكتبتك.",

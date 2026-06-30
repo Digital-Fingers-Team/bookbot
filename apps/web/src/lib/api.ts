@@ -320,6 +320,36 @@ export async function fetchReceiptObjectUrl(id: string, token?: string): Promise
   return URL.createObjectURL(blob);
 }
 
+export type AdminUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "user";
+  allowedCategories: string[];
+  allowedBooks: { id: string; title: string }[];
+};
+
+export function listUsers(token?: string, search?: string) {
+  const qs = search ? `?search=${encodeURIComponent(search)}` : "";
+  return request<{ users: AdminUser[] }>(`/api/admin/users${qs}`, { token });
+}
+
+export function grantAccess(userId: string, targetType: "book" | "category", targetValue: string, token?: string) {
+  return request<{ ok: boolean }>(`/api/admin/users/${userId}/grant`, {
+    method: "POST",
+    body: { targetType, targetValue },
+    token
+  });
+}
+
+export function revokeAccess(userId: string, targetType: "book" | "category", targetValue: string, token?: string) {
+  return request<{ ok: boolean }>(`/api/admin/users/${userId}/revoke`, {
+    method: "POST",
+    body: { targetType, targetValue },
+    token
+  });
+}
+
 export function listBooks(token?: string) {
   return request<{ books: Book[] }>("/api/books", { token });
 }
