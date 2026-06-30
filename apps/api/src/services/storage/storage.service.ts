@@ -161,8 +161,9 @@ class S3StorageProvider implements StorageProvider {
   }
 }
 
-function createStorage(): StorageProvider {
-  switch (env.STORAGE_DRIVER) {
+/** Construct a specific storage driver (used by the active singleton + migration). */
+export function makeStorage(driver: "local" | "gridfs" | "s3"): StorageProvider {
+  switch (driver) {
     case "s3":
       return new S3StorageProvider();
     case "gridfs":
@@ -172,4 +173,4 @@ function createStorage(): StorageProvider {
   }
 }
 
-export const storage: StorageProvider = createStorage();
+export const storage: StorageProvider = makeStorage(env.STORAGE_DRIVER);
