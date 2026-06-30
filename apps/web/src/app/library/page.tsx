@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { BookCover } from "@/components/book-cover";
+import { RequestAccessModal } from "@/components/request-access-modal";
 import { ApiClientError, addCategory, deleteBook, getCategories, getStats, listBooks, setFavorite, updateBook } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
 import { useT, type StringKey } from "@/lib/i18n";
@@ -56,6 +57,7 @@ export default function LibraryPage() {
   const [view, setView] = useState<ViewMode>("grid");
   const [categoryList, setCategoryList] = useState<string[]>([]);
   const [pickerBook, setPickerBook] = useState<Book | null>(null);
+  const [payBook, setPayBook] = useState<Book | null>(null);
 
   const refresh = useCallback(async () => {
     if (!token) {
@@ -195,8 +197,10 @@ export default function LibraryPage() {
   }
 
   function openBook(book: Book) {
-    // Locked books appear in the catalog but can't be opened until granted.
+    // Locked books appear in the catalog but can't be opened until granted —
+    // clicking one opens the payment / request-access popup instead.
     if (book.accessible === false) {
+      setPayBook(book);
       return;
     }
     router.push(`/read/${book.id}`);
@@ -517,6 +521,16 @@ export default function LibraryPage() {
           onClose={() => setPickerBook(null)}
           onSelect={assignCategory}
           onCreate={createAndAssignCategory}
+        />
+      ) : null}
+
+      {payBook ? (
+        <RequestAccessModal
+          books={[]}
+          categories={categories}
+          defaultTarget={{ type: "book", value: payBook.id, label: payBook.title }}
+          onClose={() => setPayBook(null)}
+          onSubmitted={() => setPayBook(null)}
         />
       ) : null}
     </div>
