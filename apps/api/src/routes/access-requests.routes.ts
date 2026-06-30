@@ -1,10 +1,8 @@
 import { Router, type Router as ExpressRouter } from "express";
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
 import multer from "multer";
 import { isValidObjectId } from "mongoose";
-import { env } from "../config/env.js";
+import { storage } from "../services/storage/storage.service.js";
 import { requireAdmin, requireAuth } from "../middleware/auth.middleware.js";
 import { AccessRequest } from "../models/access-request.model.js";
 import { Book } from "../models/book.model.js";
@@ -75,10 +73,8 @@ accessRequestsRouter.post(
       }
     }
 
-    const dir = resolve(env.RECEIPTS_DIR);
-    await mkdir(dir, { recursive: true });
-    const receiptFile = `${randomUUID()}.${RECEIPT_EXT[file.mimetype]}`;
-    await writeFile(join(dir, receiptFile), file.buffer);
+    const receiptFile = `receipts/${randomUUID()}.${RECEIPT_EXT[file.mimetype]}`;
+    await storage.put(receiptFile, file.buffer, file.mimetype);
 
     const created = await AccessRequest.create({
       userId: req.user!.id,
@@ -184,9 +180,18 @@ accessRequestsRouter.get(
       throw new ApiError(403, "FORBIDDEN", "You can't view this receipt.");
     }
 
+    // Tolerate legacy bare filenames stored before the "receipts/" key prefix.
+    const key = request.receiptFile.includes("/") ? request.receiptFile : `receipts/${request.receiptFile}`;
+    let buffer: Buffer;
+    try {
+      buffer = await storage.get(key);
+    } catch {
+      throw new ApiError(404, "RECEIPT_NOT_FOUND", "This receipt file could not be found.");
+    }
+
     res.setHeader("Content-Type", request.receiptMime || "application/octet-stream");
     res.setHeader("Cache-Control", "private, max-age=3600");
-    res.sendFile(resolve(env.RECEIPTS_DIR, request.receiptFile));
+    res.send(buffer);
   })
 );
 

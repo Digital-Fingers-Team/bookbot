@@ -42,6 +42,20 @@ const schema = z.object({
   PROCESSING_CONCURRENCY: z.coerce.number().int().positive().max(8).default(2),
   PDF_STORAGE_DIR: z.string().default("storage/pdfs"),
   RECEIPTS_DIR: z.string().default("storage/receipts"),
+  // --- Blob storage (uploaded PDFs + payment receipts) ---
+  // "local" writes to disk (ephemeral on most PaaS); "s3" uses S3/R2 so blobs
+  // survive redeploys. S3_* are only required when STORAGE_DRIVER=s3.
+  STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
+  STORAGE_LOCAL_DIR: z.string().default("storage"),
+  S3_BUCKET: z.string().optional(),
+  S3_REGION: z.string().default("auto"),
+  S3_ENDPOINT: z.string().optional(),
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
+  S3_FORCE_PATH_STYLE: z
+    .string()
+    .default("true")
+    .transform((value) => value !== "false" && value !== "0"),
   UPLOAD_MAX_MB: z.coerce.number().int().positive().default(25),
   UPLOAD_MAX_FILES: z.coerce.number().int().positive().default(10),
   // --- OMP (Open Monograph Press) integration ---

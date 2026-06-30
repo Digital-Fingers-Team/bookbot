@@ -14,6 +14,13 @@ vi.mock("../src/services/retrieval/retrieval.service.js", () => ({
   }))
 }));
 
+// The chat route resolves the caller's access scope; stub it to "all" so the
+// test can exercise the no-evidence path without a database.
+vi.mock("../src/services/access/access.service.js", () => ({
+  resolveAccessScope: vi.fn(async () => ({ all: true })),
+  allowedBookIdList: vi.fn(() => null)
+}));
+
 describe("chat route", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -23,6 +30,11 @@ describe("chat route", () => {
     const { chatRouter } = await import("../src/routes/chat.routes.js");
     const app = express();
     app.use(express.json());
+    // The real app mounts chatRouter behind requireAuth; emulate an authed user.
+    app.use((req, _res, next) => {
+      (req as express.Request & { user: unknown }).user = { id: "u1", role: "admin", language: "ar" };
+      next();
+    });
     app.use("/api/chat", chatRouter);
 
     const server = app.listen(0);

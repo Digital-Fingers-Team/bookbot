@@ -1,8 +1,6 @@
 import { Router, type Router as ExpressRouter } from "express";
-import { access, readFile } from "node:fs/promises";
-import { basename, resolve } from "node:path";
 import { isValidObjectId } from "mongoose";
-import { env } from "../config/env.js";
+import { storage } from "../services/storage/storage.service.js";
 import { requireAdmin, requireAuth } from "../middleware/auth.middleware.js";
 import { requireBookAccess } from "../middleware/access.middleware.js";
 import { allowedBookIdList, canAccessBook, resolveAccessScope } from "../services/access/access.service.js";
@@ -296,7 +294,7 @@ booksRouter.get(
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", contentDisposition(normalizeUploadedFileName(book.originalFileName)));
-    res.sendFile(book.originalPdfPath);
+    res.send(book.buffer);
   })
 );
 
@@ -306,12 +304,11 @@ booksRouter.get(
   requireBookAccess,
   asyncHandler(async (req, res) => {
     const book = await findBookPdf(routeId(req.params.id));
-    const buffer = await readFile(book.originalPdfPath);
 
     res.json({
       fileName: normalizeUploadedFileName(book.originalFileName),
       mimeType: "application/pdf",
-      data: buffer.toString("base64")
+      data: book.buffer.toString("base64")
     });
   })
 );
@@ -324,8 +321,7 @@ booksRouter.get(
     const book = await findBookPdf(routeId(req.params.id));
     const pageNumber = Math.max(1, Math.floor(Number(req.params.page) || 1));
     const scale = Math.min(Math.max(Number(req.query.scale) || 2, 0.75), 3);
-    const buffer = await readFile(book.originalPdfPath);
-    const renderer = await new PdfJsRenderer().open(buffer);
+    const renderer = await new PdfJsRenderer().open(book.buffer);
 
     try {
       if (pageNumber > renderer.pageCount) {
@@ -351,8 +347,7 @@ booksRouter.get(
   "/:id/cover",
   asyncHandler(async (req, res) => {
     const book = await findBookPdf(routeId(req.params.id));
-    const buffer = await readFile(book.originalPdfPath);
-    const renderer = await new PdfJsRenderer().open(buffer);
+    const renderer = await new PdfJsRenderer().open(book.buffer);
 
     try {
       const rendered = await renderer.renderPage(1, 1.5);
@@ -455,22 +450,23 @@ async function findBookPdf(id: string) {
     throw new ApiError(404, "PDF_NOT_AVAILABLE", "The original PDF is not available for this book.");
   }
 
-  // Tolerate a stored absolute path that no longer exists (e.g. the repo moved)
-  // by falling back to the current storage dir + filename.
-  let pdfPath = book.originalPdfPath;
+  // Load via the storage provider. Tolerate a legacy absolute/relative path that
+  // no longer resolves by retrying with a "pdfs/<basename>" key.
+  const key = book.originalPdfPath;
+  let buffer: Buffer;
   try {
-    await access(pdfPath);
+    buffer = await storage.get(key);
   } catch {
-    pdfPath = resolve(env.PDF_STORAGE_DIR, basename(book.originalPdfPath));
+    const fallbackKey = `pdfs/${key.split(/[/\\]/).pop()}`;
     try {
-      await access(pdfPath);
+      buffer = await storage.get(fallbackKey);
     } catch {
       throw new ApiError(404, "PDF_NOT_AVAILABLE", "The original PDF file could not be found.");
     }
   }
 
   return {
-    originalPdfPath: pdfPath,
+    buffer,
     originalFileName: book.originalFileName
   };
 }
