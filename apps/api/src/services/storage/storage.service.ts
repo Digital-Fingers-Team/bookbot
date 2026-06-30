@@ -1,5 +1,7 @@
 import { mkdir, readFile, rm, writeFile, access } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
+import { Readable } from "node:stream";
+import mongoose from "mongoose";
 import {
   S3Client,
   GetObjectCommand,
@@ -16,7 +18,7 @@ import { env } from "../../config/env.js";
  * which is what keeps blobs alive across redeploys on ephemeral-disk platforms.
  */
 export interface StorageProvider {
-  readonly name: "local" | "s3";
+  readonly name: "local" | "gridfs" | "s3";
   put(key: string, body: Buffer, contentType: string): Promise<void>;
   get(key: string): Promise<Buffer>;
   delete(key: string): Promise<void>;
@@ -53,6 +55,59 @@ class LocalStorageProvider implements StorageProvider {
     } catch {
       return false;
     }
+  }
+}
+
+/**
+ * Stores blobs inside MongoDB via GridFS — keeps everything in one datastore and
+ * survives redeploys on ephemeral-disk platforms, with no external account.
+ * The `filename` is the storage key; we keep a single version per key.
+ */
+class GridFsStorageProvider implements StorageProvider {
+  readonly name = "gridfs" as const;
+
+  private bucket() {
+    const db = mongoose.connection.db;
+    if (!db) {
+      throw new Error("GridFS storage requires an active MongoDB connection.");
+    }
+    return new mongoose.mongo.GridFSBucket(db, { bucketName: "uploads" });
+  }
+
+  async put(key: string, body: Buffer, contentType: string) {
+    // Replace any existing object with the same key (keep one version).
+    await this.delete(key);
+    const bucket = this.bucket();
+    await new Promise<void>((resolvePut, reject) => {
+      const stream = bucket.openUploadStream(key, { contentType });
+      stream.on("error", reject);
+      stream.on("finish", () => resolvePut());
+      Readable.from(body).pipe(stream);
+    });
+  }
+
+  async get(key: string) {
+    const bucket = this.bucket();
+    const chunks: Buffer[] = [];
+    await new Promise<void>((resolveGet, reject) => {
+      const stream = bucket.openDownloadStreamByName(key);
+      stream.on("data", (chunk: Buffer) => chunks.push(chunk));
+      stream.on("error", reject);
+      stream.on("end", () => resolveGet());
+    });
+    return Buffer.concat(chunks);
+  }
+
+  async delete(key: string) {
+    const bucket = this.bucket();
+    const files = await bucket.find({ filename: key }).toArray();
+    await Promise.all(files.map((file) => bucket.delete(file._id).catch(() => undefined as void)));
+  }
+
+  async exists(key: string) {
+    const bucket = this.bucket();
+    const found = await bucket.find({ filename: key }).limit(1).toArray();
+    return found.length > 0;
   }
 }
 
@@ -106,5 +161,15 @@ class S3StorageProvider implements StorageProvider {
   }
 }
 
-export const storage: StorageProvider =
-  env.STORAGE_DRIVER === "s3" ? new S3StorageProvider() : new LocalStorageProvider();
+function createStorage(): StorageProvider {
+  switch (env.STORAGE_DRIVER) {
+    case "s3":
+      return new S3StorageProvider();
+    case "gridfs":
+      return new GridFsStorageProvider();
+    default:
+      return new LocalStorageProvider();
+  }
+}
+
+export const storage: StorageProvider = createStorage();
