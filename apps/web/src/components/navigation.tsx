@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   BookMarked,
+  Inbox,
   Library,
   LogIn,
   MessageSquareText,
@@ -30,6 +31,7 @@ const baseNavItems: { href: string; key: StringKey; icon: typeof Library }[] = [
 
 const adminNavItems: { href: string; key: StringKey; icon: typeof Library }[] = [
   { href: "/upload", key: "nav.upload", icon: UploadCloud },
+  { href: "/requests", key: "nav.requests", icon: Inbox },
   { href: "/analytics", key: "nav.analytics", icon: BarChart3 }
 ];
 

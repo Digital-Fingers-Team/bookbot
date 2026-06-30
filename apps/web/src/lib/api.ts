@@ -252,6 +252,74 @@ export async function uploadPdfs(files: File[], token?: string) {
   return response.json() as Promise<{ books: UploadedBook[] }>;
 }
 
+export type AccessRequest = {
+  id: string;
+  targetType: "book" | "category";
+  targetValue: string;
+  targetLabel: string;
+  note: string;
+  status: "pending" | "approved" | "rejected";
+  adminNote: string;
+  createdAt: string;
+  decidedAt: string | null;
+  user?: { id: string; name: string; email: string };
+};
+
+/** Submit a payment-backed access request for a book or category. */
+export async function submitAccessRequest(
+  input: { targetType: "book" | "category"; targetValue: string; note: string; receipt: File },
+  token?: string
+) {
+  const formData = new FormData();
+  formData.append("targetType", input.targetType);
+  formData.append("targetValue", input.targetValue);
+  formData.append("note", input.note);
+  formData.append("receipt", input.receipt);
+
+  const headers = new Headers();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(`${API_URL}/api/access-requests`, { method: "POST", headers, body: formData });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as ApiErrorResponse | null;
+    throw new ApiClientError(
+      response.status,
+      payload?.error.code ?? "REQUEST_FAILED",
+      payload?.error.message ?? "Could not submit your request."
+    );
+  }
+  return response.json() as Promise<{ id: string; status: string }>;
+}
+
+export function listAccessRequests(token?: string, status?: "pending" | "approved" | "rejected") {
+  const qs = status ? `?status=${status}` : "";
+  return request<{ requests: AccessRequest[] }>(`/api/access-requests${qs}`, { token });
+}
+
+export function decideAccessRequest(id: string, action: "approve" | "reject", adminNote: string, token?: string) {
+  return request<{ id: string; status: string }>(`/api/access-requests/${id}/${action}`, {
+    method: "POST",
+    body: { adminNote },
+    token
+  });
+}
+
+/** Fetch a receipt image as an object URL (auth required). Caller revokes it. */
+export async function fetchReceiptObjectUrl(id: string, token?: string): Promise<string> {
+  const headers = new Headers();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  const response = await fetch(`${API_URL}/api/access-requests/${id}/receipt`, { headers });
+  if (!response.ok) {
+    throw new ApiClientError(response.status, "RECEIPT_FAILED", "Could not load the receipt.");
+  }
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
+}
+
 export function listBooks(token?: string) {
   return request<{ books: Book[] }>("/api/books", { token });
 }

@@ -5,6 +5,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { env } from "./config/env.js";
 import { authRouter } from "./routes/auth.routes.js";
+import { accessRequestsRouter } from "./routes/access-requests.routes.js";
 import { booksRouter } from "./routes/books.routes.js";
 import { categoriesRouter } from "./routes/categories.routes.js";
 import { chatRouter } from "./routes/chat.routes.js";
@@ -46,6 +47,7 @@ export function createApp(): Express {
   app.use("/api/chat", requireAuth, chatRouter);
   app.use("/api/books", booksRouter);
   app.use("/api/categories", categoriesRouter);
+  app.use("/api/access-requests", accessRequestsRouter);
   app.use("/api/conversations", conversationsRouter);
   app.use("/api/feedback", feedbackRouter);
   app.use("/api/stats", statsRouter);

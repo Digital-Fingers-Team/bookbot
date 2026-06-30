@@ -41,6 +41,7 @@ const schema = z.object({
   OCR_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(4096),
   PROCESSING_CONCURRENCY: z.coerce.number().int().positive().max(8).default(2),
   PDF_STORAGE_DIR: z.string().default("storage/pdfs"),
+  RECEIPTS_DIR: z.string().default("storage/receipts"),
   UPLOAD_MAX_MB: z.coerce.number().int().positive().default(25),
   UPLOAD_MAX_FILES: z.coerce.number().int().positive().default(10),
   // --- OMP (Open Monograph Press) integration ---
