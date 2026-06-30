@@ -30,6 +30,7 @@ export function RequestAccessModal({
   const [note, setNote] = useState("");
   const [receipt, setReceipt] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
   const [error, setError] = useState("");
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -42,7 +43,9 @@ export function RequestAccessModal({
     setError("");
     try {
       await submitAccessRequest({ targetType: type, targetValue: value, note, receipt }, token);
-      onSubmitted();
+      // Briefly confirm success before closing so the user knows it's under review.
+      setDone(true);
+      setTimeout(() => onSubmitted(), 1400);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("req.failed"));
       setBusy(false);
@@ -150,11 +153,11 @@ export function RequestAccessModal({
 
         <button
           type="submit"
-          disabled={busy}
-          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-moss text-sm font-semibold text-white transition hover:bg-moss/90 disabled:opacity-50"
+          disabled={busy || done}
+          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-moss text-sm font-semibold text-white transition hover:bg-moss/90 disabled:opacity-60"
         >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          {t("req.submit")}
+          {done ? <Check className="h-4 w-4" /> : busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          {done ? t("req.submitted") : t("req.submit")}
         </button>
       </form>
     </div>

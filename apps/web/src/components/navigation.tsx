@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -22,6 +22,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { LanguageToggle } from "./language-toggle";
 import { SiteFooter } from "./site-footer";
 import { useAuth } from "./auth-provider";
+import { unseenRequestCount } from "@/lib/api";
 import { useT, type StringKey } from "@/lib/i18n";
 
 const baseNavItems: { href: string; key: StringKey; icon: typeof Library }[] = [
@@ -141,9 +142,28 @@ function PublicHeader({ loading = false }: { loading?: boolean }) {
 
 function AuthenticatedShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, token } = useAuth();
   const t = useT();
   const navItems = isAdmin ? [...baseNavItems.slice(0, 1), ...adminNavItems, ...baseNavItems.slice(1)] : baseNavItems;
+
+  // Non-admins: show a dot on "Library" when a paid request was decided.
+  const [unseen, setUnseen] = useState(0);
+  useEffect(() => {
+    if (isAdmin || !token) return;
+    let active = true;
+    const poll = () =>
+      unseenRequestCount(token)
+        .then((r) => {
+          if (active) setUnseen(r.count);
+        })
+        .catch(() => undefined);
+    poll();
+    const interval = setInterval(poll, 60000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [isAdmin, token, pathname]);
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
@@ -170,6 +190,9 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
               >
                 <Icon className="h-[18px] w-[18px]" />
                 {t(item.key)}
+                {item.href === "/library" && unseen > 0 ? (
+                  <span className="ms-auto inline-flex h-2 w-2 rounded-full bg-red-500" aria-hidden />
+                ) : null}
               </Link>
             );
           })}
@@ -235,6 +258,9 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
                 >
                   <Icon className="h-4 w-4" />
                   {t(item.key)}
+                  {item.href === "/library" && unseen > 0 ? (
+                    <span className="inline-flex h-2 w-2 rounded-full bg-red-500" aria-hidden />
+                  ) : null}
                 </Link>
               );
             })}

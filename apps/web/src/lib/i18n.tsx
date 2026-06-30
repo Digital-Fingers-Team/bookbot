@@ -319,6 +319,7 @@ export const STRINGS = {
   "req.uploadReceipt": { ar: "ارفع إيصال الدفع", en: "Upload payment receipt" },
   "req.notePlaceholder": { ar: "ملاحظة للأدمن (اختياري)", en: "Note to the admin (optional)" },
   "req.submit": { ar: "إرسال الطلب", en: "Submit request" },
+  "req.submitted": { ar: "تم إرسال طلبك — قيد المراجعة", en: "Request sent — under review" },
   "req.needReceipt": { ar: "من فضلك ارفع صورة الإيصال.", en: "Please attach your payment receipt." },
   "req.needTarget": { ar: "من فضلك اختر كتاباً أو تصنيفاً.", en: "Please choose a book or category." },
   "req.failed": { ar: "تعذّر إرسال الطلب.", en: "Could not submit your request." },

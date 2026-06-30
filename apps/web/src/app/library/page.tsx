@@ -23,6 +23,7 @@ import {
 import { useAuth } from "@/components/auth-provider";
 import { BookCover } from "@/components/book-cover";
 import { RequestAccessModal } from "@/components/request-access-modal";
+import { MyRequestsPanel } from "@/components/my-requests-panel";
 import { ApiClientError, addCategory, deleteBook, getCategories, getStats, listBooks, setFavorite, updateBook } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
 import { useLang, useT, type StringKey } from "@/lib/i18n";
@@ -73,6 +74,7 @@ export default function LibraryPage() {
   const [categoryList, setCategoryList] = useState<string[]>([]);
   const [pickerBook, setPickerBook] = useState<Book | null>(null);
   const [payBook, setPayBook] = useState<Book | null>(null);
+  const [requestsKey, setRequestsKey] = useState(0);
 
   const refresh = useCallback(async () => {
     if (!token) {
@@ -372,6 +374,8 @@ export default function LibraryPage() {
         </div>
       ) : null}
 
+      {!isAdmin ? <MyRequestsPanel refreshKey={requestsKey} /> : null}
+
       {/* Toolbar: search · status tabs · sort · view */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -562,7 +566,10 @@ export default function LibraryPage() {
           categories={categories}
           defaultTarget={{ type: "book", value: payBook.id, label: payBook.title }}
           onClose={() => setPayBook(null)}
-          onSubmitted={() => setPayBook(null)}
+          onSubmitted={() => {
+            setPayBook(null);
+            setRequestsKey((key) => key + 1);
+          }}
         />
       ) : null}
     </div>
