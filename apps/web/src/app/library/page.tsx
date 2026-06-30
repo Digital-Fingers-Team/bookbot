@@ -179,6 +179,20 @@ export default function LibraryPage() {
     }
   }
 
+  // Admin: a short blurb the discovery assistant uses to recommend this book.
+  async function setDescription(book: Book) {
+    const next = window.prompt(t("lib.descriptionPrompt"), book.description ?? "");
+    if (next === null) {
+      return;
+    }
+    try {
+      await updateBook(book.id, { description: next.trim() }, token);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : t("lib.deleteError"));
+    }
+  }
+
   function openBook(book: Book) {
     router.push(`/read/${book.id}`);
   }
@@ -453,6 +467,7 @@ export default function LibraryPage() {
                   onDelete={() => removeBook(book)}
                   onSetCategory={() => setCategory(book)}
                   onSetAuthor={() => setAuthor(book)}
+                  onSetDescription={() => setDescription(book)}
                   onToggleFavorite={() => toggleFavorite(book)}
                   onToggleFeatured={() => toggleFeatured(book)}
                 />
@@ -470,6 +485,7 @@ export default function LibraryPage() {
                   onDelete={() => removeBook(book)}
                   onSetCategory={() => setCategory(book)}
                   onSetAuthor={() => setAuthor(book)}
+                  onSetDescription={() => setDescription(book)}
                   onToggleFavorite={() => toggleFavorite(book)}
                   onToggleFeatured={() => toggleFeatured(book)}
                 />
@@ -538,6 +554,7 @@ function BookCard({
   onDelete,
   onSetCategory,
   onSetAuthor,
+  onSetDescription,
   onToggleFavorite,
   onToggleFeatured
 }: {
@@ -548,6 +565,7 @@ function BookCard({
   onDelete: () => void;
   onSetCategory: () => void;
   onSetAuthor: () => void;
+  onSetDescription: () => void;
   onToggleFavorite: () => void;
   onToggleFeatured: () => void;
 }) {
@@ -622,6 +640,32 @@ function BookCard({
           {isAdmin ? <FeaturedToggle featured={Boolean(book.featured)} onToggle={onToggleFeatured} /> : null}
         </div>
 
+        {book.description ? (
+          <button
+            type="button"
+            dir="auto"
+            onClick={(event) => {
+              event.stopPropagation();
+              if (isAdmin) onSetDescription();
+            }}
+            className={`line-clamp-2 text-start text-xs leading-5 text-ink/55 dark:text-white/55 ${isAdmin ? "hover:text-moss dark:hover:text-sea" : "cursor-default"}`}
+          >
+            {book.description}
+          </button>
+        ) : isAdmin ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onSetDescription();
+            }}
+            className="inline-flex w-fit items-center gap-1 text-xs font-medium text-ink/40 transition hover:text-moss dark:text-white/40 dark:hover:text-sea"
+          >
+            <Plus className="h-3 w-3" />
+            {t("lib.addDescription")}
+          </button>
+        ) : null}
+
         <div className="mt-auto flex items-center justify-between border-t border-line/70 pt-3 dark:border-white/10">
           <span className="text-xs text-ink/50 dark:text-white/50">
             {nf.format(book.pageCount)} {t("lib.pages")} · {nf.format(book.chunkCount)} {t("lib.chunks")}
@@ -644,6 +688,7 @@ function BookRow({
   onDelete,
   onSetCategory,
   onSetAuthor,
+  onSetDescription,
   onToggleFavorite,
   onToggleFeatured
 }: {
@@ -654,6 +699,7 @@ function BookRow({
   onDelete: () => void;
   onSetCategory: () => void;
   onSetAuthor: () => void;
+  onSetDescription: () => void;
   onToggleFavorite: () => void;
   onToggleFeatured: () => void;
 }) {

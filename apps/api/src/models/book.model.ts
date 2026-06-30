@@ -24,6 +24,9 @@ const bookSchema = new Schema(
     error: { type: String, trim: true },
     category: { type: String, trim: true, default: "" },
     author: { type: String, trim: true, default: "" },
+    // Short admin-written blurb used by the discovery assistant to recommend
+    // books to visitors before they have access (metadata only, no content).
+    description: { type: String, trim: true, default: "", maxlength: 600 },
     // Curated by an admin to appear in the homepage showcase carousel.
     featured: { type: Boolean, default: false, index: true },
     // --- OMP (Arado) push: mirrors the processed book into OMP as a submission ---

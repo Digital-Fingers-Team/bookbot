@@ -47,6 +47,7 @@ import type { EvidenceChunk, Source } from "@/lib/types";
 import { EvidenceText } from "@/components/evidence-text";
 import { answerOverlapHighlights, citeSentences } from "@/lib/highlight";
 import { Landing } from "@/components/landing";
+import { DiscoveryExperience } from "@/components/discovery-experience";
 import { useLang, useT } from "@/lib/i18n";
 
 type ChatMessage = {
@@ -77,6 +78,12 @@ export default function HomePage() {
   // Visitors get the marketing landing; signed-in accounts go straight to chat.
   if (!user) {
     return <Landing />;
+  }
+
+  // Users without library access get the discovery guide until an admin grants
+  // them a book or category; admins and granted users get the full chat.
+  if (user.hasAccess === false) {
+    return <DiscoveryExperience />;
   }
 
   return <ChatExperience />;

@@ -121,6 +121,8 @@ export const STRINGS = {
   "lib.addCategory": { ar: "إضافة تصنيف", en: "Add category" },
   "lib.featureHome": { ar: "تمييز للرئيسية", en: "Feature on home" },
   "lib.featured": { ar: "مميّز", en: "Featured" },
+  "lib.addDescription": { ar: "إضافة وصف", en: "Add description" },
+  "lib.descriptionPrompt": { ar: "اكتب وصفاً مختصراً للكتاب (يُستخدم في الترشيحات):", en: "Write a short book description (used for recommendations):" },
   "lib.categoryPrompt": { ar: "أدخل التصنيف (اتركه فارغًا للإزالة):", en: "Enter a category (leave empty to remove):" },
   "lib.author": { ar: "المؤلف", en: "Author" },
   "lib.addAuthor": { ar: "إضافة مؤلف", en: "Add author" },
@@ -280,6 +282,22 @@ export const STRINGS = {
   },
   "landing.getStarted": { ar: "ابدأ الآن", en: "Get started" },
   "landing.libraryTitle": { ar: "من المكتبة", en: "From the library" },
+  "discover.badge": { ar: "دليل المكتبة", en: "Library guide" },
+  "discover.title": { ar: "مش عارف تبدأ منين؟ اسأل وهنرشّحلك", en: "Not sure where to start? Ask and we'll guide you" },
+  "discover.subtitle": {
+    ar: "اسأل عن العناوين أو أنهي كتاب يناسب موضوع معيّن أو أنهي تصنيف تختار — قبل ما تطلب الوصول.",
+    en: "Ask about titles, which book fits a topic, or which category to pick — before you request access."
+  },
+  "discover.placeholder": { ar: "مثلاً: أنهي كتاب أقرأه عن القيادة؟", en: "e.g. Which book should I read about leadership?" },
+  "discover.ask": { ar: "اسأل", en: "Ask" },
+  "discover.s1": { ar: "أنهي كتاب يناسب القيادة؟", en: "Which book suits leadership?" },
+  "discover.s2": { ar: "أنهي تصنيف أختار للإدارة؟", en: "Which category for management?" },
+  "discover.s3": { ar: "إيه الكتب المتاحة عندكم؟", en: "What books do you have?" },
+  "discover.error": { ar: "تعذّر الوصول للدليل الآن، حاول تاني.", en: "The guide is unavailable right now. Please try again." },
+  "discover.requestHint": {
+    ar: "عجبك كتاب أو تصنيف؟ اطلب الوصول من صفحة طلب الوصول والأدمن هيفعّله لك بعد الدفع.",
+    en: "Like a book or category? Request access and an admin will enable it after payment."
+  },
   "landing.f1Title": { ar: "إجابات من كتبك فقط", en: "Answers from your books only" },
   "landing.f1Body": {
     ar: "لا تخمين ولا معلومات خارجية — كل إجابة مبنية على مكتبتك.",

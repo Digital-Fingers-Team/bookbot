@@ -271,10 +271,24 @@ export function addCategory(name: string, token?: string) {
   return request<{ categories: string[] }>("/api/categories", { method: "POST", body: { name }, token });
 }
 
-export function updateBook(id: string, patch: { category?: string; author?: string; featured?: boolean }, token?: string) {
-  return request<{ id: string; category: string; author: string; featured: boolean }>(`/api/books/${id}`, {
-    method: "PATCH",
-    body: patch,
+export function updateBook(
+  id: string,
+  patch: { category?: string; author?: string; featured?: boolean; description?: string },
+  token?: string
+) {
+  return request<{ id: string; category: string; author: string; featured: boolean; description: string }>(
+    `/api/books/${id}`,
+    { method: "PATCH", body: patch, token }
+  );
+}
+
+export type DiscoveryBook = { id: string; title: string; author: string; category: string };
+
+/** Ask the library guide which books/categories suit the user (metadata only). */
+export function discoverBooks(question: string, token?: string) {
+  return request<{ answer: string; books: DiscoveryBook[] }>("/api/chat/discover", {
+    method: "POST",
+    body: { question },
     token
   });
 }

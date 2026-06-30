@@ -6,6 +6,7 @@ import { createLLMProvider } from "../services/generation/llm-provider.service.j
 import { buildEvidenceBooks, buildStructuredSources } from "../services/retrieval/evidence.service.js";
 import { retrieveRelevantChunks } from "../services/retrieval/retrieval.service.js";
 import { allowedBookIdList, resolveAccessScope } from "../services/access/access.service.js";
+import { discoverBooks } from "../services/discovery/discovery.service.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 
@@ -35,7 +36,26 @@ function buildRetrievalQuery(question: string, history?: { role: string; content
   return lastUser ? `${lastUser} ${question}` : question;
 }
 
+const discoverSchema = z.object({
+  question: z.string().trim().min(1, "Question is required.").max(2000)
+});
+
 export const chatRouter: ExpressRouter = Router();
+
+// Discovery: recommend books from catalog metadata only (title/category/
+// description). Available to any signed-in user — no access required, no
+// content returned — so newcomers can decide what to request access to.
+chatRouter.post(
+  "/discover",
+  asyncHandler(async (req, res) => {
+    const parsed = discoverSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ApiError(400, "INVALID_DISCOVERY_REQUEST", "Please enter a valid question.", parsed.error.flatten());
+    }
+    const result = await discoverBooks(parsed.data.question, req.user?.language ?? "ar");
+    res.json(result);
+  })
+);
 
 chatRouter.post(
   "/",

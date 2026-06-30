@@ -27,7 +27,7 @@ booksRouter.get(
     const accessFilter = scope.all ? {} : { _id: { $in: allowedBookIdList(scope) } };
     const books = await Book.find(
       accessFilter,
-      { title: 1, originalFileName: 1, createdAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, author: 1, featured: 1 }
+      { title: 1, originalFileName: 1, createdAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, author: 1, featured: 1, description: 1 }
     )
       .sort({ createdAt: -1 })
       .lean();
@@ -61,6 +61,7 @@ booksRouter.get(
           category: book.category ?? "",
           favorite: favoriteIds.has(String(book._id)),
           featured: Boolean(book.featured),
+          description: book.description ?? "",
           firstPageText
         };
       })
@@ -106,7 +107,9 @@ const BOOK_CARD_FIELDS = {
   processedPages: 1,
   error: 1,
   category: 1,
-  author: 1
+  author: 1,
+  description: 1,
+  featured: 1
 } as const;
 
 type BookStateLean = { favorite?: boolean; lastPage?: number; lastOpenedAt?: Date | null } | null | undefined;
@@ -128,6 +131,8 @@ function bookCard(book: Record<string, unknown>, firstPageText: string, state: B
     error: book.error ?? "",
     author: (book.author as string) ?? "",
     category: (book.category as string) ?? "",
+    description: (book.description as string) ?? "",
+    featured: Boolean(book.featured),
     firstPageText,
     favorite: state?.favorite ?? false,
     lastPage: state?.lastPage ?? 1,
@@ -314,7 +319,7 @@ booksRouter.patch(
       throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
     }
 
-    const update: { category?: string; author?: string; featured?: boolean } = {};
+    const update: { category?: string; author?: string; featured?: boolean; description?: string } = {};
     if (typeof req.body?.category === "string") {
       update.category = req.body.category.trim().slice(0, 80);
     }
@@ -323,6 +328,9 @@ booksRouter.patch(
     }
     if (typeof req.body?.featured === "boolean") {
       update.featured = req.body.featured;
+    }
+    if (typeof req.body?.description === "string") {
+      update.description = req.body.description.trim().slice(0, 600);
     }
     if (Object.keys(update).length === 0) {
       throw new ApiError(400, "INVALID_BOOK_UPDATE", "Nothing to update.");
@@ -333,7 +341,13 @@ booksRouter.patch(
       throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
     }
 
-    res.json({ id: String(book._id), category: book.category ?? "", author: book.author ?? "", featured: Boolean(book.featured) });
+    res.json({
+      id: String(book._id),
+      category: book.category ?? "",
+      author: book.author ?? "",
+      featured: Boolean(book.featured),
+      description: book.description ?? ""
+    });
   })
 );
 

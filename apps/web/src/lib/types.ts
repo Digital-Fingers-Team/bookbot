@@ -14,6 +14,8 @@ export type User = {
   email: string;
   role: UserRole;
   language?: "en" | "ar";
+  // True when the user can read at least one book (drives discovery-vs-library).
+  hasAccess?: boolean;
 };
 
 export type AuthSession = {
@@ -35,6 +37,7 @@ export type Book = {
   error: string;
   author: string;
   category: string;
+  description?: string;
   favorite?: boolean;
   featured?: boolean;
   firstPageText: string;
