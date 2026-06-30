@@ -354,6 +354,16 @@ export function listBooks(token?: string) {
   return request<{ books: Book[] }>("/api/books", { token });
 }
 
+export type CatalogBook = { id: string; title: string; author: string; category: string };
+
+/** Server-side typeahead over the whole catalog (title/author only, no content). */
+export function searchBookCatalog(q: string, token?: string, limit = 20) {
+  const qs = new URLSearchParams();
+  if (q) qs.set("q", q);
+  qs.set("limit", String(limit));
+  return request<{ books: CatalogBook[] }>(`/api/books/catalog?${qs.toString()}`, { token });
+}
+
 export function deleteBook(id: string, token?: string) {
   return request<{ deleted: true }>(`/api/books/${id}`, {
     method: "DELETE",

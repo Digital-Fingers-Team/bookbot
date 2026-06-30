@@ -326,6 +326,10 @@ export const STRINGS = {
   "users.adminFull": { ar: "أدمن — وصول كامل لكل الكتب.", en: "Admin — full access to all books." },
   "users.categories": { ar: "التصنيفات المتاحة", en: "Allowed categories" },
   "users.books": { ar: "الكتب المتاحة", en: "Allowed books" },
+  "picker.searchBooks": { ar: "ابحث عن كتاب بالاسم…", en: "Search books by title…" },
+  "picker.typeToSearch": { ar: "اكتب للبحث في الكتب", en: "Type to search books" },
+  "picker.noResults": { ar: "لا توجد نتائج.", en: "No matches." },
+  "picker.searching": { ar: "جاري البحث…", en: "Searching…" },
   "landing.f1Title": { ar: "إجابات من كتبك فقط", en: "Answers from your books only" },
   "landing.f1Body": {
     ar: "لا تخمين ولا معلومات خارجية — كل إجابة مبنية على مكتبتك.",

@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Search, ShieldCheck, Users, X } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { getCategories, grantAccess, listBooks, listUsers, revokeAccess, type AdminUser } from "@/lib/api";
-import type { Book } from "@/lib/types";
+import { getCategories, grantAccess, listUsers, revokeAccess, type AdminUser, type CatalogBook } from "@/lib/api";
+import { BookPicker } from "@/components/book-picker";
 import { useT } from "@/lib/i18n";
 
 export default function UsersPage() {
@@ -14,7 +14,6 @@ export default function UsersPage() {
   const t = useT();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
-  const [books, setBooks] = useState<Book[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -38,7 +37,6 @@ export default function UsersPage() {
       return;
     }
     getCategories(token).then((r) => setCategories(r.categories)).catch(() => undefined);
-    listBooks(token).then((r) => setBooks(r.books)).catch(() => undefined);
   }, [authLoading, isAdmin, router, token]);
 
   useEffect(() => {
@@ -115,15 +113,38 @@ export default function UsersPage() {
                     onAdd={(v) => grant(user, "category", v)}
                     onRemove={(v) => revoke(user, "category", v)}
                   />
-                  <AccessSection
-                    label={t("users.books")}
-                    chips={user.allowedBooks.map((b) => ({ value: b.id, label: b.title }))}
-                    options={books
-                      .filter((b) => !user.allowedBooks.some((ab) => ab.id === b.id))
-                      .map((b) => ({ value: b.id, label: b.title }))}
-                    onAdd={(v) => grant(user, "book", v)}
-                    onRemove={(v) => revoke(user, "book", v)}
-                  />
+                  <div>
+                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/40 dark:text-white/40">
+                      {t("users.books")}
+                    </p>
+                    <div className="mb-2 flex flex-wrap items-center gap-1.5">
+                      {user.allowedBooks.length === 0 ? (
+                        <span className="text-xs text-ink/35 dark:text-white/35">—</span>
+                      ) : null}
+                      {user.allowedBooks.map((book) => (
+                        <span
+                          key={book.id}
+                          dir="auto"
+                          className="inline-flex max-w-[14rem] items-center gap-1 rounded-full bg-moss/10 py-0.5 pe-1 ps-2 text-[11px] font-medium text-moss dark:bg-sea/15 dark:text-sea"
+                        >
+                          <span className="truncate">{book.title}</span>
+                          <button
+                            type="button"
+                            onClick={() => revoke(user, "book", book.id)}
+                            aria-label="remove"
+                            className="hover:text-red-500"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <BookPicker
+                      size="sm"
+                      excludeIds={user.allowedBooks.map((b) => b.id)}
+                      onPick={(book: CatalogBook) => grant(user, "book", book.id)}
+                    />
+                  </div>
                 </div>
               )}
             </li>

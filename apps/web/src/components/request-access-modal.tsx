@@ -1,9 +1,10 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Loader2, Upload, X } from "lucide-react";
+import { Check, Loader2, Upload, X } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { submitAccessRequest, type DiscoveryBook } from "@/lib/api";
+import { submitAccessRequest, type CatalogBook, type DiscoveryBook } from "@/lib/api";
+import { BookPicker } from "@/components/book-picker";
 import { useT } from "@/lib/i18n";
 
 type Target = { type: "book" | "category"; value: string; label: string };
@@ -25,6 +26,7 @@ export function RequestAccessModal({
   const t = useT();
   const [type, setType] = useState<"book" | "category">(defaultTarget?.type ?? (books.length ? "book" : "category"));
   const [value, setValue] = useState(defaultTarget?.value ?? "");
+  const [bookLabel, setBookLabel] = useState(defaultTarget?.type === "book" ? defaultTarget.label : "");
   const [note, setNote] = useState("");
   const [receipt, setReceipt] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -69,6 +71,7 @@ export function RequestAccessModal({
               onClick={() => {
                 setType(option);
                 setValue("");
+                setBookLabel("");
               }}
               className={`flex-1 rounded-md py-1.5 font-medium transition ${
                 type === option ? "bg-moss text-white" : "text-ink/60 dark:text-white/60"
@@ -79,25 +82,49 @@ export function RequestAccessModal({
           ))}
         </div>
 
-        <select
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          dir="auto"
-          className="h-10 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none focus:border-moss dark:border-white/10 dark:bg-white/5 dark:text-white"
-        >
-          <option value="">{type === "book" ? t("req.pickBook") : t("req.pickCategory")}</option>
-          {type === "book"
-            ? books.map((book) => (
-                <option key={book.id} value={book.id}>
-                  {book.title}
-                </option>
-              ))
-            : categories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-        </select>
+        {type === "book" ? (
+          value ? (
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-moss/30 bg-moss/[0.06] px-3 py-2.5 dark:border-sea/30 dark:bg-sea/10">
+              <span dir="auto" className="flex min-w-0 items-center gap-2 text-sm text-ink dark:text-white">
+                <Check className="h-4 w-4 shrink-0 text-moss dark:text-sea" />
+                <span className="truncate">{bookLabel}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setValue("");
+                  setBookLabel("");
+                }}
+                aria-label="clear"
+                className="shrink-0 text-ink/40 hover:text-ink dark:text-white/40"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <BookPicker
+              onPick={(book: CatalogBook) => {
+                setValue(book.id);
+                setBookLabel(book.title);
+              }}
+              placeholder={t("req.pickBook")}
+            />
+          )
+        ) : (
+          <select
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            dir="auto"
+            className="h-10 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none focus:border-moss dark:border-white/10 dark:bg-white/5 dark:text-white"
+          >
+            <option value="">{t("req.pickCategory")}</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+        )}
 
         <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-line px-3 py-2.5 text-sm text-ink/70 transition hover:border-moss/40 dark:border-white/15 dark:text-white/70">
           <Upload className="h-4 w-4" />

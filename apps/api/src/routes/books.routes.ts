@@ -97,6 +97,42 @@ booksRouter.get(
   })
 );
 
+/**
+ * Lightweight typeahead over the whole catalog (id/title/author/category only).
+ * Backs the admin "grant access" picker and the user "request access" picker so
+ * neither has to load thousands of books into a <select>. No book content here.
+ */
+booksRouter.get(
+  "/catalog",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 50) : 20;
+
+    const filter: Record<string, unknown> = { status: "ready" };
+    if (q) {
+      const safe = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const rx = new RegExp(safe, "i");
+      filter.$or = [{ title: rx }, { originalFileName: rx }, { author: rx }];
+    }
+
+    const books = await Book.find(filter, { title: 1, originalFileName: 1, author: 1, category: 1 })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    res.json({
+      books: books.map((book) => ({
+        id: String(book._id),
+        title: readableBookTitle({ title: book.title, originalFileName: book.originalFileName, firstPageText: "" }),
+        author: book.author ?? "",
+        category: book.category ?? ""
+      }))
+    });
+  })
+);
+
 const BOOK_CARD_FIELDS = {
   title: 1,
   originalFileName: 1,
