@@ -191,11 +191,14 @@ export function PdfReader({ bookId, url, title, page, totalPages, onPageChange }
             </div>
           </div>
         ) : imageUrl ? (
-          <div className="mx-auto flex min-h-full w-max min-w-full items-start justify-center">
+          // Block + mx-auto (not flex) so the page fits the column width at 100%
+          // and, when zoomed past 100%, overflows into horizontal scroll without
+          // the flex-centering bug that clips the left/right edges.
+          <div className="min-h-full w-full">
             <img
               src={imageUrl}
               alt={`${title} - ${t("ask.page")} ${page}`}
-              className="max-w-none bg-white shadow-xl ring-1 ring-black/10 dark:ring-white/10"
+              className="mx-auto block max-w-none bg-white shadow-xl ring-1 ring-black/10 dark:ring-white/10"
               style={{
                 width: `${zoom}%`,
                 transform: `rotate(${rotation}deg)`,
