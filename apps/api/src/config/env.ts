@@ -11,6 +11,9 @@ dotenv.config();
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(4000),
+  // Observability. SENTRY_DSN is optional — error tracking is off when unset.
+  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
+  SENTRY_DSN: z.string().optional(),
   MONGODB_URI: z.string().min(1).default("mongodb://127.0.0.1:27017/aradobotd"),
   CLIENT_ORIGIN: z.string().default("http://localhost:3000"),
   ADMIN_API_KEY: z.string().optional(),

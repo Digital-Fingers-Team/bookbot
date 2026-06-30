@@ -1,9 +1,9 @@
 import cors from "cors";
 import express, { type Express } from "express";
-import rateLimit from "express-rate-limit";
 import helmet from "helmet";
-import morgan from "morgan";
 import { env } from "./config/env.js";
+import { httpLogger } from "./config/logger.js";
+import { authLimiter, globalLimiter, uploadLimiter } from "./middleware/rate-limit.middleware.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { accessRequestsRouter } from "./routes/access-requests.routes.js";
 import { adminUsersRouter } from "./routes/admin-users.routes.js";
@@ -29,22 +29,17 @@ export function createApp(): Express {
     })
   );
   app.use(express.json({ limit: "1mb" }));
-  app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
-  app.use(
-    rateLimit({
-      windowMs: 60_000,
-      limit: 120,
-      standardHeaders: true,
-      legacyHeaders: false
-    })
-  );
+  if (env.NODE_ENV !== "test") {
+    app.use(httpLogger);
+  }
+  app.use(globalLimiter);
 
   app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
   });
 
-  app.use("/api/auth", authRouter);
-  app.use("/api/upload", uploadRouter);
+  app.use("/api/auth", authLimiter, authRouter);
+  app.use("/api/upload", uploadLimiter, uploadRouter);
   app.use("/api/chat", requireAuth, chatRouter);
   app.use("/api/books", booksRouter);
   app.use("/api/categories", categoriesRouter);

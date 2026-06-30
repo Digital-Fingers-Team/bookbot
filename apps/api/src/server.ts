@@ -1,11 +1,14 @@
 import { createApp } from "./app.js";
 import { connectDatabase } from "./config/database.js";
 import { env } from "./config/env.js";
+import { logger } from "./config/logger.js";
+import { initSentry } from "./config/sentry.js";
 import { seedDefaultAdmin } from "./services/auth/auth.service.js";
 import { seedDefaultCategories } from "./models/category.model.js";
 import { failStaleProcessingBooks } from "./services/ingestion/ingestion.service.js";
 
 async function bootstrap() {
+  initSentry();
   await connectDatabase();
   await seedDefaultAdmin();
   await seedDefaultCategories();
@@ -13,7 +16,7 @@ async function bootstrap() {
   const app = createApp();
 
   app.listen(env.PORT, () => {
-    console.log(`AradoBot API listening on http://localhost:${env.PORT}`);
+    logger.info(`AradoBot API listening on http://localhost:${env.PORT}`);
   });
 }
 

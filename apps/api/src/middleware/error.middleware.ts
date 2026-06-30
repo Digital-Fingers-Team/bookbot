@@ -1,5 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { isApiError } from "../utils/api-error.js";
+import { logger } from "../config/logger.js";
+import { captureError } from "../config/sentry.js";
 
 export function notFoundHandler(req: Request, res: Response) {
   res.status(404).json({
@@ -22,7 +24,8 @@ export function errorHandler(error: unknown, _req: Request, res: Response, _next
     return;
   }
 
-  console.error(error);
+  captureError(error);
+  logger.error({ err: error }, "Unhandled error");
   res.status(500).json({
     error: {
       code: "INTERNAL_SERVER_ERROR",
