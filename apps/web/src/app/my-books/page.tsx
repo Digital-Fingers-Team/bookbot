@@ -1,40 +1,32 @@
 "use client";
 
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BookOpenText, Clock, Heart, Library, Loader2 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { BookCover } from "@/components/book-cover";
-import { getMyBooks, type MyBook } from "@/lib/api";
+import { type MyBook } from "@/lib/api";
+import { useMyBooks } from "@/lib/hooks";
 import { useT } from "@/lib/i18n";
 
 const nf = new Intl.NumberFormat("en");
 
 export default function MyBooksPage() {
   const router = useRouter();
-  const { token, user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const t = useT();
-  const [data, setData] = useState<{ favorites: MyBook[]; continueReading: MyBook[]; owned: MyBook[] }>({
-    favorites: [],
-    continueReading: [],
-    owned: []
-  });
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading } = useMyBooks();
+  const loading = isLoading;
+  const favorites = data?.favorites ?? [];
+  const continueReading = data?.continueReading ?? [];
+  const owned = data?.owned ?? [];
 
   useEffect(() => {
-    if (authLoading) {
-      return;
-    }
-    if (!user) {
+    if (!authLoading && !user) {
       router.replace("/login?next=/my-books");
-      return;
     }
-    getMyBooks(token)
-      .then(setData)
-      .catch(() => undefined)
-      .finally(() => setLoading(false));
-  }, [authLoading, user, token, router]);
+  }, [authLoading, user, router]);
 
   if (authLoading || !user) {
     return (
@@ -44,7 +36,7 @@ export default function MyBooksPage() {
     );
   }
 
-  const empty = !loading && !data.continueReading.length && !data.favorites.length && !data.owned.length;
+  const empty = !loading && !continueReading.length && !favorites.length && !owned.length;
 
   return (
     <div className="space-y-8">
@@ -76,25 +68,25 @@ export default function MyBooksPage() {
         </div>
       ) : (
         <>
-          {data.owned.length ? (
+          {owned.length ? (
             <Section icon={Library} title={t("mb.owned")}>
-              {data.owned.map((book) => (
+              {owned.map((book) => (
                 <MyBookCard key={book.id} book={book} />
               ))}
             </Section>
           ) : null}
 
-          {data.continueReading.length ? (
+          {continueReading.length ? (
             <Section icon={Clock} title={t("mb.continueReading")}>
-              {data.continueReading.map((book) => (
+              {continueReading.map((book) => (
                 <MyBookCard key={book.id} book={book} showProgress />
               ))}
             </Section>
           ) : null}
 
-          {data.favorites.length ? (
+          {favorites.length ? (
             <Section icon={Heart} title={t("mb.favorites")}>
-              {data.favorites.map((book) => (
+              {favorites.map((book) => (
                 <MyBookCard key={book.id} book={book} />
               ))}
             </Section>

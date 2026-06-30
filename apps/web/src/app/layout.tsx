@@ -3,6 +3,7 @@ import { Cairo } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
 import { AppShell } from "@/components/navigation";
+import { QueryProvider } from "@/components/query-provider";
 import { LanguageProvider } from "@/lib/i18n";
 
 const cairo = Cairo({ subsets: ["arabic", "latin"], display: "swap" });
@@ -41,7 +42,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script dangerouslySetInnerHTML={{ __html: langScript }} />
         <LanguageProvider>
           <AuthProvider>
-            <AppShell>{children}</AppShell>
+            <QueryProvider>
+              <AppShell>{children}</AppShell>
+            </QueryProvider>
           </AuthProvider>
         </LanguageProvider>
       </body>
