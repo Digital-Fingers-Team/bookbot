@@ -638,7 +638,7 @@ function BookCard({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge book={book} />
+          {isAdmin ? <StatusBadge book={book} /> : null}
           <MetaControl
             value={book.author}
             icon={User}
@@ -781,7 +781,7 @@ function BookRow({
           isAdmin={isAdmin}
           onEdit={onSetCategory}
         />
-        <StatusBadge book={book} compact />
+        {isAdmin ? <StatusBadge book={book} compact /> : null}
       </div>
       <div className="hidden w-28 shrink-0 text-end text-xs text-ink/55 dark:text-white/55 md:block">
         {nf.format(book.pageCount)} {t("lib.pages")}
