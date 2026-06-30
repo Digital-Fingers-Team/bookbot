@@ -40,6 +40,9 @@ export type Book = {
   description?: string;
   favorite?: boolean;
   featured?: boolean;
+  // True when the current user may actually open/read this book. The library
+  // lists every book; locked ones (accessible === false) can't be opened.
+  accessible?: boolean;
   firstPageText: string;
 };
 

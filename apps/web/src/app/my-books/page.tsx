@@ -3,7 +3,7 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { BookOpenText, Clock, Heart, Loader2 } from "lucide-react";
+import { BookOpenText, Clock, Heart, Library, Loader2 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { BookCover } from "@/components/book-cover";
 import { getMyBooks, type MyBook } from "@/lib/api";
@@ -15,9 +15,10 @@ export default function MyBooksPage() {
   const router = useRouter();
   const { token, user, loading: authLoading } = useAuth();
   const t = useT();
-  const [data, setData] = useState<{ favorites: MyBook[]; continueReading: MyBook[] }>({
+  const [data, setData] = useState<{ favorites: MyBook[]; continueReading: MyBook[]; owned: MyBook[] }>({
     favorites: [],
-    continueReading: []
+    continueReading: [],
+    owned: []
   });
   const [loading, setLoading] = useState(true);
 
@@ -43,7 +44,7 @@ export default function MyBooksPage() {
     );
   }
 
-  const empty = !loading && !data.continueReading.length && !data.favorites.length;
+  const empty = !loading && !data.continueReading.length && !data.favorites.length && !data.owned.length;
 
   return (
     <div className="space-y-8">
@@ -75,6 +76,14 @@ export default function MyBooksPage() {
         </div>
       ) : (
         <>
+          {data.owned.length ? (
+            <Section icon={Library} title={t("mb.owned")}>
+              {data.owned.map((book) => (
+                <MyBookCard key={book.id} book={book} />
+              ))}
+            </Section>
+          ) : null}
+
           {data.continueReading.length ? (
             <Section icon={Clock} title={t("mb.continueReading")}>
               {data.continueReading.map((book) => (

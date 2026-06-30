@@ -5,7 +5,7 @@ import { isValidObjectId } from "mongoose";
 import { env } from "../config/env.js";
 import { requireAdmin, requireAuth } from "../middleware/auth.middleware.js";
 import { requireBookAccess } from "../middleware/access.middleware.js";
-import { allowedBookIdList, resolveAccessScope } from "../services/access/access.service.js";
+import { allowedBookIdList, canAccessBook, resolveAccessScope } from "../services/access/access.service.js";
 import { Book } from "../models/book.model.js";
 import { BookState } from "../models/book-state.model.js";
 import { Chunk } from "../models/chunk.model.js";
@@ -22,11 +22,11 @@ booksRouter.get(
   "/",
   requireAuth,
   asyncHandler(async (req, res) => {
-    // Regular users only see the books an admin has granted them.
+    // The library shows the whole catalog; `accessible` marks which books the
+    // user may actually open (admins / granted books / granted categories).
     const scope = await resolveAccessScope(req.user!);
-    const accessFilter = scope.all ? {} : { _id: { $in: allowedBookIdList(scope) } };
     const books = await Book.find(
-      accessFilter,
+      {},
       { title: 1, originalFileName: 1, createdAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, author: 1, featured: 1, description: 1 }
     )
       .sort({ createdAt: -1 })
@@ -62,6 +62,7 @@ booksRouter.get(
           favorite: favoriteIds.has(String(book._id)),
           featured: Boolean(book.featured),
           description: book.description ?? "",
+          accessible: canAccessBook(scope, String(book._id)),
           firstPageText
         };
       })
@@ -182,29 +183,40 @@ booksRouter.get(
   requireAuth,
   asyncHandler(async (req, res) => {
     const userId = req.user!.id;
+    const scope = await resolveAccessScope(req.user!);
     const states = await BookState.find({ userId }).lean();
-    if (!states.length) {
-      res.json({ favorites: [], continueReading: [] });
+
+    // "Owned" = books the user purchased (granted books + books in granted
+    // categories). Admins own everything, so we leave their owned list empty —
+    // they browse the full catalog from the library instead.
+    const ownedIds = scope.all ? [] : allowedBookIdList(scope) ?? [];
+    const ownedSet = new Set(ownedIds);
+
+    const stateBookIds = states.map((state) => String(state.bookId));
+    const allIds = Array.from(new Set([...stateBookIds, ...ownedIds]));
+    if (!allIds.length) {
+      res.json({ favorites: [], continueReading: [], owned: [] });
       return;
     }
 
-    const bookIds = states.map((state) => state.bookId);
     const [books, firstPageChunks] = await Promise.all([
-      Book.find({ _id: { $in: bookIds } }, BOOK_CARD_FIELDS).lean(),
-      Chunk.find({ bookId: { $in: bookIds }, pageNumber: 1 }, { bookId: 1, chunkText: 1 }, { lean: true })
+      Book.find({ _id: { $in: allIds } }, BOOK_CARD_FIELDS).lean(),
+      Chunk.find({ bookId: { $in: allIds }, pageNumber: 1 }, { bookId: 1, chunkText: 1 }, { lean: true })
     ]);
     const firstPageByBookId = new Map(firstPageChunks.map((chunk) => [String(chunk.bookId), excerpt(chunk.chunkText, 220)]));
     const stateByBook = new Map(states.map((state) => [String(state.bookId), state]));
 
-    const cards = books.map((book) =>
-      bookCard(book, firstPageByBookId.get(String(book._id)) ?? "", stateByBook.get(String(book._id)))
-    );
+    const cards = books.map((book) => ({
+      ...bookCard(book, firstPageByBookId.get(String(book._id)) ?? "", stateByBook.get(String(book._id))),
+      accessible: canAccessBook(scope, String(book._id))
+    }));
 
     res.json({
       favorites: cards.filter((card) => card.favorite),
       continueReading: cards
         .filter((card) => card.lastOpenedAt)
-        .sort((a, b) => new Date(b.lastOpenedAt as Date).getTime() - new Date(a.lastOpenedAt as Date).getTime())
+        .sort((a, b) => new Date(b.lastOpenedAt as Date).getTime() - new Date(a.lastOpenedAt as Date).getTime()),
+      owned: cards.filter((card) => ownedSet.has(card.id))
     });
   })
 );

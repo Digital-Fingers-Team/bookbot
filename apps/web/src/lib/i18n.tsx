@@ -113,6 +113,8 @@ export const STRINGS = {
   "lib.pages": { ar: "صفحة", en: "pages" },
   "lib.chunks": { ar: "مقطع", en: "chunks" },
   "lib.openBook": { ar: "فتح", en: "Open" },
+  "lib.locked": { ar: "غير متاح", en: "Locked" },
+  "lib.lockedHint": { ar: "اطلب الوصول لقراءته", en: "Request access to read" },
   "lib.category": { ar: "التصنيف", en: "Category" },
   "lib.allCategories": { ar: "كل التصنيفات", en: "All categories" },
   "lib.uncategorized": { ar: "غير مصنّف", en: "Uncategorized" },
@@ -131,7 +133,8 @@ export const STRINGS = {
   // My Books
   "nav.myBooks": { ar: "كتبي", en: "My Books" },
   "mb.title": { ar: "كتبي", en: "My Books" },
-  "mb.subtitle": { ar: "المفضّلة وما تتابع قراءته.", en: "Your favorites and what you're reading." },
+  "mb.subtitle": { ar: "كتبك التي اشتركت بها، والمفضّلة وما تتابع قراءته.", en: "Your purchased books, favorites, and what you're reading." },
+  "mb.owned": { ar: "كتبي المتاحة", en: "My library" },
   "mb.continueReading": { ar: "متابعة القراءة", en: "Continue reading" },
   "mb.favorites": { ar: "المفضّلة", en: "Favorites" },
   "mb.empty": { ar: "لم تفتح أي كتاب بعد.", en: "You haven't opened any book yet." },

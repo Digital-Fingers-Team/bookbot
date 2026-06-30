@@ -10,6 +10,7 @@ import {
   LayoutGrid,
   List as ListIcon,
   Loader2,
+  Lock,
   Plus,
   RefreshCw,
   Search,
@@ -194,6 +195,10 @@ export default function LibraryPage() {
   }
 
   function openBook(book: Book) {
+    // Locked books appear in the catalog but can't be opened until granted.
+    if (book.accessible === false) {
+      return;
+    }
     router.push(`/read/${book.id}`);
   }
 
@@ -570,6 +575,7 @@ function BookCard({
   onToggleFeatured: () => void;
 }) {
   const t = useT();
+  const locked = book.accessible === false;
   return (
     <article
       role="button"
@@ -581,12 +587,24 @@ function BookCard({
           onOpen();
         }
       }}
-      className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-white text-left transition hover:border-moss/30 hover:shadow-soft focus:outline-none focus:ring-2 focus:ring-moss/25 dark:border-white/10 dark:bg-[#0c0c0e]"
+      aria-disabled={locked}
+      className={`group flex flex-col overflow-hidden rounded-2xl border border-line bg-white text-left transition focus:outline-none focus:ring-2 focus:ring-moss/25 dark:border-white/10 dark:bg-[#0c0c0e] ${
+        locked ? "cursor-default opacity-95" : "cursor-pointer hover:border-moss/30 hover:shadow-soft"
+      }`}
     >
       <div className="relative border-b border-line bg-paper p-4 dark:border-white/10 dark:bg-white/[0.03]">
-        <div className="absolute start-3 top-3 z-10">
-          <FavoriteButton favorite={Boolean(book.favorite)} onToggle={onToggleFavorite} />
-        </div>
+        {locked ? (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 bg-white/55 backdrop-blur-[2px] dark:bg-[#0c0c0e]/55">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-ink/70 text-white dark:bg-white/15">
+              <Lock className="h-4 w-4" />
+            </span>
+            <span className="text-[11px] font-medium text-ink/70 dark:text-white/70">{t("lib.lockedHint")}</span>
+          </div>
+        ) : (
+          <div className="absolute start-3 top-3 z-10">
+            <FavoriteButton favorite={Boolean(book.favorite)} onToggle={onToggleFavorite} />
+          </div>
+        )}
         {isAdmin ? (
           <button
             type="button"
@@ -670,10 +688,17 @@ function BookCard({
           <span className="text-xs text-ink/50 dark:text-white/50">
             {nf.format(book.pageCount)} {t("lib.pages")} · {nf.format(book.chunkCount)} {t("lib.chunks")}
           </span>
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-moss transition group-hover:gap-1.5 dark:text-sea">
-            {t("lib.openBook")}
-            <BookOpenText className="h-3.5 w-3.5" />
-          </span>
+          {locked ? (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-ink/45 dark:text-white/45">
+              {t("lib.locked")}
+              <Lock className="h-3 w-3" />
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-moss transition group-hover:gap-1.5 dark:text-sea">
+              {t("lib.openBook")}
+              <BookOpenText className="h-3.5 w-3.5" />
+            </span>
+          )}
         </div>
       </div>
     </article>
@@ -704,6 +729,7 @@ function BookRow({
   onToggleFeatured: () => void;
 }) {
   const t = useT();
+  const locked = book.accessible === false;
   return (
     <div
       role="button"
@@ -715,15 +741,25 @@ function BookRow({
           onOpen();
         }
       }}
-      className="group flex cursor-pointer items-center gap-4 px-4 py-3.5 transition hover:bg-paper focus:outline-none focus:ring-2 focus:ring-inset focus:ring-moss/25 dark:hover:bg-white/[0.03]"
+      aria-disabled={locked}
+      className={`group flex items-center gap-4 px-4 py-3.5 transition focus:outline-none focus:ring-2 focus:ring-inset focus:ring-moss/25 ${
+        locked ? "cursor-default" : "cursor-pointer hover:bg-paper dark:hover:bg-white/[0.03]"
+      }`}
     >
-      <BookCover
-        bookId={book.id}
-        ready={book.status === "ready"}
-        alt={book.title}
-        className="h-12 w-9 shrink-0 overflow-hidden rounded border border-line dark:border-white/10"
-        iconClassName="h-4 w-4"
-      />
+      <div className="relative shrink-0">
+        <BookCover
+          bookId={book.id}
+          ready={book.status === "ready"}
+          alt={book.title}
+          className="h-12 w-9 overflow-hidden rounded border border-line dark:border-white/10"
+          iconClassName="h-4 w-4"
+        />
+        {locked ? (
+          <span className="absolute inset-0 flex items-center justify-center rounded bg-ink/45 text-white">
+            <Lock className="h-3.5 w-3.5" />
+          </span>
+        ) : null}
+      </div>
       <div className="min-w-0 flex-1">
         <p dir="auto" className="truncate text-sm font-semibold text-ink dark:text-white">{book.title}</p>
         <p className="truncate text-xs text-ink/45 dark:text-white/45">{book.originalFileName}</p>
@@ -754,7 +790,7 @@ function BookRow({
         {nf.format(book.chunkCount)} {t("lib.chunks")}
       </div>
       {isAdmin ? <FeaturedToggle featured={Boolean(book.featured)} onToggle={onToggleFeatured} compact /> : null}
-      <FavoriteButton favorite={Boolean(book.favorite)} onToggle={onToggleFavorite} />
+      {locked ? null : <FavoriteButton favorite={Boolean(book.favorite)} onToggle={onToggleFavorite} />}
       {isAdmin ? (
         <button
           type="button"

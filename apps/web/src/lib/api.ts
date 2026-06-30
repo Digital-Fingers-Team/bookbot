@@ -408,7 +408,7 @@ export function getBook(id: string, token?: string) {
 }
 
 export function getMyBooks(token?: string) {
-  return request<{ favorites: MyBook[]; continueReading: MyBook[] }>("/api/books/my", { token });
+  return request<{ favorites: MyBook[]; continueReading: MyBook[]; owned: MyBook[] }>("/api/books/my", { token });
 }
 
 export function setFavorite(id: string, favorite: boolean, token?: string) {
