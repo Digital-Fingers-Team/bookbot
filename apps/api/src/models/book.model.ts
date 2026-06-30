@@ -21,6 +21,8 @@ const bookSchema = new Schema(
       index: true
     },
     processedPages: { type: Number, required: true, default: 0 },
+    // When processing finished and the book became readable ("activation" date).
+    readyAt: { type: Date },
     error: { type: String, trim: true },
     category: { type: String, trim: true, default: "" },
     author: { type: String, trim: true, default: "" },

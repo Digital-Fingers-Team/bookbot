@@ -143,6 +143,7 @@ export async function processBook(bookId: string): Promise<void> {
     book.pageCount = pageCount;
     book.processedPages = pageCount;
     book.chunkCount = cleanedChunks.length;
+    book.readyAt = new Date();
     book.error = undefined;
     await book.save();
 

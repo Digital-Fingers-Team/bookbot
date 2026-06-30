@@ -25,7 +25,7 @@ import { BookCover } from "@/components/book-cover";
 import { RequestAccessModal } from "@/components/request-access-modal";
 import { ApiClientError, addCategory, deleteBook, getCategories, getStats, listBooks, setFavorite, updateBook } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
-import { useT, type StringKey } from "@/lib/i18n";
+import { useLang, useT, type StringKey } from "@/lib/i18n";
 
 type ViewMode = "grid" | "list";
 type StatusFilter = "all" | "ready" | "processing" | "failed";
@@ -39,6 +39,21 @@ const STATUS_TABS: { key: StatusFilter; labelKey: StringKey }[] = [
 ];
 
 const nf = new Intl.NumberFormat("en");
+
+function formatDate(value: string | null | undefined, lang: string) {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", {
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  }).format(date);
+}
 
 export default function LibraryPage() {
   const router = useRouter();
@@ -608,7 +623,10 @@ function BookCard({
   onToggleFeatured: () => void;
 }) {
   const t = useT();
+  const { lang } = useLang();
   const locked = book.accessible === false;
+  const uploadedOn = formatDate(book.createdAt, lang);
+  const activatedOn = formatDate(book.readyAt, lang);
   return (
     <article
       role="button"
@@ -718,6 +736,19 @@ function BookCard({
         ) : null}
 
         <PriceTag price={book.price} isAdmin={isAdmin} onEdit={onSetPrice} />
+
+        <div className="flex flex-col gap-0.5 text-[11px] text-ink/45 dark:text-white/45">
+          {uploadedOn ? (
+            <span>
+              {t("lib.uploaded")}: {uploadedOn}
+            </span>
+          ) : null}
+          {activatedOn ? (
+            <span>
+              {t("lib.activated")}: {activatedOn}
+            </span>
+          ) : null}
+        </div>
 
         <div className="mt-auto flex items-center justify-between border-t border-line/70 pt-3 dark:border-white/10">
           <span className="text-xs text-ink/50 dark:text-white/50">

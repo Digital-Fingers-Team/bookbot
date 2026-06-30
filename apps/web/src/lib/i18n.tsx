@@ -129,6 +129,8 @@ export const STRINGS = {
   "lib.author": { ar: "المؤلف", en: "Author" },
   "lib.addAuthor": { ar: "إضافة مؤلف", en: "Add author" },
   "lib.authorPrompt": { ar: "أدخل اسم المؤلف (اتركه فارغًا للإزالة):", en: "Enter the author (leave empty to remove):" },
+  "lib.uploaded": { ar: "الرفع", en: "Uploaded" },
+  "lib.activated": { ar: "التفعيل", en: "Activated" },
   "lib.price": { ar: "السعر", en: "Price" },
   "lib.free": { ar: "مجاني", en: "Free" },
   "lib.setPrice": { ar: "تحديد السعر", en: "Set price" },

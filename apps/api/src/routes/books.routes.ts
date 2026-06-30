@@ -27,7 +27,7 @@ booksRouter.get(
     const scope = await resolveAccessScope(req.user!);
     const books = await Book.find(
       {},
-      { title: 1, originalFileName: 1, createdAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, author: 1, featured: 1, description: 1, price: 1 }
+      { title: 1, originalFileName: 1, createdAt: 1, readyAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, author: 1, featured: 1, description: 1, price: 1 }
     )
       .sort({ createdAt: -1 })
       .lean();
@@ -52,6 +52,7 @@ booksRouter.get(
           }),
           originalFileName: normalizeUploadedFileName(book.originalFileName),
           createdAt: book.createdAt,
+          readyAt: book.readyAt ?? null,
           chunkCount: book.chunkCount,
           pageCount: book.pageCount,
           status: book.status ?? "ready",
@@ -139,6 +140,7 @@ const BOOK_CARD_FIELDS = {
   title: 1,
   originalFileName: 1,
   createdAt: 1,
+  readyAt: 1,
   chunkCount: 1,
   pageCount: 1,
   status: 1,
@@ -163,6 +165,7 @@ function bookCard(book: Record<string, unknown>, firstPageText: string, state: B
     }),
     originalFileName: normalizeUploadedFileName(book.originalFileName as string),
     createdAt: book.createdAt,
+    readyAt: book.readyAt ?? null,
     chunkCount: book.chunkCount,
     pageCount: book.pageCount,
     status: (book.status as string) ?? "ready",

@@ -30,6 +30,8 @@ export type Book = {
   title: string;
   originalFileName: string;
   createdAt: string;
+  // When processing finished and the book became readable ("activation" date).
+  readyAt?: string | null;
   chunkCount: number;
   pageCount: number;
   status: BookStatus;
