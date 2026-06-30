@@ -90,6 +90,7 @@ export type Stats = {
   totalBooks: number;
   totalChunks: number;
   totalPages: number;
+  revenue?: { total: number; thisMonth: number; currency: string; pendingRequests: number };
   unansweredQuestions?: { question: string; createdAt: string }[];
   feedback?: { up: number; down: number };
   reports?: { note: string; answer: string; createdAt: string }[];

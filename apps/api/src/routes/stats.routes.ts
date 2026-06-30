@@ -1,5 +1,6 @@
 import { Router, type Router as ExpressRouter } from "express";
 import { requireAdmin } from "../middleware/auth.middleware.js";
+import { AccessRequest } from "../models/access-request.model.js";
 import { Book } from "../models/book.model.js";
 import { Chunk } from "../models/chunk.model.js";
 import { Feedback } from "../models/feedback.model.js";
@@ -12,8 +13,22 @@ statsRouter.get(
   "/",
   requireAdmin,
   asyncHandler(async (_req, res) => {
-    const [totalBooks, totalChunks, pageAggregation, unanswered, feedbackAggregation, recentReports, usageAggregation] =
-      await Promise.all([
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+
+    const [
+      totalBooks,
+      totalChunks,
+      pageAggregation,
+      unanswered,
+      feedbackAggregation,
+      recentReports,
+      usageAggregation,
+      revenueTotalAgg,
+      revenueMonthAgg,
+      pendingRequests
+    ] = await Promise.all([
       Book.countDocuments(),
       Chunk.countDocuments(),
       Book.aggregate([{ $group: { _id: null, totalPages: { $sum: "$pageCount" } } }]),
@@ -39,13 +54,28 @@ statsRouter.get(
             totalTokens: { $sum: "$totalTokens" }
           }
         }
-      ])
+      ]),
+      AccessRequest.aggregate([
+        { $match: { status: "approved" } },
+        { $group: { _id: null, total: { $sum: "$amount" } } }
+      ]),
+      AccessRequest.aggregate([
+        { $match: { status: "approved", decidedAt: { $gte: monthStart } } },
+        { $group: { _id: null, total: { $sum: "$amount" } } }
+      ]),
+      AccessRequest.countDocuments({ status: "pending" })
     ]);
 
     res.json({
       totalBooks,
       totalChunks,
       totalPages: pageAggregation[0]?.totalPages ?? 0,
+      revenue: {
+        total: revenueTotalAgg[0]?.total ?? 0,
+        thisMonth: revenueMonthAgg[0]?.total ?? 0,
+        currency: "EGP",
+        pendingRequests
+      },
       unansweredQuestions: unanswered.map((event) => ({
         question: event.question ?? "",
         createdAt: event.createdAt

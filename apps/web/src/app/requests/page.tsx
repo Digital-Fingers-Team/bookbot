@@ -124,6 +124,11 @@ export default function RequestsPage() {
                   <p className="mt-0.5 text-xs text-ink/50 dark:text-white/50">
                     {r.user?.name} · {r.user?.email}
                   </p>
+                  {r.amount > 0 ? (
+                    <p className="mt-1 text-sm font-bold text-copper">
+                      {new Intl.NumberFormat("en").format(r.amount)} {r.currency}
+                    </p>
+                  ) : null}
                   {r.note ? (
                     <p dir="auto" className="mt-1.5 text-xs text-ink/60 dark:text-white/60">
                       “{r.note}”

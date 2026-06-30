@@ -15,10 +15,17 @@ const accessRequestSchema = new Schema(
     receiptFile: { type: String, required: true, trim: true },
     receiptMime: { type: String, trim: true, default: "" },
     note: { type: String, trim: true, default: "", maxlength: 1000 },
+    // Amount owed at request time (captured from the book's price) for revenue
+    // reporting. Categories have no price model yet, so they record 0.
+    amount: { type: Number, default: 0, min: 0 },
+    currency: { type: String, trim: true, default: "EGP" },
     status: { type: String, enum: ["pending", "approved", "rejected"], required: true, default: "pending", index: true },
     adminNote: { type: String, trim: true, default: "", maxlength: 1000 },
     decidedBy: { type: Schema.Types.ObjectId, ref: "User" },
-    decidedAt: { type: Date }
+    decidedAt: { type: Date },
+    // False after an admin decision until the user has seen it (drives the
+    // in-app "your request was approved/rejected" notification).
+    seenByUser: { type: Boolean, default: true }
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );

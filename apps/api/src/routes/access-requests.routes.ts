@@ -54,17 +54,20 @@ accessRequestsRouter.post(
       throw new ApiError(400, "INVALID_TARGET", "Please choose a book or a category to request.");
     }
 
-    // Resolve a human-readable label and validate the target exists.
+    // Resolve a human-readable label and validate the target exists. For books
+    // we capture the price as the amount owed (server-side, so it can't be faked).
     let targetLabel = targetValue;
+    let amount = 0;
     if (targetType === "book") {
       if (!isValidObjectId(targetValue)) {
         throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
       }
-      const book = await Book.findById(targetValue, { title: 1, originalFileName: 1 }).lean();
+      const book = await Book.findById(targetValue, { title: 1, originalFileName: 1, price: 1 }).lean();
       if (!book) {
         throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
       }
       targetLabel = readableBookTitle({ title: book.title, originalFileName: book.originalFileName, firstPageText: "" });
+      amount = book.price ?? 0;
     } else {
       const exists = await Category.exists({ name: targetValue });
       if (!exists) {
@@ -85,7 +88,10 @@ accessRequestsRouter.post(
       receiptFile,
       receiptMime: file.mimetype,
       note,
-      status: "pending"
+      amount,
+      currency: "EGP",
+      status: "pending",
+      seenByUser: true
     });
 
     res.status(201).json({ id: String(created._id), status: "pending" });
@@ -115,6 +121,8 @@ accessRequestsRouter.get(
         targetValue: r.targetValue,
         targetLabel: r.targetLabel ?? "",
         note: r.note ?? "",
+        amount: r.amount ?? 0,
+        currency: r.currency ?? "EGP",
         status: r.status,
         adminNote: r.adminNote ?? "",
         createdAt: r.createdAt,
@@ -130,6 +138,33 @@ accessRequestsRouter.get(
           : {})
       }))
     });
+  })
+);
+
+/** How many of the user's requests were decided but not yet seen (notification). */
+accessRequestsRouter.get(
+  "/unseen-count",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const count = await AccessRequest.countDocuments({
+      userId: req.user!.id,
+      status: { $in: ["approved", "rejected"] },
+      seenByUser: false
+    });
+    res.json({ count });
+  })
+);
+
+/** Mark the user's decided requests as seen (clears the notification). */
+accessRequestsRouter.post(
+  "/mark-seen",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    await AccessRequest.updateMany(
+      { userId: req.user!.id, seenByUser: false },
+      { $set: { seenByUser: true } }
+    );
+    res.json({ ok: true });
   })
 );
 
@@ -171,6 +206,7 @@ accessRequestsRouter.post(
     request.status = "approved";
     request.decidedBy = req.user!.id as never;
     request.decidedAt = new Date();
+    request.seenByUser = false;
     if (typeof req.body?.adminNote === "string") {
       request.adminNote = req.body.adminNote.trim().slice(0, 1000);
     }
@@ -189,6 +225,7 @@ accessRequestsRouter.post(
     request.status = "rejected";
     request.decidedBy = req.user!.id as never;
     request.decidedAt = new Date();
+    request.seenByUser = false;
     if (typeof req.body?.adminNote === "string") {
       request.adminNote = req.body.adminNote.trim().slice(0, 1000);
     }

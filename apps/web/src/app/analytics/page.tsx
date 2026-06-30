@@ -9,12 +9,15 @@ import {
   CheckCircle2,
   FileText,
   HelpCircle,
+  Inbox,
   Layers,
   Loader2,
   Lock,
   MessageSquareText,
   ThumbsUp,
+  TrendingUp,
   UploadCloud,
+  Wallet,
   XCircle
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
@@ -112,6 +115,26 @@ export default function AnalyticsPage() {
         </div>
       ) : (
         <>
+          {stats.revenue ? (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-ink/70 dark:text-white/70">{t("an.revenue")}</h2>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <MoneyCard
+                  icon={Wallet}
+                  label={t("an.revenueTotal")}
+                  value={`${nf.format(stats.revenue.total)} ${stats.revenue.currency}`}
+                  note={t("an.revenueNote")}
+                />
+                <MoneyCard
+                  icon={TrendingUp}
+                  label={t("an.revenueMonth")}
+                  value={`${nf.format(stats.revenue.thisMonth)} ${stats.revenue.currency}`}
+                />
+                <StatCard icon={Inbox} label={t("an.pendingRequests")} value={stats.revenue.pendingRequests} />
+              </div>
+            </section>
+          ) : null}
+
           <section className="space-y-3">
             <h2 className="text-sm font-semibold text-ink/70 dark:text-white/70">{t("an.library")}</h2>
             <div className="grid gap-4 sm:grid-cols-3">
@@ -220,6 +243,29 @@ function StatCard({
         <Icon className="h-[18px] w-[18px]" />
       </span>
       <p className="mt-3 text-2xl font-semibold tabular-nums text-ink dark:text-white">{nf.format(value)}</p>
+      <p className="mt-0.5 text-sm text-ink/55 dark:text-white/55">{label}</p>
+      {note ? <p className="mt-2 text-xs leading-5 text-ink/40 dark:text-white/40">{note}</p> : null}
+    </div>
+  );
+}
+
+function MoneyCard({
+  icon: Icon,
+  label,
+  value,
+  note
+}: {
+  icon: typeof BookOpenText;
+  label: string;
+  value: string;
+  note?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-line bg-white p-5 dark:border-white/10 dark:bg-[#0c0c0e]">
+      <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-copper/10 text-copper">
+        <Icon className="h-[18px] w-[18px]" />
+      </span>
+      <p className="mt-3 text-2xl font-semibold tabular-nums text-ink dark:text-white">{value}</p>
       <p className="mt-0.5 text-sm text-ink/55 dark:text-white/55">{label}</p>
       {note ? <p className="mt-2 text-xs leading-5 text-ink/40 dark:text-white/40">{note}</p> : null}
     </div>

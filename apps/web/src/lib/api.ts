@@ -261,6 +261,8 @@ export type AccessRequest = {
   targetValue: string;
   targetLabel: string;
   note: string;
+  amount: number;
+  currency: string;
   status: "pending" | "approved" | "rejected";
   adminNote: string;
   createdAt: string;
@@ -299,6 +301,16 @@ export async function submitAccessRequest(
 export function listAccessRequests(token?: string, status?: "pending" | "approved" | "rejected") {
   const qs = status ? `?status=${status}` : "";
   return request<{ requests: AccessRequest[] }>(`/api/access-requests${qs}`, { token });
+}
+
+/** Count of the user's requests that were decided but not yet seen. */
+export function unseenRequestCount(token?: string) {
+  return request<{ count: number }>("/api/access-requests/unseen-count", { token });
+}
+
+/** Mark the user's decided requests as seen (clears the notification). */
+export function markRequestsSeen(token?: string) {
+  return request<{ ok: boolean }>("/api/access-requests/mark-seen", { method: "POST", token });
 }
 
 export function decideAccessRequest(id: string, action: "approve" | "reject", adminNote: string, token?: string) {
