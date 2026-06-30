@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { BookOpenText } from "lucide-react";
-import { getBookPageImage } from "@/lib/api";
-import { useAuth } from "@/components/auth-provider";
+import { bookCoverUrl } from "@/lib/api";
 
 /**
- * Renders a book's real cover (its first rendered page). Falls back to a book
- * icon while loading, for non-ready books, or if the image can't be fetched.
+ * Renders a book's real cover (its first rendered page) via the public cover
+ * endpoint, so it shows even for locked books the user hasn't bought yet.
+ * Falls back to a book icon while non-ready or if the image can't be fetched.
  */
 export function BookCover({
   bookId,
@@ -22,44 +22,24 @@ export function BookCover({
   className?: string;
   iconClassName?: string;
 }) {
-  const { token } = useAuth();
-  const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
+  // Reset the failed flag if the book changes (e.g. list re-renders).
   useEffect(() => {
-    if (!ready || !token) {
-      return;
-    }
-    let active = true;
-    let objectUrl: string | undefined;
-    const controller = new AbortController();
+    setFailed(false);
+  }, [bookId]);
 
-    getBookPageImage(bookId, 1, token, controller.signal)
-      .then((blob) => {
-        if (!active) {
-          return;
-        }
-        objectUrl = URL.createObjectURL(blob);
-        setUrl(objectUrl);
-      })
-      .catch(() => {
-        if (active) {
-          setFailed(true);
-        }
-      });
-
-    return () => {
-      active = false;
-      controller.abort();
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [bookId, ready, token]);
-
-  if (url && !failed) {
+  if (ready && !failed) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt={alt} className={`${className} object-cover`} loading="lazy" />;
+    return (
+      <img
+        src={bookCoverUrl(bookId)}
+        alt={alt}
+        className={`${className} object-cover`}
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
+    );
   }
 
   return (
