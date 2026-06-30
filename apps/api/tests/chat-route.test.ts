@@ -32,7 +32,14 @@ describe("chat route", () => {
     app.use(express.json());
     // The real app mounts chatRouter behind requireAuth; emulate an authed user.
     app.use((req, _res, next) => {
-      (req as express.Request & { user: unknown }).user = { id: "u1", role: "admin", language: "ar" };
+      (req as express.Request & { user: unknown }).user = {
+        id: "u1",
+        role: "admin",
+        name: "Admin",
+        email: "admin@example.com",
+        language: "ar",
+        hasAccess: true
+      };
       next();
     });
     app.use("/api/chat", chatRouter);

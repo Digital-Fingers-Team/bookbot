@@ -21,6 +21,14 @@ const schema = z.object({
   OPENROUTER_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(1536),
   ATLAS_VECTOR_INDEX_NAME: z.string().default("chunk_embedding_vector_index"),
   VECTOR_CANDIDATE_MAX: z.coerce.number().int().positive().default(300),
+  // Set true once the Atlas vector index declares `bookId` as a filter field, to
+  // push access scoping into $vectorSearch (better recall for restricted users).
+  // When false (default) we filter after the search, with a boosted candidate
+  // pool so restricted users still get enough results.
+  VECTOR_INDEX_HAS_BOOK_FILTER: z
+    .string()
+    .default("false")
+    .transform((value) => value === "true" || value === "1"),
   VECTOR_NUM_CANDIDATES_MULTIPLIER: z.coerce.number().int().positive().default(10),
   OPENROUTER_API_KEY: z.string().optional(),
   // Base URL for the chat + embedding API. Point this at a regional or

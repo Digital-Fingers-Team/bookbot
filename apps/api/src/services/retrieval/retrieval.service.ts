@@ -1,3 +1,4 @@
+import { Types, isValidObjectId, type PipelineStage } from "mongoose";
 import { env } from "../../config/env.js";
 import { embeddingVersion } from "../../config/rag.js";
 import { Chunk } from "../../models/chunk.model.js";
@@ -61,9 +62,23 @@ export async function retrieveRelevantChunks(
 ): Promise<RetrievalResult> {
   const boundedTopK = boundTopK(topK);
   const queryVector = await embedQuery(question);
-  const candidateLimit = Math.min(Math.max(50, boundedTopK * 4), env.VECTOR_CANDIDATE_MAX);
+
+  // The set of books this query may draw from (single-book scope ∩ access scope).
+  const scopeIds = resolveScopeIds(bookId, allowedBookIds);
+  const restricted = scopeIds !== null;
+
+  // When restricted but we can't filter inside the index, post-filtering can
+  // starve recall, so widen the candidate pool toward the cap.
+  const baseLimit = Math.max(50, boundedTopK * 4);
+  const candidateLimit = Math.min(restricted ? Math.max(baseLimit, 150) : baseLimit, env.VECTOR_CANDIDATE_MAX);
   const numCandidates = candidateLimit * env.VECTOR_NUM_CANDIDATES_MULTIPLIER;
-  const candidates = await vectorSearch(queryVector, candidateLimit, numCandidates);
+
+  // Push the access/book filter into $vectorSearch when the index supports it.
+  const indexFilter =
+    env.VECTOR_INDEX_HAS_BOOK_FILTER && scopeIds && scopeIds.length
+      ? { bookId: { $in: scopeIds.map((id) => new Types.ObjectId(id)) } }
+      : undefined;
+  const candidates = await vectorSearch(queryVector, candidateLimit, numCandidates, indexFilter);
 
   if (!candidates.length) {
     return {
@@ -77,15 +92,11 @@ export async function retrieveRelevantChunks(
   const retrieved = candidates.map(toRetrievedChunk);
   let usable = retrieved.filter((chunk) => !isLikelyTableOfContents(chunk.chunkText));
 
-  // Enforce access: drop chunks from books the user isn't allowed to read.
-  if (allowedBookIds) {
-    const allow = new Set(allowedBookIds);
+  // Enforce access + single-book scope. Always applied (even when the index
+  // filtered too) as a correctness guarantee — never serve a forbidden chunk.
+  if (scopeIds) {
+    const allow = new Set(scopeIds);
     usable = usable.filter((chunk) => allow.has(chunk.bookId));
-  }
-
-  // Scope to a single book when the user asked within one.
-  if (bookId) {
-    usable = usable.filter((chunk) => chunk.bookId === bookId);
   }
 
   const chunks = await reranker.rerank({
@@ -100,43 +111,88 @@ export async function retrieveRelevantChunks(
   };
 }
 
-async function vectorSearch(queryVector: number[], limit: number, numCandidates: number): Promise<VectorChunk[]> {
-  try {
-    return (await Chunk.aggregate([
-      {
-        $vectorSearch: {
-          index: env.ATLAS_VECTOR_INDEX_NAME,
-          path: "embedding",
-          queryVector,
-          numCandidates,
-          limit
-        }
-      },
-      {
-        $match: {
-          embeddingModel: env.OPENROUTER_EMBEDDING_MODEL,
-          embeddingVersion: embeddingVersion()
-        }
-      },
-      {
-        $project: {
-          bookId: 1,
-          bookName: 1,
-          pageNumber: 1,
-          chunkIndex: 1,
-          chunkText: 1,
-          normalizedText: 1,
-          score: { $meta: "vectorSearchScore" }
-        }
-      }
-    ])) as VectorChunk[];
-  } catch {
-    throw new ApiError(
-      503,
-      "VECTOR_SEARCH_UNAVAILABLE",
-      "Vector search is not available. Configure MongoDB Atlas Vector Search and create the chunk embedding index."
-    );
+/**
+ * Intersect the single-book scope with the access scope into a concrete list of
+ * allowed book ids, or null when the query is unrestricted (admin, no bookId).
+ */
+function resolveScopeIds(bookId?: string, allowedBookIds?: string[] | null): string[] | null {
+  if (bookId) {
+    if (allowedBookIds && !allowedBookIds.includes(bookId)) {
+      return []; // asked within a book the user can't access
+    }
+    return [bookId];
   }
+  if (allowedBookIds) {
+    return allowedBookIds.filter((id) => isValidObjectId(id));
+  }
+  return null;
+}
+
+async function vectorSearch(
+  queryVector: number[],
+  limit: number,
+  numCandidates: number,
+  filter?: Record<string, unknown>
+): Promise<VectorChunk[]> {
+  const vectorStage: Record<string, unknown> = {
+    index: env.ATLAS_VECTOR_INDEX_NAME,
+    path: "embedding",
+    queryVector,
+    numCandidates,
+    limit
+  };
+  if (filter) {
+    vectorStage.filter = filter;
+  }
+
+  try {
+    return (await runVectorPipeline(vectorStage)) as VectorChunk[];
+  } catch (error) {
+    // If the index doesn't support the filter field, retry without it so the
+    // post-search access filter still protects the results.
+    if (filter) {
+      try {
+        const { filter: _omit, ...unfiltered } = vectorStage;
+        return (await runVectorPipeline(unfiltered)) as VectorChunk[];
+      } catch {
+        throw vectorUnavailable();
+      }
+    }
+    throw error instanceof ApiError ? error : vectorUnavailable();
+  }
+}
+
+// Runs the $vectorSearch pipeline; errors propagate to vectorSearch, which
+// decides whether to retry without the filter or surface a 503.
+async function runVectorPipeline(vectorStage: Record<string, unknown>): Promise<VectorChunk[]> {
+  return (await Chunk.aggregate([
+    { $vectorSearch: vectorStage } as unknown as PipelineStage,
+    {
+      $match: {
+        embeddingModel: env.OPENROUTER_EMBEDDING_MODEL,
+        embeddingVersion: embeddingVersion()
+      }
+    },
+    {
+      $project: {
+        bookId: 1,
+        bookName: 1,
+        pageNumber: 1,
+        chunkIndex: 1,
+        chunkText: 1,
+        normalizedText: 1,
+        score: { $meta: "vectorSearchScore" }
+      }
+    }
+  ])) as VectorChunk[];
+}
+
+function vectorUnavailable() {
+  return new ApiError(
+    503,
+    "VECTOR_SEARCH_UNAVAILABLE",
+    "Vector search is not available. Configure MongoDB Atlas Vector Search and create the chunk embedding index."
+  );
 }
 
 function toRetrievedChunk(chunk: VectorChunk): RetrievedChunk {
