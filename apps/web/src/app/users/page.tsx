@@ -86,6 +86,12 @@ export default function UsersPage() {
       ) : users.length === 0 ? (
         <p className="py-12 text-center text-sm text-ink/45 dark:text-white/45">{t("users.empty")}</p>
       ) : (
+        <>
+        {users.length >= 200 ? (
+          <p className="mb-3 rounded-lg border border-amber-300/40 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-300">
+            {t("users.truncated")}
+          </p>
+        ) : null}
         <ul className="space-y-3">
           {users.map((user) => (
             <li key={user.id} className="rounded-xl border border-line bg-white p-4 dark:border-white/10 dark:bg-[#0c0c0e]">
@@ -150,6 +156,7 @@ export default function UsersPage() {
             </li>
           ))}
         </ul>
+        </>
       )}
     </div>
   );

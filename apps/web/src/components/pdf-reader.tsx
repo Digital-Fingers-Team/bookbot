@@ -1,7 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AlertCircle, ChevronLeft, ChevronRight, Download, ExternalLink, Loader2, Minus, Plus } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  ExternalLink,
+  Loader2,
+  Maximize2,
+  Minus,
+  MoveHorizontal,
+  Plus
+} from "lucide-react";
 import { ApiClientError, getBookPageImage } from "@/lib/api";
 import { useAuth } from "@/components/auth-provider";
 import { useT } from "@/lib/i18n";
@@ -20,6 +31,8 @@ const initialZoom = 100;
 const minZoom = 70;
 const maxZoom = 150;
 
+type FitMode = "width" | "page";
+
 export function PdfReader({ bookId, url, title, page, totalPages, onPageChange }: PdfReaderProps) {
   const { token } = useAuth();
   const t = useT();
@@ -27,66 +40,102 @@ export function PdfReader({ bookId, url, title, page, totalPages, onPageChange }
   const [pageInput, setPageInput] = useState(String(page));
   const [imageUrl, setImageUrl] = useState("");
   const [zoom, setZoom] = useState(initialZoom);
+  const [fitMode, setFitMode] = useState<FitMode>("width");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Cache of rendered page images (object URLs) so flipping back/forward and
+  // prefetched neighbours are instant. Revoked when the book changes/unmounts.
+  const pageCacheRef = useRef<Map<number, string>>(new Map());
 
   useEffect(() => {
     setPageInput(String(page));
   }, [page]);
 
+  // Drop the page cache when switching books.
+  useEffect(() => {
+    const cache = pageCacheRef.current;
+    return () => {
+      cache.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
+      cache.clear();
+    };
+  }, [bookId]);
+
   useEffect(() => {
     const controller = new AbortController();
-    let createdUrl = "";
+    let cancelled = false;
+
+    async function getPage(target: number): Promise<string> {
+      const cached = pageCacheRef.current.get(target);
+      if (cached) {
+        return cached;
+      }
+      const blob = await getBookPageImage(bookId, target, token, controller.signal);
+      const objectUrl = URL.createObjectURL(blob);
+      pageCacheRef.current.set(target, objectUrl);
+      return objectUrl;
+    }
 
     setLoading(true);
     setError("");
 
-    getBookPageImage(bookId, page, token, controller.signal)
-      .then((blob) => {
-        createdUrl = URL.createObjectURL(blob);
-        setImageUrl((previous) => {
-          if (previous) {
-            URL.revokeObjectURL(previous);
-          }
-          return createdUrl;
-        });
+    getPage(page)
+      .then((objectUrl) => {
+        if (cancelled) {
+          return;
+        }
+        setImageUrl(objectUrl);
+        setLoading(false);
+        // Prefetch neighbours so the next/previous flip is instant.
+        if (page + 1 <= pageCount) {
+          getPage(page + 1).catch(() => undefined);
+        }
+        if (page - 1 >= 1) {
+          getPage(page - 1).catch(() => undefined);
+        }
       })
       .catch((err) => {
-        if ((err as Error)?.name !== "AbortError") {
-          setError(err instanceof ApiClientError ? err.message : t("read.notFound"));
+        if (cancelled || (err as Error)?.name === "AbortError") {
+          return;
         }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
+        setError(err instanceof ApiClientError ? err.message : t("read.notFound"));
+        setLoading(false);
       });
 
     return () => {
+      cancelled = true;
       controller.abort();
-      if (createdUrl) {
-        URL.revokeObjectURL(createdUrl);
-      }
     };
-  }, [bookId, page, t, token]);
+  }, [bookId, page, pageCount, t, token]);
 
+  const jumpTo = useCallback(
+    (targetPage: number) => {
+      if (!Number.isFinite(targetPage)) {
+        return;
+      }
+      onPageChange(Math.min(Math.max(1, Math.floor(targetPage)), pageCount));
+    },
+    [onPageChange, pageCount]
+  );
+
+  // Keyboard navigation: ←/→ flip pages (ignored while typing in the page box).
   useEffect(() => {
-    return () => {
-      if (imageUrl) {
-        URL.revokeObjectURL(imageUrl);
+    function onKey(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
+        return;
       }
-    };
-  }, [imageUrl]);
-
-  function jumpTo(targetPage: number) {
-    if (!Number.isFinite(targetPage)) {
-      return;
+      if (event.key === "ArrowLeft") {
+        jumpTo(page - 1);
+      } else if (event.key === "ArrowRight") {
+        jumpTo(page + 1);
+      }
     }
-
-    onPageChange(Math.min(Math.max(1, Math.floor(targetPage)), pageCount));
-  }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [jumpTo, page]);
 
   function changeZoom(direction: -1 | 1) {
+    setFitMode("width");
     const currentIndex = zoomLevels.findIndex((level) => level >= zoom);
     const index = currentIndex === -1 ? zoomLevels.length - 1 : currentIndex;
     const nextIndex = Math.min(Math.max(0, index + direction), zoomLevels.length - 1);
@@ -153,6 +202,17 @@ export function PdfReader({ bookId, url, title, page, totalPages, onPageChange }
           >
             <Plus className="h-4 w-4" />
           </button>
+          <button
+            type="button"
+            onClick={() => setFitMode((mode) => (mode === "page" ? "width" : "page"))}
+            aria-pressed={fitMode === "page"}
+            title={fitMode === "page" ? t("read.fitWidth") : t("read.fitPage")}
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-ink/5 dark:hover:bg-white/10 ${
+              fitMode === "page" ? "text-moss dark:text-sea" : "text-ink/60 dark:text-white/60"
+            }`}
+          >
+            {fitMode === "page" ? <MoveHorizontal className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
           <a
             href={`${url}#page=${page}`}
             target="_blank"
@@ -182,20 +242,26 @@ export function PdfReader({ bookId, url, title, page, totalPages, onPageChange }
             </div>
           </div>
         ) : imageUrl ? (
-          // Block + mx-auto (not flex) so the page fits the column width at 100%
-          // and, when zoomed past 100%, overflows into horizontal scroll without
-          // the flex-centering bug that clips the left/right edges.
-          <div className="min-h-full w-full">
-            <img
-              src={imageUrl}
-              alt={`${title} - ${t("ask.page")} ${page}`}
-              className="mx-auto block max-w-none bg-white shadow-xl ring-1 ring-black/10 dark:ring-white/10"
-              style={{
-                width: `${zoom}%`,
-                transformOrigin: "center top"
-              }}
-            />
-          </div>
+          fitMode === "page" ? (
+            // Fit the whole page within the visible area (both dimensions).
+            <div className="flex h-full w-full items-start justify-center">
+              <img
+                src={imageUrl}
+                alt={`${title} - ${t("ask.page")} ${page}`}
+                className="max-h-full w-auto max-w-full object-contain bg-white shadow-xl ring-1 ring-black/10 dark:ring-white/10"
+              />
+            </div>
+          ) : (
+            // Fit the column width; zoom past 100% scrolls horizontally.
+            <div className="min-h-full w-full">
+              <img
+                src={imageUrl}
+                alt={`${title} - ${t("ask.page")} ${page}`}
+                className="mx-auto block max-w-none bg-white shadow-xl ring-1 ring-black/10 dark:ring-white/10"
+                style={{ width: `${zoom}%`, transformOrigin: "center top" }}
+              />
+            </div>
+          )
         ) : null}
 
         {loading ? (

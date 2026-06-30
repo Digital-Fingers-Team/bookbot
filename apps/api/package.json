@@ -11,7 +11,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "check:vector-index": "tsx src/scripts/check-vector-index.ts",
-    "reclean:chunks": "tsx src/scripts/reclean-chunks.ts"
+    "reclean:chunks": "tsx src/scripts/reclean-chunks.ts",
+    "backfill:ready-at": "tsx src/scripts/backfill-ready-at.ts"
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.1",

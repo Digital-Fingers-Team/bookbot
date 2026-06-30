@@ -165,6 +165,8 @@ export const STRINGS = {
   "read.opening": { ar: "جارٍ فتح الكتاب…", en: "Opening book…" },
   "read.notFound": { ar: "تعذّر فتح هذا الكتاب.", en: "Could not open this book." },
   "read.goToPage": { ar: "اذهب للصفحة", en: "Go to page" },
+  "read.fitPage": { ar: "ملء الصفحة", en: "Fit page" },
+  "read.fitWidth": { ar: "ملء العرض", en: "Fit width" },
   "read.clearChat": { ar: "مسح", en: "Clear" },
   "lib.previewFallback": {
     ar: "ستظهر معاينة الصفحة الأولى هنا بعد استخراج النص.",
@@ -336,6 +338,7 @@ export const STRINGS = {
   "users.title": { ar: "المستخدمون والصلاحيات", en: "Users & access" },
   "users.search": { ar: "ابحث بالاسم أو الإيميل…", en: "Search by name or email…" },
   "users.empty": { ar: "لا يوجد مستخدمون.", en: "No users found." },
+  "users.truncated": { ar: "عرض أول 200 مستخدم — ابحث بالاسم أو الإيميل للوصول لمستخدم معيّن.", en: "Showing the first 200 — search by name or email to find a specific user." },
   "users.adminFull": { ar: "أدمن — وصول كامل لكل الكتب.", en: "Admin — full access to all books." },
   "users.categories": { ar: "التصنيفات المتاحة", en: "Allowed categories" },
   "users.books": { ar: "الكتب المتاحة", en: "Allowed books" },
