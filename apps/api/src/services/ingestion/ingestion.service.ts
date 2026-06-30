@@ -37,6 +37,7 @@ export type CreatedBook = {
 export async function createProcessingBook(input: {
   buffer: Buffer;
   originalFileName: string;
+  price?: number;
 }): Promise<CreatedBook> {
   const title = titleFromFileName(input.originalFileName);
   const storedPdf = await storePdfSource(input);
@@ -52,6 +53,7 @@ export async function createProcessingBook(input: {
     embeddingVersion: embeddingVersion(),
     processingVersion: PROCESSING_VERSION,
     status: "processing",
+    price: input.price && input.price > 0 ? input.price : 0,
     chunkCount: 0,
     pageCount: 0,
     processedPages: 0

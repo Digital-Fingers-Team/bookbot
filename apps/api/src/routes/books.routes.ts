@@ -27,7 +27,7 @@ booksRouter.get(
     const scope = await resolveAccessScope(req.user!);
     const books = await Book.find(
       {},
-      { title: 1, originalFileName: 1, createdAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, author: 1, featured: 1, description: 1 }
+      { title: 1, originalFileName: 1, createdAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, author: 1, featured: 1, description: 1, price: 1 }
     )
       .sort({ createdAt: -1 })
       .lean();
@@ -62,6 +62,7 @@ booksRouter.get(
           favorite: favoriteIds.has(String(book._id)),
           featured: Boolean(book.featured),
           description: book.description ?? "",
+          price: book.price ?? 0,
           accessible: canAccessBook(scope, String(book._id)),
           firstPageText
         };
@@ -146,7 +147,8 @@ const BOOK_CARD_FIELDS = {
   category: 1,
   author: 1,
   description: 1,
-  featured: 1
+  featured: 1,
+  price: 1
 } as const;
 
 type BookStateLean = { favorite?: boolean; lastPage?: number; lastOpenedAt?: Date | null } | null | undefined;
@@ -170,6 +172,7 @@ function bookCard(book: Record<string, unknown>, firstPageText: string, state: B
     category: (book.category as string) ?? "",
     description: (book.description as string) ?? "",
     featured: Boolean(book.featured),
+    price: (book.price as number) ?? 0,
     firstPageText,
     favorite: state?.favorite ?? false,
     lastPage: state?.lastPage ?? 1,
@@ -367,9 +370,13 @@ booksRouter.patch(
       throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
     }
 
-    const update: { category?: string; author?: string; featured?: boolean; description?: string } = {};
+    const update: { category?: string; author?: string; featured?: boolean; description?: string; price?: number } = {};
     if (typeof req.body?.category === "string") {
       update.category = req.body.category.trim().slice(0, 80);
+    }
+    if (req.body?.price !== undefined) {
+      const price = Number(req.body.price);
+      update.price = Number.isFinite(price) && price > 0 ? price : 0;
     }
     if (typeof req.body?.author === "string") {
       update.author = req.body.author.trim().slice(0, 120);
@@ -394,7 +401,8 @@ booksRouter.patch(
       category: book.category ?? "",
       author: book.author ?? "",
       featured: Boolean(book.featured),
-      description: book.description ?? ""
+      description: book.description ?? "",
+      price: book.price ?? 0
     });
   })
 );

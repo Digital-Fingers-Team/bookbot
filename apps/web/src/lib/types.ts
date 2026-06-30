@@ -40,6 +40,8 @@ export type Book = {
   description?: string;
   favorite?: boolean;
   featured?: boolean;
+  // Sale price shown under the book; 0 means free.
+  price?: number;
   // True when the current user may actually open/read this book. The library
   // lists every book; locked ones (accessible === false) can't be opened.
   accessible?: boolean;

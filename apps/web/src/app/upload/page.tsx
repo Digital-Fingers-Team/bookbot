@@ -22,6 +22,7 @@ export default function UploadPage() {
   const { token, user, isAdmin, loading: authLoading } = useAuth();
   const t = useT();
   const [files, setFiles] = useState<File[]>([]);
+  const [price, setPrice] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -70,9 +71,11 @@ export default function UploadPage() {
     setResults([]);
 
     try {
-      const uploaded = await uploadPdfs(files, token);
+      const numericPrice = Number(price);
+      const uploaded = await uploadPdfs(files, token, Number.isFinite(numericPrice) ? numericPrice : 0);
       setResults(uploaded.books);
       setFiles([]);
+      setPrice("");
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : t("up.uploadFailed"));
     } finally {
@@ -161,15 +164,33 @@ export default function UploadPage() {
                 {formatBytes(totalBytes)} · {t("up.separateBooks")}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={submit}
-              disabled={loading}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
-              {loading ? t("up.processing") : `${t("up.process")} ${files.length} ${files.length === 1 ? t("up.book") : t("up.books")}`}
-            </button>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2">
+                <span className="text-xs font-medium text-ink/60 dark:text-white/60">{t("up.price")}</span>
+                <span className="inline-flex h-10 items-center gap-1 rounded-lg border border-line bg-white px-2.5 dark:border-white/10 dark:bg-white/5">
+                  <input
+                    type="number"
+                    min={0}
+                    step="any"
+                    inputMode="decimal"
+                    value={price}
+                    onChange={(event) => setPrice(event.target.value)}
+                    placeholder="0"
+                    className="w-16 bg-transparent text-sm text-ink outline-none placeholder:text-ink/35 dark:text-white"
+                  />
+                  <span className="text-xs text-ink/45 dark:text-white/45">{t("common.currency")}</span>
+                </span>
+              </label>
+              <button
+                type="button"
+                onClick={submit}
+                disabled={loading}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+                {loading ? t("up.processing") : `${t("up.process")} ${files.length} ${files.length === 1 ? t("up.book") : t("up.books")}`}
+              </button>
+            </div>
           </div>
 
           <ul className="divide-y divide-line dark:divide-white/10">

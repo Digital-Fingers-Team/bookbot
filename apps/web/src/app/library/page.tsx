@@ -182,6 +182,21 @@ export default function LibraryPage() {
     }
   }
 
+  async function setPrice(book: Book) {
+    const next = window.prompt(t("lib.pricePrompt"), String(book.price ?? 0));
+    if (next === null) {
+      return;
+    }
+    const price = Math.max(0, Number(next) || 0);
+    setBooks((prev) => prev.map((item) => (item.id === book.id ? { ...item, price } : item)));
+    try {
+      await updateBook(book.id, { price }, token);
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : t("lib.deleteError"));
+      await refresh();
+    }
+  }
+
   // Admin: a short blurb the discovery assistant uses to recommend this book.
   async function setDescription(book: Book) {
     const next = window.prompt(t("lib.descriptionPrompt"), book.description ?? "");
@@ -477,6 +492,7 @@ export default function LibraryPage() {
                   onSetCategory={() => setCategory(book)}
                   onSetAuthor={() => setAuthor(book)}
                   onSetDescription={() => setDescription(book)}
+                  onSetPrice={() => setPrice(book)}
                   onToggleFavorite={() => toggleFavorite(book)}
                   onToggleFeatured={() => toggleFeatured(book)}
                 />
@@ -495,6 +511,7 @@ export default function LibraryPage() {
                   onSetCategory={() => setCategory(book)}
                   onSetAuthor={() => setAuthor(book)}
                   onSetDescription={() => setDescription(book)}
+                  onSetPrice={() => setPrice(book)}
                   onToggleFavorite={() => toggleFavorite(book)}
                   onToggleFeatured={() => toggleFeatured(book)}
                 />
@@ -574,6 +591,7 @@ function BookCard({
   onSetCategory,
   onSetAuthor,
   onSetDescription,
+  onSetPrice,
   onToggleFavorite,
   onToggleFeatured
 }: {
@@ -585,6 +603,7 @@ function BookCard({
   onSetCategory: () => void;
   onSetAuthor: () => void;
   onSetDescription: () => void;
+  onSetPrice: () => void;
   onToggleFavorite: () => void;
   onToggleFeatured: () => void;
 }) {
@@ -698,6 +717,8 @@ function BookCard({
           </button>
         ) : null}
 
+        <PriceTag price={book.price} isAdmin={isAdmin} onEdit={onSetPrice} />
+
         <div className="mt-auto flex items-center justify-between border-t border-line/70 pt-3 dark:border-white/10">
           <span className="text-xs text-ink/50 dark:text-white/50">
             {nf.format(book.pageCount)} {t("lib.pages")} · {nf.format(book.chunkCount)} {t("lib.chunks")}
@@ -728,6 +749,7 @@ function BookRow({
   onSetCategory,
   onSetAuthor,
   onSetDescription,
+  onSetPrice,
   onToggleFavorite,
   onToggleFeatured
 }: {
@@ -739,6 +761,7 @@ function BookRow({
   onSetCategory: () => void;
   onSetAuthor: () => void;
   onSetDescription: () => void;
+  onSetPrice: () => void;
   onToggleFavorite: () => void;
   onToggleFeatured: () => void;
 }) {
@@ -796,6 +819,9 @@ function BookRow({
           onEdit={onSetCategory}
         />
         {isAdmin ? <StatusBadge book={book} compact /> : null}
+      </div>
+      <div className="hidden shrink-0 sm:block">
+        <PriceTag price={book.price} isAdmin={isAdmin} onEdit={onSetPrice} />
       </div>
       <div className="hidden w-28 shrink-0 text-end text-xs text-ink/55 dark:text-white/55 md:block">
         {nf.format(book.pageCount)} {t("lib.pages")}
@@ -924,6 +950,31 @@ function FeaturedToggle({ featured, onToggle, compact = false }: { featured: boo
     >
       <Sparkles className={`h-3 w-3 ${featured ? "fill-current" : ""}`} />
       {featured ? t("lib.featured") : t("lib.featureHome")}
+    </button>
+  );
+}
+
+// Price shown under each book. Admins can click to edit; users see it read-only.
+function PriceTag({ price, isAdmin, onEdit }: { price?: number; isAdmin: boolean; onEdit: () => void }) {
+  const t = useT();
+  const isFree = !price || price <= 0;
+  const label = isFree ? t("lib.free") : `${nf.format(price)} ${t("common.currency")}`;
+  return (
+    <button
+      type="button"
+      disabled={!isAdmin}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (isAdmin) onEdit();
+      }}
+      title={isAdmin ? t("lib.setPrice") : undefined}
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-bold transition ${
+        isFree
+          ? "text-ink/50 dark:text-white/50"
+          : "bg-copper/10 text-copper"
+      } ${isAdmin ? "enabled:hover:ring-1 enabled:hover:ring-copper/40" : "cursor-default"}`}
+    >
+      {label}
     </button>
   );
 }

@@ -35,11 +35,16 @@ uploadRouter.post(
       throw new ApiError(400, "MISSING_FILE", "Please choose at least one PDF file to upload.");
     }
 
+    // One price applies to the whole batch (admin sets it on the upload form).
+    const rawPrice = Number(req.body?.price);
+    const price = Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : 0;
+
     const books = [];
     for (const file of files) {
       const created = await createProcessingBook({
         buffer: file.buffer,
-        originalFileName: normalizeUploadedFileName(file.originalname)
+        originalFileName: normalizeUploadedFileName(file.originalname),
+        price
       });
 
       enqueueBookProcessing(created.bookId);

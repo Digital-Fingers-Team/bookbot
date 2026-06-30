@@ -24,6 +24,8 @@ const bookSchema = new Schema(
     error: { type: String, trim: true },
     category: { type: String, trim: true, default: "" },
     author: { type: String, trim: true, default: "" },
+    // Sale price shown under the book (admin-set on upload or later). 0 = free.
+    price: { type: Number, default: 0, min: 0 },
     // Short admin-written blurb used by the discovery assistant to recommend
     // books to visitors before they have access (metadata only, no content).
     description: { type: String, trim: true, default: "", maxlength: 600 },

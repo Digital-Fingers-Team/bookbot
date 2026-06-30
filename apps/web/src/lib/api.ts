@@ -223,10 +223,13 @@ export type UploadedBook = {
   status: "processing" | "ready" | "failed";
 };
 
-export async function uploadPdfs(files: File[], token?: string) {
+export async function uploadPdfs(files: File[], token?: string, price?: number) {
   const formData = new FormData();
   for (const file of files) {
     formData.append("files", file);
+  }
+  if (price && price > 0) {
+    formData.append("price", String(price));
   }
 
   const headers = new Headers();
@@ -381,10 +384,10 @@ export function addCategory(name: string, token?: string) {
 
 export function updateBook(
   id: string,
-  patch: { category?: string; author?: string; featured?: boolean; description?: string },
+  patch: { category?: string; author?: string; featured?: boolean; description?: string; price?: number },
   token?: string
 ) {
-  return request<{ id: string; category: string; author: string; featured: boolean; description: string }>(
+  return request<{ id: string; category: string; author: string; featured: boolean; description: string; price: number }>(
     `/api/books/${id}`,
     { method: "PATCH", body: patch, token }
   );

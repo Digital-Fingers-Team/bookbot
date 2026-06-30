@@ -129,6 +129,11 @@ export const STRINGS = {
   "lib.author": { ar: "المؤلف", en: "Author" },
   "lib.addAuthor": { ar: "إضافة مؤلف", en: "Add author" },
   "lib.authorPrompt": { ar: "أدخل اسم المؤلف (اتركه فارغًا للإزالة):", en: "Enter the author (leave empty to remove):" },
+  "lib.price": { ar: "السعر", en: "Price" },
+  "lib.free": { ar: "مجاني", en: "Free" },
+  "lib.setPrice": { ar: "تحديد السعر", en: "Set price" },
+  "lib.pricePrompt": { ar: "أدخل سعر الكتاب (0 = مجاني):", en: "Enter the book price (0 = free):" },
+  "common.currency": { ar: "ج.م", en: "EGP" },
 
   // My Books
   "nav.myBooks": { ar: "كتبي", en: "My Books" },
@@ -202,6 +207,8 @@ export const STRINGS = {
   "up.book": { ar: "كتاب", en: "book" },
   "up.books": { ar: "كتب", en: "books" },
   "up.separateBooks": { ar: "يُضاف كل ملف ككتاب منفصل", en: "added as separate books" },
+  "up.price": { ar: "السعر", en: "Price" },
+  "up.priceHint": { ar: "يُطبَّق على كل الملفات في هذه الدفعة (0 = مجاني)", en: "Applied to every file in this batch (0 = free)" },
   "up.process": { ar: "معالجة", en: "Process" },
   "up.processing": { ar: "جارٍ المعالجة…", en: "Processing…" },
   "up.queued": { ar: "تمت إضافة الكتب للمعالجة", en: "Queued books for processing" },
