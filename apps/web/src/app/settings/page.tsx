@@ -93,7 +93,7 @@ export default function SettingsPage() {
   if (loading || !user) {
     return (
       <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-6 dark:border-white/10 dark:bg-[#0c0c0e]">
-        <div className="flex items-center gap-3 text-sm font-medium text-ink/60 dark:text-white/60">
+        <div className="flex items-center gap-3 text-sm font-medium text-ink/70 dark:text-white/70">
           <Loader2 className="h-4 w-4 animate-spin" />
           {loading ? t("set.loadingProfile") : t("lib.redirecting")}
         </div>
@@ -105,7 +105,7 @@ export default function SettingsPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-white">{t("set.title")}</h1>
-        <p className="mt-1.5 text-sm text-ink/55 dark:text-white/55">{t("set.subtitle")}</p>
+        <p className="mt-1.5 text-sm text-ink/70 dark:text-white/70">{t("set.subtitle")}</p>
       </header>
 
       {/* Account summary */}
@@ -122,7 +122,7 @@ export default function SettingsPage() {
                 {user.role === "admin" ? t("role.admin") : t("role.user")}
               </span>
             </div>
-            <p className="truncate text-sm text-ink/50 dark:text-white/50">{user.email}</p>
+            <p className="truncate text-sm text-ink/70 dark:text-white/70">{user.email}</p>
           </div>
         </div>
         <button
@@ -290,7 +290,7 @@ function OmpPublishingCard({ token }: { token: string | null }) {
       ) : null}
 
       {loadingLink ? (
-        <div className="flex items-center gap-3 text-sm font-medium text-ink/60 dark:text-white/60">
+        <div className="flex items-center gap-3 text-sm font-medium text-ink/70 dark:text-white/70">
           <Loader2 className="h-4 w-4 animate-spin" />
           {t("set.loadingProfile")}
         </div>
@@ -341,7 +341,7 @@ function SectionCard({
         </span>
         <div>
           <h2 className="text-[0.95rem] font-semibold text-ink dark:text-white">{title}</h2>
-          <p className="text-xs text-ink/45 dark:text-white/45">{description}</p>
+          <p className="text-xs text-ink/70 dark:text-white/70">{description}</p>
         </div>
       </div>
       {children}

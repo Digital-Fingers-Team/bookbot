@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { login as loginRequest, me, register as registerRequest, updateProfile as updateProfileRequest } from "@/lib/api";
+import { ApiClientError, login as loginRequest, me, register as registerRequest, updateProfile as updateProfileRequest } from "@/lib/api";
 import type { AuthSession, User } from "@/lib/types";
 
 type AuthContextValue = {
@@ -37,16 +37,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Optimistically trust the cached session so the UI can render immediately,
+    // then revalidate in the background.
     setToken(parsed.token);
     setUser(parsed.user);
+
+    let settled = false;
+    const stopLoading = () => {
+      if (!settled) {
+        settled = true;
+        setLoading(false);
+      }
+    };
+
+    // Never strand the app on a spinner if /me hangs (server unreachable but the
+    // socket stays open): fall back to the cached session after a timeout.
+    const timer = setTimeout(stopLoading, 8000);
+
     me(parsed.token)
       .then((result) => setUser(result.user))
-      .catch(() => {
-        localStorage.removeItem(STORAGE_KEY);
-        setToken("");
-        setUser(null);
+      .catch((error) => {
+        // Only sign out on a real auth rejection. On network/timeout errors we
+        // keep the cached session so offline users aren't kicked out.
+        if (error instanceof ApiClientError && (error.status === 401 || error.status === 403)) {
+          localStorage.removeItem(STORAGE_KEY);
+          setToken("");
+          setUser(null);
+        }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        clearTimeout(timer);
+        stopLoading();
+      });
+
+    return () => clearTimeout(timer);
   }, []);
 
   async function login(input: { email: string; password: string }) {

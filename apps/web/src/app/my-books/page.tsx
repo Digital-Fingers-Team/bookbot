@@ -30,7 +30,7 @@ export default function MyBooksPage() {
 
   if (authLoading || !user) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center text-ink/40 dark:text-white/40">
+      <div className="flex min-h-[40vh] items-center justify-center text-ink/70 dark:text-white/70">
         <Loader2 className="h-5 w-5 animate-spin" />
       </div>
     );
@@ -42,7 +42,7 @@ export default function MyBooksPage() {
     <div className="space-y-8">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-white">{t("mb.title")}</h1>
-        <p className="mt-1.5 text-sm text-ink/55 dark:text-white/55">{t("mb.subtitle")}</p>
+        <p className="mt-1.5 text-sm text-ink/70 dark:text-white/70">{t("mb.subtitle")}</p>
       </header>
 
       {loading ? (
@@ -130,14 +130,14 @@ function MyBookCard({ book, showProgress = false }: { book: MyBook; showProgress
           <h3 dir="auto" className="line-clamp-2 text-sm font-semibold leading-5 text-ink dark:text-white">
             {book.title}
           </h3>
-          {book.author ? <p className="mt-0.5 truncate text-xs text-ink/45 dark:text-white/45">{book.author}</p> : null}
+          {book.author ? <p className="mt-0.5 truncate text-xs text-ink/70 dark:text-white/70">{book.author}</p> : null}
         </div>
         {book.favorite ? <Heart className="h-4 w-4 shrink-0 fill-current text-moss dark:text-sea" /> : null}
       </div>
 
       {showProgress ? (
         <div className="mt-3">
-          <div className="flex items-center justify-between text-[11px] text-ink/45 dark:text-white/45">
+          <div className="flex items-center justify-between text-[11px] text-ink/70 dark:text-white/70">
             <span>
               {t("ask.page")} {nf.format(book.lastPage)} / {nf.format(book.pageCount)}
             </span>

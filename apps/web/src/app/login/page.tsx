@@ -84,7 +84,7 @@ function LoginForm() {
             <button
               type="button"
               onClick={() => setShowPassword((value) => !value)}
-              className="absolute end-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-ink/40 transition hover:bg-ink/5 hover:text-ink dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white"
+              className="absolute end-1.5 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-ink/70 transition hover:bg-ink/5 hover:text-ink dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
               aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -104,7 +104,7 @@ function LoginForm() {
         </button>
       </form>
 
-      <p className="mt-5 text-center text-sm text-ink/55 dark:text-white/55">
+      <p className="mt-5 text-center text-sm text-ink/70 dark:text-white/70">
         {t("auth.needAccount")}{" "}
         <Link href="/register" className="font-medium text-moss hover:underline dark:text-sea">
           {t("auth.createOne")}
@@ -115,11 +115,13 @@ function LoginForm() {
 }
 
 function LoginFallback() {
+  const t = useT();
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center py-6">
       <div className="rounded-2xl border border-line bg-white p-6 shadow-soft dark:border-white/10 dark:bg-[#0c0c0e]">
-        <div className="flex items-center gap-3 text-sm font-medium text-ink/60 dark:text-white/60">
+        <div className="flex items-center justify-center gap-3 text-sm font-medium text-ink/70 dark:text-white/70">
           <Loader2 className="h-4 w-4 animate-spin" />
+          {t("auth.loadingSignin")}
         </div>
       </div>
     </div>

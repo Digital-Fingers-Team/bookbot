@@ -26,6 +26,8 @@ export const STRINGS = {
   "nav.language": { ar: "اللغة", en: "Language" },
   "nav.profileSettings": { ar: "إعدادات الحساب", en: "Profile settings" },
   "nav.skipToContent": { ar: "تخطّي إلى المحتوى", en: "Skip to content" },
+  "nav.adminSection": { ar: "الإدارة", en: "Admin" },
+  "nav.newDecisions": { ar: "قرارات جديدة على طلباتك", en: "new decisions on your requests" },
   "role.admin": { ar: "مدير", en: "admin" },
   "role.user": { ar: "مستخدم", en: "user" },
 

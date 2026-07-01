@@ -72,7 +72,7 @@ export default function UsersPage() {
 
   if (authLoading || !isAdmin) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-ink/40 dark:text-white/40">
+      <div className="flex min-h-[50vh] items-center justify-center text-ink/70 dark:text-white/70">
         <Loader2 className="h-5 w-5 animate-spin" />
       </div>
     );
@@ -86,7 +86,7 @@ export default function UsersPage() {
       </header>
 
       <div className="mb-4 flex items-center gap-2 rounded-lg border border-line bg-white px-3 dark:border-white/10 dark:bg-[#0c0c0e]">
-        <Search className="h-4 w-4 text-ink/40" />
+        <Search className="h-4 w-4 text-ink/70" />
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
@@ -96,11 +96,11 @@ export default function UsersPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12 text-ink/40">
+        <div className="flex justify-center py-12 text-ink/70">
           <Loader2 className="h-5 w-5 animate-spin" />
         </div>
       ) : users.length === 0 ? (
-        <p className="py-12 text-center text-sm text-ink/45 dark:text-white/45">{t("users.empty")}</p>
+        <p className="py-12 text-center text-sm text-ink/70 dark:text-white/70">{t("users.empty")}</p>
       ) : (
         <>
         <ul className="space-y-3">
@@ -109,7 +109,7 @@ export default function UsersPage() {
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-ink dark:text-white">{user.name}</p>
-                  <p className="truncate text-xs text-ink/50 dark:text-white/50">{user.email}</p>
+                  <p className="truncate text-xs text-ink/70 dark:text-white/70">{user.email}</p>
                 </div>
                 {user.role === "admin" ? (
                   <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-moss/10 px-2 py-0.5 text-[11px] font-medium text-moss dark:bg-sea/15 dark:text-sea">
@@ -120,7 +120,7 @@ export default function UsersPage() {
               </div>
 
               {user.role === "admin" ? (
-                <p className="mt-3 text-xs text-ink/45 dark:text-white/45">{t("users.adminFull")}</p>
+                <p className="mt-3 text-xs text-ink/70 dark:text-white/70">{t("users.adminFull")}</p>
               ) : (
                 <div className="mt-3 space-y-3">
                   <AccessSection
@@ -131,7 +131,7 @@ export default function UsersPage() {
                     onRemove={(v) => revoke(user, "category", v)}
                   />
                   <div>
-                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/40 dark:text-white/40">
+                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/70 dark:text-white/70">
                       {t("users.books")}
                     </p>
                     <div className="mb-2 flex flex-wrap items-center gap-1.5">
@@ -204,7 +204,7 @@ function AccessSection({
   const [adding, setAdding] = useState(false);
   return (
     <div>
-      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/40 dark:text-white/40">{label}</p>
+      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/70 dark:text-white/70">{label}</p>
       <div className="flex flex-wrap items-center gap-1.5">
         {chips.length === 0 ? <span className="text-xs text-ink/35 dark:text-white/35">—</span> : null}
         {chips.map((chip) => (
@@ -242,7 +242,7 @@ function AccessSection({
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-line px-2 py-0.5 text-[11px] font-medium text-ink/50 transition hover:border-moss/40 hover:text-moss dark:border-white/15 dark:text-white/50"
+            className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-line px-2 py-0.5 text-[11px] font-medium text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/15 dark:text-white/70"
           >
             <Plus className="h-3 w-3" />
           </button>

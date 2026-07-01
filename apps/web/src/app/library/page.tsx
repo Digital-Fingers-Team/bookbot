@@ -319,7 +319,7 @@ export default function LibraryPage() {
   if (authLoading || !user) {
     return (
       <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-6 dark:border-white/10 dark:bg-[#0c0c0e]">
-        <div className="flex items-center gap-3 text-sm font-medium text-ink/60 dark:text-white/60">
+        <div className="flex items-center gap-3 text-sm font-medium text-ink/70 dark:text-white/70">
           <Loader2 className="h-4 w-4 animate-spin" />
           {authLoading ? t("lib.checkingSession") : t("lib.redirecting")}
         </div>
@@ -334,7 +334,7 @@ export default function LibraryPage() {
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-white">{t("lib.title")}</h1>
-          <p className="mt-1.5 text-sm text-ink/55 dark:text-white/55">
+          <p className="mt-1.5 text-sm text-ink/70 dark:text-white/70">
             {loading ? (
               t("lib.loadingBooks")
             ) : (
@@ -391,7 +391,7 @@ export default function LibraryPage() {
               <button
                 type="button"
                 onClick={() => setSearch("")}
-                className="absolute end-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-ink/40 transition hover:bg-ink/5 hover:text-ink dark:text-white/40 dark:hover:bg-white/10"
+                className="absolute end-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-ink/70 transition hover:bg-ink/5 hover:text-ink dark:text-white/70 dark:hover:bg-white/10"
                 aria-label="Clear"
               >
                 <X className="h-3.5 w-3.5" />
@@ -449,7 +449,7 @@ export default function LibraryPage() {
                 className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition ${
                   active
                     ? "border-moss/30 bg-moss/10 text-moss dark:border-sea/30 dark:bg-sea/15 dark:text-sea"
-                    : "border-line bg-white text-ink/55 hover:text-ink dark:border-white/10 dark:bg-white/5 dark:text-white/55 dark:hover:text-white"
+                    : "border-line bg-white text-ink/70 hover:text-ink dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:text-white"
                 }`}
               >
                 {t(tab.labelKey)}
@@ -493,7 +493,7 @@ export default function LibraryPage() {
       ) : visibleBooks.length ? (
         <>
           {isFiltering ? (
-            <p className="-mt-2 text-xs text-ink/45 dark:text-white/45">
+            <p className="-mt-2 text-xs text-ink/70 dark:text-white/70">
               {t("lib.showing")} {visibleBooks.length} {t("lib.of")} {books.length} {t("lib.statBooks")}
             </p>
           ) : null}
@@ -596,7 +596,7 @@ function ViewButton({
       className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition ${
         active
           ? "bg-moss/10 text-moss dark:bg-sea/15 dark:text-sea"
-          : "text-ink/40 hover:text-ink dark:text-white/40 dark:hover:text-white"
+          : "text-ink/70 hover:text-ink dark:text-white/70 dark:hover:text-white"
       }`}
     >
       {children}
@@ -671,7 +671,7 @@ function BookCard({
               onDelete();
             }}
             disabled={deleting}
-            className="absolute end-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-white/90 text-ink/50 opacity-0 backdrop-blur transition hover:border-red-300 hover:text-red-600 focus:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-[#0c0c0e]/80 dark:text-white/50 dark:hover:border-red-500/40 dark:hover:text-red-300"
+            className="absolute end-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-white/90 text-ink/70 opacity-0 backdrop-blur transition hover:border-red-300 hover:text-red-600 focus:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-[#0c0c0e]/80 dark:text-white/70 dark:hover:border-red-500/40 dark:hover:text-red-300"
             aria-label={`Delete ${book.title}`}
             title={`Delete ${book.title}`}
           >
@@ -692,7 +692,7 @@ function BookCard({
           <h2 dir="auto" className="line-clamp-2 text-[0.95rem] font-semibold leading-6 text-ink dark:text-white">
             {book.title}
           </h2>
-          <p className="mt-1 truncate text-xs text-ink/45 dark:text-white/45">{book.originalFileName}</p>
+          <p className="mt-1 truncate text-xs text-ink/70 dark:text-white/70">{book.originalFileName}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -724,7 +724,7 @@ function BookCard({
               event.stopPropagation();
               if (isAdmin) onSetDescription();
             }}
-            className={`line-clamp-2 text-start text-xs leading-5 text-ink/55 dark:text-white/55 ${isAdmin ? "hover:text-moss dark:hover:text-sea" : "cursor-default"}`}
+            className={`line-clamp-2 text-start text-xs leading-5 text-ink/70 dark:text-white/70 ${isAdmin ? "hover:text-moss dark:hover:text-sea" : "cursor-default"}`}
           >
             {book.description}
           </button>
@@ -735,7 +735,7 @@ function BookCard({
               event.stopPropagation();
               onSetDescription();
             }}
-            className="inline-flex w-fit items-center gap-1 text-xs font-medium text-ink/40 transition hover:text-moss dark:text-white/40 dark:hover:text-sea"
+            className="inline-flex w-fit items-center gap-1 text-xs font-medium text-ink/70 transition hover:text-moss dark:text-white/70 dark:hover:text-sea"
           >
             <Plus className="h-3 w-3" />
             {t("lib.addDescription")}
@@ -744,7 +744,7 @@ function BookCard({
 
         <PriceTag price={book.price} isAdmin={isAdmin} onEdit={onSetPrice} />
 
-        <div className="flex flex-col gap-0.5 text-[11px] text-ink/45 dark:text-white/45">
+        <div className="flex flex-col gap-0.5 text-[11px] text-ink/70 dark:text-white/70">
           {uploadedOn ? (
             <span>
               {t("lib.uploaded")}: {uploadedOn}
@@ -758,11 +758,11 @@ function BookCard({
         </div>
 
         <div className="mt-auto flex items-center justify-between border-t border-line/70 pt-3 dark:border-white/10">
-          <span className="text-xs text-ink/50 dark:text-white/50">
+          <span className="text-xs text-ink/70 dark:text-white/70">
             {nf.format(book.pageCount)} {t("lib.pages")} · {nf.format(book.chunkCount)} {t("lib.chunks")}
           </span>
           {locked ? (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-ink/45 dark:text-white/45">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-ink/70 dark:text-white/70">
               {t("lib.locked")}
               <Lock className="h-3 w-3" />
             </span>
@@ -837,7 +837,7 @@ function BookRow({
       </div>
       <div className="min-w-0 flex-1">
         <p dir="auto" className="truncate text-sm font-semibold text-ink dark:text-white">{book.title}</p>
-        <p className="truncate text-xs text-ink/45 dark:text-white/45">{book.originalFileName}</p>
+        <p className="truncate text-xs text-ink/70 dark:text-white/70">{book.originalFileName}</p>
       </div>
       <div className="hidden shrink-0 items-center gap-2 sm:flex">
         <MetaControl
@@ -861,10 +861,10 @@ function BookRow({
       <div className="hidden shrink-0 sm:block">
         <PriceTag price={book.price} isAdmin={isAdmin} onEdit={onSetPrice} />
       </div>
-      <div className="hidden w-28 shrink-0 text-end text-xs text-ink/55 dark:text-white/55 md:block">
+      <div className="hidden w-28 shrink-0 text-end text-xs text-ink/70 dark:text-white/70 md:block">
         {nf.format(book.pageCount)} {t("lib.pages")}
       </div>
-      <div className="hidden w-28 shrink-0 text-end text-xs text-ink/55 dark:text-white/55 md:block">
+      <div className="hidden w-28 shrink-0 text-end text-xs text-ink/70 dark:text-white/70 md:block">
         {nf.format(book.chunkCount)} {t("lib.chunks")}
       </div>
       {isAdmin ? <FeaturedToggle featured={Boolean(book.featured)} onToggle={onToggleFeatured} compact /> : null}
@@ -877,7 +877,7 @@ function BookRow({
             onDelete();
           }}
           disabled={deleting}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink/40 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:text-white/40 dark:hover:bg-red-500/10 dark:hover:text-red-300"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink/70 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:text-white/70 dark:hover:bg-red-500/10 dark:hover:text-red-300"
           aria-label={`Delete ${book.title}`}
           title={`Delete ${book.title}`}
         >
@@ -898,7 +898,7 @@ function EmptyState({ filtering, isAdmin, onClear }: { filtering: boolean; isAdm
       {filtering ? (
         <>
           <p className="mt-4 text-sm font-semibold text-ink dark:text-white">{t("lib.noMatchTitle")}</p>
-          <p className="mt-1 text-sm text-ink/50 dark:text-white/50">{t("lib.noMatchBody")}</p>
+          <p className="mt-1 text-sm text-ink/70 dark:text-white/70">{t("lib.noMatchBody")}</p>
           <button
             type="button"
             onClick={onClear}
@@ -910,7 +910,7 @@ function EmptyState({ filtering, isAdmin, onClear }: { filtering: boolean; isAdm
       ) : (
         <>
           <p className="mt-4 text-sm font-semibold text-ink dark:text-white">{t("lib.noBooksTitle")}</p>
-          <p className="mt-1 max-w-xs text-sm text-ink/50 dark:text-white/50">
+          <p className="mt-1 max-w-xs text-sm text-ink/70 dark:text-white/70">
             {isAdmin ? t("lib.noBooksAdmin") : t("lib.noBooksUser")}
           </p>
           {isAdmin ? (
@@ -941,7 +941,7 @@ function FavoriteButton({ favorite, onToggle }: { favorite: boolean; onToggle: (
       className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-white/90 backdrop-blur transition dark:border-white/10 dark:bg-[#0c0c0e]/80 ${
         favorite
           ? "text-moss dark:text-sea"
-          : "text-ink/40 hover:border-moss/40 hover:text-moss dark:text-white/40 dark:hover:text-sea"
+          : "text-ink/70 hover:border-moss/40 hover:text-moss dark:text-white/70 dark:hover:text-sea"
       }`}
     >
       <Heart className={`h-4 w-4 ${favorite ? "fill-current" : ""}`} />
@@ -965,7 +965,7 @@ function FeaturedToggle({ featured, onToggle, compact = false }: { featured: boo
         className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition ${
           featured
             ? "text-copper"
-            : "text-ink/40 hover:bg-copper/10 hover:text-copper dark:text-white/40"
+            : "text-ink/70 hover:bg-copper/10 hover:text-copper dark:text-white/70"
         }`}
       >
         <Sparkles className={`h-4 w-4 ${featured ? "fill-current" : ""}`} />
@@ -983,7 +983,7 @@ function FeaturedToggle({ featured, onToggle, compact = false }: { featured: boo
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition ${
         featured
           ? "border-copper/30 bg-copper/10 text-copper"
-          : "border-dashed border-line text-ink/45 hover:border-copper/40 hover:text-copper dark:border-white/10 dark:text-white/45"
+          : "border-dashed border-line text-ink/70 hover:border-copper/40 hover:text-copper dark:border-white/10 dark:text-white/70"
       }`}
     >
       <Sparkles className={`h-3 w-3 ${featured ? "fill-current" : ""}`} />
@@ -1008,7 +1008,7 @@ function PriceTag({ price, isAdmin, onEdit }: { price?: number; isAdmin: boolean
       title={isAdmin ? t("lib.setPrice") : undefined}
       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-bold transition ${
         isFree
-          ? "text-ink/50 dark:text-white/50"
+          ? "text-ink/70 dark:text-white/70"
           : "bg-copper/10 text-copper"
       } ${isAdmin ? "enabled:hover:ring-1 enabled:hover:ring-copper/40" : "cursor-default"}`}
     >
@@ -1045,12 +1045,12 @@ function CategoryPickerModal({
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-ink dark:text-white">{t("lib.category")}</h3>
-            <p dir="auto" className="truncate text-xs text-ink/45 dark:text-white/45">{book.title}</p>
+            <p dir="auto" className="truncate text-xs text-ink/70 dark:text-white/70">{book.title}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-ink/40 transition hover:bg-ink/5 hover:text-ink dark:text-white/40 dark:hover:bg-white/10"
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-ink/70 transition hover:bg-ink/5 hover:text-ink dark:text-white/70 dark:hover:bg-white/10"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
@@ -1149,7 +1149,7 @@ function MetaControl({
         type="button"
         onClick={handleClick}
         disabled={!isAdmin}
-        className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink/60 transition enabled:hover:border-moss/40 enabled:hover:text-moss disabled:cursor-default dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:enabled:hover:text-sea"
+        className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink/70 transition enabled:hover:border-moss/40 enabled:hover:text-moss disabled:cursor-default dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:enabled:hover:text-sea"
         title={isAdmin ? editTitle : undefined}
       >
         <Icon className="h-3 w-3" />
@@ -1162,7 +1162,7 @@ function MetaControl({
     <button
       type="button"
       onClick={handleClick}
-      className="inline-flex items-center gap-1 rounded-full border border-dashed border-line px-2.5 py-1 text-xs font-medium text-ink/45 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/45 dark:hover:text-sea"
+      className="inline-flex items-center gap-1 rounded-full border border-dashed border-line px-2.5 py-1 text-xs font-medium text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/70 dark:hover:text-sea"
     >
       <Icon className="h-3 w-3" />
       {addLabel}

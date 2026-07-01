@@ -92,7 +92,7 @@ export default function UploadPage() {
   if (authLoading) {
     return (
       <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-6 dark:border-white/10 dark:bg-[#0c0c0e]">
-        <div className="flex items-center gap-3 text-sm font-medium text-ink/60 dark:text-white/60">
+        <div className="flex items-center gap-3 text-sm font-medium text-ink/70 dark:text-white/70">
           <Loader2 className="h-4 w-4 animate-spin" />
           {t("up.checkingAccess")}
         </div>
@@ -110,7 +110,7 @@ export default function UploadPage() {
     <div className="mx-auto max-w-2xl space-y-7">
       <header className="text-center">
         <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-white">{t("up.title")}</h1>
-        <p className="mx-auto mt-1.5 max-w-md text-sm leading-6 text-ink/55 dark:text-white/55">{t("up.subtitle")}</p>
+        <p className="mx-auto mt-1.5 max-w-md text-sm leading-6 text-ink/70 dark:text-white/70">{t("up.subtitle")}</p>
       </header>
 
       <label
@@ -136,7 +136,7 @@ export default function UploadPage() {
         <span className="mt-5 text-base font-semibold text-ink dark:text-white">
           {isDragging ? t("up.dropNow") : t("up.dropHere")}
         </span>
-        <span className="mt-1.5 text-sm text-ink/50 dark:text-white/50">
+        <span className="mt-1.5 text-sm text-ink/70 dark:text-white/70">
           {t("up.orBrowse")} <span className="font-medium text-moss dark:text-sea">{t("up.browse")}</span> · {t("up.textBest")}
         </span>
         <input
@@ -160,13 +160,13 @@ export default function UploadPage() {
               <p className="text-sm font-semibold text-ink dark:text-white">
                 {files.length} {files.length === 1 ? t("up.book") : t("up.books")} {t("up.ready")}
               </p>
-              <p className="mt-0.5 text-xs text-ink/45 dark:text-white/45">
+              <p className="mt-0.5 text-xs text-ink/70 dark:text-white/70">
                 {formatBytes(totalBytes)} · {t("up.separateBooks")}
               </p>
             </div>
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-2">
-                <span className="text-xs font-medium text-ink/60 dark:text-white/60">{t("up.price")}</span>
+                <span className="text-xs font-medium text-ink/70 dark:text-white/70">{t("up.price")}</span>
                 <span className="inline-flex h-10 items-center gap-1 rounded-lg border border-line bg-white px-2.5 dark:border-white/10 dark:bg-white/5">
                   <input
                     type="number"
@@ -178,7 +178,7 @@ export default function UploadPage() {
                     placeholder="0"
                     className="w-16 bg-transparent text-sm text-ink outline-none placeholder:text-ink/35 dark:text-white"
                   />
-                  <span className="text-xs text-ink/45 dark:text-white/45">{t("common.currency")}</span>
+                  <span className="text-xs text-ink/70 dark:text-white/70">{t("common.currency")}</span>
                 </span>
               </label>
               <button
@@ -200,12 +200,12 @@ export default function UploadPage() {
                   <FileText className="h-4 w-4" />
                 </span>
                 <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink dark:text-white">{file.name}</span>
-                <span className="shrink-0 text-xs text-ink/45 dark:text-white/45">{formatBytes(file.size)}</span>
+                <span className="shrink-0 text-xs text-ink/70 dark:text-white/70">{formatBytes(file.size)}</span>
                 <button
                   type="button"
                   onClick={() => removeFile(file)}
                   disabled={loading}
-                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink/40 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:text-white/40 dark:hover:bg-red-500/10 dark:hover:text-red-300"
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink/70 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:text-white/70 dark:hover:bg-red-500/10 dark:hover:text-red-300"
                   aria-label={file.name}
                   title={file.name}
                 >
@@ -278,7 +278,7 @@ function InfoCard({
     <div className="rounded-xl border border-line bg-white p-4 dark:border-white/10 dark:bg-[#0c0c0e]">
       <Icon className="h-4 w-4 text-moss dark:text-sea" />
       <p className="mt-2.5 text-sm font-semibold text-ink dark:text-white">{title}</p>
-      <p className="mt-1 text-xs leading-5 text-ink/50 dark:text-white/50">{children}</p>
+      <p className="mt-1 text-xs leading-5 text-ink/70 dark:text-white/70">{children}</p>
     </div>
   );
 }
@@ -302,7 +302,7 @@ function AdminOnlyUpload({ userName }: { userName?: string }) {
         <Lock className="h-6 w-6" />
       </span>
       <h1 className="mt-4 text-lg font-semibold text-ink dark:text-white">{t("up.adminsOnly")}</h1>
-      <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-ink/55 dark:text-white/55">
+      <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-ink/70 dark:text-white/70">
         {userName ? `${userName} — ${t("up.adminsBody")}` : t("up.signinAdmin")}
       </p>
       <div className="mt-5 flex flex-wrap justify-center gap-2.5">

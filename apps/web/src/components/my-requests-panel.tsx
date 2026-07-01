@@ -51,7 +51,7 @@ export function MyRequestsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 {r.targetType === "category" ? "📂 " : "📘 "}
                 {r.targetLabel || r.targetValue}
               </p>
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-ink/45 dark:text-white/45">
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-ink/70 dark:text-white/70">
                 {r.amount > 0 ? (
                   <span className="font-semibold text-copper">
                     {nf.format(r.amount)} {r.currency}

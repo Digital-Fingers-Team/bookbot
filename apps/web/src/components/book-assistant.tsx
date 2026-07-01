@@ -141,7 +141,7 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
           <button
             type="button"
             onClick={clearChat}
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-ink/45 transition hover:text-red-600 dark:text-white/45 dark:hover:text-red-300"
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-ink/70 transition hover:text-red-600 dark:text-white/70 dark:hover:text-red-300"
             title={t("read.clearChat")}
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -152,7 +152,7 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
 
       <div ref={scrollRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 ? (
-          <p className="mx-auto mt-6 max-w-xs text-center text-sm leading-6 text-ink/45 dark:text-white/45">
+          <p className="mx-auto mt-6 max-w-xs text-center text-sm leading-6 text-ink/70 dark:text-white/70">
             {t("read.askEmpty")}
           </p>
         ) : (

@@ -25,18 +25,28 @@ import { useAuth } from "./auth-provider";
 import { unseenRequestCount } from "@/lib/api";
 import { useT, type StringKey } from "@/lib/i18n";
 
-const baseNavItems: { href: string; key: StringKey; icon: typeof Library }[] = [
+type NavItem = { href: string; key: StringKey; icon: typeof Library };
+
+const baseNavItems: NavItem[] = [
   { href: "/", key: "nav.ask", icon: MessageSquareText },
   { href: "/my-books", key: "nav.myBooks", icon: BookMarked },
   { href: "/library", key: "nav.library", icon: Library }
 ];
 
-const adminNavItems: { href: string; key: StringKey; icon: typeof Library }[] = [
+const adminNavItems: NavItem[] = [
   { href: "/upload", key: "nav.upload", icon: UploadCloud },
   { href: "/requests", key: "nav.requests", icon: Inbox },
   { href: "/users", key: "nav.users", icon: UsersRound },
   { href: "/analytics", key: "nav.analytics", icon: BarChart3 }
 ];
+
+// Highlight the nav item for the current route, including nested routes like
+// /read/[id] (which belongs under Library). "/" must match exactly so it does
+// not light up on every page.
+function isActive(href: string, pathname: string | null) {
+  if (!pathname) return false;
+  return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -86,7 +96,7 @@ function PublicHeader({ loading = false }: { loading?: boolean }) {
             <div className="flex items-center gap-1 rounded-xl border border-line bg-paper p-1 dark:border-white/10 dark:bg-white/5">
               {baseNavItems.map((item) => {
                 const Icon = item.icon;
-                const active = pathname === item.href;
+                const active = isActive(item.href, pathname);
                 return (
                   <Link
                     key={item.href}
@@ -95,7 +105,7 @@ function PublicHeader({ loading = false }: { loading?: boolean }) {
                       "inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium transition sm:flex-none",
                       active
                         ? "bg-white text-ink shadow-sm dark:bg-white/10 dark:text-white"
-                        : "text-ink/55 hover:text-ink dark:text-white/55 dark:hover:text-white"
+                        : "text-ink/70 hover:text-ink dark:text-white/70 dark:hover:text-white"
                     )}
                   >
                     <Icon className="h-4 w-4" />
@@ -108,7 +118,7 @@ function PublicHeader({ loading = false }: { loading?: boolean }) {
 
           <div className="flex items-center gap-2">
             {loading ? (
-              <span className="inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-line px-4 text-sm font-medium text-ink/50 dark:border-white/10 dark:text-white/50 sm:flex-none">
+              <span className="inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-line px-4 text-sm font-medium text-ink/70 dark:border-white/10 dark:text-white/70 sm:flex-none">
                 {t("nav.loadingAccount")}
               </span>
             ) : (
@@ -144,7 +154,12 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user, isAdmin, token } = useAuth();
   const t = useT();
-  const navItems = isAdmin ? [...baseNavItems.slice(0, 1), ...adminNavItems, ...baseNavItems.slice(1)] : baseNavItems;
+  // Keep user-facing items together and group admin tools under their own
+  // labeled section instead of interleaving the two scopes.
+  const sections: { label?: string; items: NavItem[] }[] = isAdmin
+    ? [{ items: baseNavItems }, { label: t("nav.adminSection"), items: adminNavItems }]
+    : [{ items: baseNavItems }];
+  const navItems = sections.flatMap((section) => section.items);
 
   // Non-admins: show a dot on "Library" when a paid request was decided.
   const [unseen, setUnseen] = useState(0);
@@ -174,28 +189,41 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex-1 space-y-0.5 px-3">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={clsx(
-                  "flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition",
-                  active
-                    ? "bg-moss/[0.08] text-moss dark:bg-sea/15 dark:text-sea"
-                    : "text-ink/60 hover:bg-ink/[0.04] hover:text-ink dark:text-white/55 dark:hover:bg-white/5 dark:hover:text-white"
-                )}
-              >
-                <Icon className="h-[18px] w-[18px]" />
-                {t(item.key)}
-                {item.href === "/library" && unseen > 0 ? (
-                  <span className="ms-auto inline-flex h-2 w-2 rounded-full bg-red-500" aria-hidden />
-                ) : null}
-              </Link>
-            );
-          })}
+          {sections.map((section, index) => (
+            <div key={section.label ?? "primary"} className={clsx(index > 0 && "mt-4")}>
+              {section.label ? (
+                <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wide text-ink/70 dark:text-white/70">
+                  {section.label}
+                </p>
+              ) : null}
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(item.href, pathname);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={clsx(
+                      "flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition",
+                      active
+                        ? "bg-moss/[0.08] text-moss dark:bg-sea/15 dark:text-sea"
+                        : "text-ink/70 hover:bg-ink/[0.04] hover:text-ink dark:text-white/70 dark:hover:bg-white/5 dark:hover:text-white"
+                    )}
+                  >
+                    <Icon className="h-[18px] w-[18px]" />
+                    {t(item.key)}
+                    {item.href === "/library" && unseen > 0 ? (
+                      <span className="ms-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white">
+                        {unseen}
+                        <span className="sr-only"> {t("nav.newDecisions")}</span>
+                      </span>
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         <Link
@@ -203,20 +231,20 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
           className="mx-3 mb-2 flex items-center gap-3 rounded-lg px-2.5 py-2.5 transition hover:bg-ink/[0.04] dark:hover:bg-white/5"
         >
           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-moss text-sm font-semibold uppercase text-white">
-            {user?.name.slice(0, 1) ?? "A"}
+            {user?.name?.trim()?.charAt(0) || "?"}
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-ink dark:text-white">{user?.name}</p>
-            <p className="truncate text-xs text-ink/45 dark:text-white/45">{user?.email}</p>
+            <p className="truncate text-xs text-ink/70 dark:text-white/70">{user?.email}</p>
           </div>
-          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-ink/40 dark:text-white/40">
+          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-ink/70 dark:text-white/70">
             {isAdmin ? <ShieldCheck className="h-3.5 w-3.5" /> : <BookOpenText className="h-3.5 w-3.5" />}
             {isAdmin ? t("role.admin") : t("role.user")}
           </span>
         </Link>
 
         <div className="flex items-center justify-between border-t border-line px-5 py-3.5 dark:border-white/10">
-          <span className="text-xs font-medium text-ink/45 dark:text-white/45">{t("nav.appearance")}</span>
+          <span className="text-xs font-medium text-ink/70 dark:text-white/70">{t("nav.appearance")}</span>
           <div className="flex items-center gap-2">
             <LanguageToggle />
             <ThemeToggle />
@@ -242,28 +270,39 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
             </div>
           </div>
           <nav className="mt-3 flex gap-2 overflow-x-auto pb-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={clsx(
-                    "inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-medium transition",
-                    active
-                      ? "bg-moss/[0.08] text-moss dark:bg-sea/15 dark:text-sea"
-                      : "border border-line bg-white text-ink/60 hover:text-ink dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:hover:text-white"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {t(item.key)}
-                  {item.href === "/library" && unseen > 0 ? (
-                    <span className="inline-flex h-2 w-2 rounded-full bg-red-500" aria-hidden />
-                  ) : null}
-                </Link>
-              );
-            })}
+            {sections.map((section, index) => (
+              <div key={section.label ?? "primary"} className="flex shrink-0 items-center gap-2">
+                {index > 0 ? (
+                  <span className="mx-1 h-6 w-px shrink-0 bg-line dark:bg-white/10" aria-hidden />
+                ) : null}
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(item.href, pathname);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      aria-current={active ? "page" : undefined}
+                      className={clsx(
+                        "inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-medium transition",
+                        active
+                          ? "bg-moss/[0.08] text-moss dark:bg-sea/15 dark:text-sea"
+                          : "border border-line bg-white text-ink/70 hover:text-ink dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:text-white"
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {t(item.key)}
+                      {item.href === "/library" && unseen > 0 ? (
+                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white">
+                          {unseen}
+                          <span className="sr-only"> {t("nav.newDecisions")}</span>
+                        </span>
+                      ) : null}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
         </header>
 
@@ -299,7 +338,7 @@ function Brand({ compact = false, stacked = false }: { compact?: boolean; stacke
           >
             {t("brand.orgShort")}
           </span>
-          <span className="block truncate text-xs text-ink/45 dark:text-white/45">
+          <span className="block truncate text-xs text-ink/70 dark:text-white/70">
             {stacked ? t("brand.workspace") : t("brand.tagline")}
           </span>
         </span>

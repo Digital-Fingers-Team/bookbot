@@ -19,7 +19,7 @@ export function AuthShell({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.jpeg" alt="" className="mx-auto h-12 w-12 rounded-2xl" />
         <h1 className="mt-4 text-xl font-semibold tracking-tight text-ink dark:text-white">{title}</h1>
-        <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-ink/55 dark:text-white/55">{subtitle}</p>
+        <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-ink/70 dark:text-white/70">{subtitle}</p>
       </div>
       <div className="rounded-2xl border border-line bg-white p-6 shadow-soft dark:border-white/10 dark:bg-[#0c0c0e]">
         {children}
@@ -45,7 +45,11 @@ export function AuthField({
 
 export function ErrorBanner({ message }: { message: string }) {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+    <div
+      role="alert"
+      aria-live="assertive"
+      className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+    >
       <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
       <p>{message}</p>
     </div>

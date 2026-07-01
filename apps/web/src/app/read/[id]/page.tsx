@@ -95,7 +95,7 @@ export default function ReadPage() {
 
   if (authLoading || (!user && !error)) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center text-ink/40 dark:text-white/40">
+      <div className="flex min-h-[60vh] items-center justify-center text-ink/70 dark:text-white/70">
         <Loader2 className="h-5 w-5 animate-spin" />
       </div>
     );
@@ -118,7 +118,7 @@ export default function ReadPage() {
             <h1 dir="auto" className="truncate text-sm font-semibold text-ink dark:text-white">
               {book?.title ?? "…"}
             </h1>
-            {book?.author ? <p className="truncate text-xs text-ink/45 dark:text-white/45">{book.author}</p> : null}
+            {book?.author ? <p className="truncate text-xs text-ink/70 dark:text-white/70">{book.author}</p> : null}
           </div>
         </div>
         <button
@@ -145,7 +145,7 @@ export default function ReadPage() {
         <div className={`flex min-h-0 flex-col bg-paper dark:bg-[#08080a] ${tab === "book" ? "flex" : "hidden"} h-full lg:flex`}>
           <div className="min-h-0 flex-1">
             {loading ? (
-              <div className="flex h-full items-center justify-center text-sm text-ink/60 dark:text-white/60">
+              <div className="flex h-full items-center justify-center text-sm text-ink/70 dark:text-white/70">
                 <Loader2 className="me-2 h-4 w-4 animate-spin" />
                 {t("read.opening")}
               </div>
@@ -195,7 +195,7 @@ function TabButton({
       className={`inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-medium transition ${
         active
           ? "bg-moss/10 text-moss dark:bg-sea/15 dark:text-sea"
-          : "text-ink/55 hover:text-ink dark:text-white/55 dark:hover:text-white"
+          : "text-ink/70 hover:text-ink dark:text-white/70 dark:hover:text-white"
       }`}
     >
       <Icon className="h-4 w-4" />

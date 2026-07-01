@@ -88,7 +88,7 @@ export default function RequestsPage() {
 
   if (authLoading || !isAdmin) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-ink/40 dark:text-white/40">
+      <div className="flex min-h-[50vh] items-center justify-center text-ink/70 dark:text-white/70">
         <Loader2 className="h-5 w-5 animate-spin" />
       </div>
     );
@@ -110,7 +110,7 @@ export default function RequestsPage() {
             className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
               filter === status
                 ? "bg-moss text-white"
-                : "border border-line text-ink/60 hover:text-moss dark:border-white/10 dark:text-white/60"
+                : "border border-line text-ink/70 hover:text-moss dark:border-white/10 dark:text-white/70"
             }`}
           >
             {t(`req.${status}` as never)}
@@ -119,11 +119,11 @@ export default function RequestsPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12 text-ink/40">
+        <div className="flex justify-center py-12 text-ink/70">
           <Loader2 className="h-5 w-5 animate-spin" />
         </div>
       ) : requests.length === 0 ? (
-        <p className="py-12 text-center text-sm text-ink/45 dark:text-white/45">{t("req.empty")}</p>
+        <p className="py-12 text-center text-sm text-ink/70 dark:text-white/70">{t("req.empty")}</p>
       ) : (
         <ul className="space-y-3">
           {requests.map((r) => (
@@ -137,7 +137,7 @@ export default function RequestsPage() {
                     {r.targetType === "category" ? "📂 " : "📘 "}
                     {r.targetLabel || r.targetValue}
                   </p>
-                  <p className="mt-0.5 text-xs text-ink/50 dark:text-white/50">
+                  <p className="mt-0.5 text-xs text-ink/70 dark:text-white/70">
                     {r.user?.name} · {r.user?.email}
                   </p>
                   {r.amount > 0 ? (
@@ -146,7 +146,7 @@ export default function RequestsPage() {
                     </p>
                   ) : null}
                   {r.note ? (
-                    <p dir="auto" className="mt-1.5 text-xs text-ink/60 dark:text-white/60">
+                    <p dir="auto" className="mt-1.5 text-xs text-ink/70 dark:text-white/70">
                       “{r.note}”
                     </p>
                   ) : null}

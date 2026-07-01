@@ -62,7 +62,7 @@ export function BooksCarousel() {
                 {book.title}
               </p>
               {book.author ? (
-                <p dir="auto" className="truncate text-center text-[11px] text-ink/50 dark:text-white/50">
+                <p dir="auto" className="truncate text-center text-[11px] text-ink/70 dark:text-white/70">
                   {book.author}
                 </p>
               ) : null}

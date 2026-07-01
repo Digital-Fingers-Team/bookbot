@@ -90,7 +90,7 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={() => setShowPassword((value) => !value)}
-              className="absolute end-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-ink/40 transition hover:bg-ink/5 hover:text-ink dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white"
+              className="absolute end-1.5 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-ink/70 transition hover:bg-ink/5 hover:text-ink dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
               aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -110,7 +110,7 @@ export default function RegisterPage() {
         </button>
       </form>
 
-      <p className="mt-5 text-center text-sm text-ink/55 dark:text-white/55">
+      <p className="mt-5 text-center text-sm text-ink/70 dark:text-white/70">
         {t("auth.haveAccount")}{" "}
         <Link href="/login" className="font-medium text-moss hover:underline dark:text-sea">
           {t("auth.signin")}

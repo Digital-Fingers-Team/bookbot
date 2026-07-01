@@ -17,7 +17,7 @@ export function Landing() {
   return (
     <div className="mx-auto max-w-4xl">
       <section className="flex flex-col items-center px-2 py-10 text-center sm:py-16">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1 text-xs font-medium text-ink/60 dark:border-white/10 dark:bg-white/5 dark:text-white/60">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1 text-xs font-medium text-ink/70 dark:border-white/10 dark:bg-white/5 dark:text-white/70">
           <Sparkles className="h-3.5 w-3.5 text-moss dark:text-sea" />
           {t("brand.org")}
         </span>
@@ -25,7 +25,7 @@ export function Landing() {
         <h1 className="mt-6 max-w-2xl text-3xl font-bold leading-snug tracking-tight text-ink dark:text-white sm:text-4xl">
           {t("landing.heroTitle")}
         </h1>
-        <p className="mt-4 max-w-xl text-base leading-7 text-ink/60 dark:text-white/60">{t("landing.heroSubtitle")}</p>
+        <p className="mt-4 max-w-xl text-base leading-7 text-ink/70 dark:text-white/70">{t("landing.heroSubtitle")}</p>
 
         <div className="mt-8 flex w-full max-w-xs flex-col items-stretch gap-3 sm:w-auto sm:max-w-none sm:flex-row sm:items-center sm:justify-center">
           <Link
@@ -58,7 +58,7 @@ export function Landing() {
                 <Icon className="h-5 w-5" />
               </span>
               <h3 className="mt-3.5 text-sm font-semibold text-ink dark:text-white">{feature.title}</h3>
-              <p className="mt-1 text-sm leading-6 text-ink/55 dark:text-white/55">{feature.body}</p>
+              <p className="mt-1 text-sm leading-6 text-ink/70 dark:text-white/70">{feature.body}</p>
             </div>
           );
         })}

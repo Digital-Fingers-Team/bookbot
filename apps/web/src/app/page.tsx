@@ -69,7 +69,7 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center text-ink/40 dark:text-white/40">
+      <div className="flex min-h-[60vh] items-center justify-center text-ink/70 dark:text-white/70">
         <Loader2 className="h-5 w-5 animate-spin" />
       </div>
     );
@@ -401,7 +401,7 @@ function ChatExperience() {
           </span>
           <div className="min-w-0">
             <h1 className="truncate text-[0.95rem] font-semibold text-ink dark:text-white">{t("ask.title")}</h1>
-            <p className="truncate text-xs text-ink/45 dark:text-white/45">{t("ask.subtitle")}</p>
+            <p className="truncate text-xs text-ink/70 dark:text-white/70">{t("ask.subtitle")}</p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -527,7 +527,7 @@ function HistoryDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/50 transition hover:bg-ink/5 hover:text-ink dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/70 transition hover:bg-ink/5 hover:text-ink dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
             aria-label={t("ask.closeReader")}
           >
             <X className="h-4 w-4" />
@@ -579,7 +579,7 @@ function HistoryDrawer({
               </div>
             ))
           ) : (
-            <p className="px-3 py-8 text-center text-sm text-ink/45 dark:text-white/45">{t("ask.noHistory")}</p>
+            <p className="px-3 py-8 text-center text-sm text-ink/70 dark:text-white/70">{t("ask.noHistory")}</p>
           )}
         </div>
       </aside>
@@ -628,7 +628,7 @@ function BookReader({
         <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 dark:border-white/10">
           <div className="min-w-0">
             <h2 className="truncate text-sm font-semibold text-ink dark:text-white">{bookName}</h2>
-            <p className="truncate text-xs text-ink/45 dark:text-white/45">
+            <p className="truncate text-xs text-ink/70 dark:text-white/70">
               {t("ask.openedAtPage")} {page}
             </p>
           </div>
@@ -645,7 +645,7 @@ function BookReader({
 
         <div className="min-h-0 flex-1 bg-paper dark:bg-[#08080a]">
           {loading ? (
-            <div className="flex h-full items-center justify-center text-sm text-ink/60 dark:text-white/60">
+            <div className="flex h-full items-center justify-center text-sm text-ink/70 dark:text-white/70">
               <Loader2 className="me-2 h-4 w-4 animate-spin" />
               {t("ask.opening")}
             </div>
@@ -681,7 +681,7 @@ function EmptyState({
         <BookOpen className="h-8 w-8" />
       </span>
       <h2 className="mt-5 text-2xl font-bold text-moss dark:text-white">{t("ask.emptyTitle")}</h2>
-      <p className="mt-2 max-w-md text-sm leading-6 text-ink/60 dark:text-white/60">{t("ask.emptyBody")}</p>
+      <p className="mt-2 max-w-md text-sm leading-6 text-ink/70 dark:text-white/70">{t("ask.emptyBody")}</p>
 
       {lastRead ? (
         <Link
@@ -692,7 +692,7 @@ function EmptyState({
             <BookOpen className="h-5 w-5" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-xs font-medium text-ink/45 dark:text-white/45">{t("mb.continueReading")}</span>
+            <span className="block text-xs font-medium text-ink/70 dark:text-white/70">{t("mb.continueReading")}</span>
             <span dir="auto" className="block truncate text-sm font-semibold text-ink dark:text-white">{lastRead.title}</span>
           </span>
           <span className="shrink-0 text-xs font-medium text-moss dark:text-sea">
@@ -968,14 +968,14 @@ function Evidence({
 
         {evidence.length ? (
           <details className="group/ev rounded-lg border border-dashed border-line dark:border-white/10">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ink/55 dark:text-white/55">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ink/70 dark:text-white/70">
               {t("ask.rawChunks")} ({evidence.length})
               <ChevronDown className="h-3.5 w-3.5 transition group-open/ev:rotate-180" />
             </summary>
             <div className="space-y-2 border-t border-line p-3 dark:border-white/10">
               {evidence.map((chunk) => (
                 <div key={chunk.id} className="rounded-md bg-paper p-3 dark:bg-white/5">
-                  <div className="mb-1.5 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-ink/55 dark:text-white/55">
+                  <div className="mb-1.5 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-ink/70 dark:text-white/70">
                     <span className="truncate uppercase">{chunk.bookName}</span>
                     <span className="text-ink/30 dark:text-white/30">·</span>
                     <span>
@@ -1054,7 +1054,7 @@ function Composer({
           )}
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-ink/45 dark:text-white/45">
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-ink/70 dark:text-white/70">
           <span className="hidden sm:inline">
             <kbd className="rounded border border-line px-1 font-sans dark:border-white/15">Enter</kbd> {t("ask.enterToSend")}{" "}
             · <kbd className="rounded border border-line px-1 font-sans dark:border-white/15">Shift</kbd>+
@@ -1182,7 +1182,7 @@ function HelpButton() {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/50 transition hover:bg-ink/5 hover:text-ink dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/70 transition hover:bg-ink/5 hover:text-ink dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
                 aria-label={t("ask.gotIt")}
               >
                 <X className="h-4 w-4" />
@@ -1252,12 +1252,12 @@ function Feedback({ answer }: { answer: string }) {
 
   return (
     <span className="inline-flex items-center gap-1">
-      <span className="text-xs text-ink/45 dark:text-white/45">{t("ask.helpful")}</span>
+      <span className="text-xs text-ink/70 dark:text-white/70">{t("ask.helpful")}</span>
       <button
         type="button"
         onClick={() => submit("up")}
         aria-label={t("an.helpfulVotes")}
-        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-ink/50 transition hover:bg-moss/10 hover:text-moss dark:text-white/50 dark:hover:bg-sea/15 dark:hover:text-sea"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-ink/70 transition hover:bg-moss/10 hover:text-moss dark:text-white/70 dark:hover:bg-sea/15 dark:hover:text-sea"
       >
         <ThumbsUp className="h-3.5 w-3.5" />
       </button>
@@ -1265,7 +1265,7 @@ function Feedback({ answer }: { answer: string }) {
         type="button"
         onClick={() => setState("report")}
         aria-label={t("an.notHelpfulVotes")}
-        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-ink/50 transition hover:bg-red-50 hover:text-red-600 dark:text-white/50 dark:hover:bg-red-500/10 dark:hover:text-red-300"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-ink/70 transition hover:bg-red-50 hover:text-red-600 dark:text-white/70 dark:hover:bg-red-500/10 dark:hover:text-red-300"
       >
         <ThumbsDown className="h-3.5 w-3.5" />
       </button>
@@ -1275,7 +1275,7 @@ function Feedback({ answer }: { answer: string }) {
 
 function MetaChip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink/55 dark:border-white/10 dark:bg-white/5 dark:text-white/55">
+    <span className="inline-flex items-center rounded-full border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink/70 dark:border-white/10 dark:bg-white/5 dark:text-white/70">
       {children}
     </span>
   );

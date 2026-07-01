@@ -68,7 +68,7 @@ export function BookPicker({
       <div
         className={`flex items-center gap-2 rounded-lg border border-line bg-white px-3 dark:border-white/10 dark:bg-white/5 ${inputHeight}`}
       >
-        <Search className="h-4 w-4 shrink-0 text-ink/40" />
+        <Search className="h-4 w-4 shrink-0 text-ink/70" />
         <input
           value={query}
           autoFocus={autoFocus}
@@ -84,9 +84,9 @@ export function BookPicker({
       {open ? (
         <div className="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-line bg-white py-1 shadow-soft dark:border-white/10 dark:bg-[#161618]">
           {loading && visible.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-ink/45 dark:text-white/45">{t("picker.searching")}</p>
+            <p className="px-3 py-2 text-xs text-ink/70 dark:text-white/70">{t("picker.searching")}</p>
           ) : visible.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-ink/45 dark:text-white/45">
+            <p className="px-3 py-2 text-xs text-ink/70 dark:text-white/70">
               {query.trim() ? t("picker.noResults") : t("picker.typeToSearch")}
             </p>
           ) : (
@@ -104,7 +104,7 @@ export function BookPicker({
               >
                 <span className="line-clamp-1 text-sm text-ink dark:text-white">{book.title}</span>
                 {book.author || book.category ? (
-                  <span className="line-clamp-1 text-[11px] text-ink/45 dark:text-white/45">
+                  <span className="line-clamp-1 text-[11px] text-ink/70 dark:text-white/70">
                     {[book.author, book.category].filter(Boolean).join(" · ")}
                   </span>
                 ) : null}

@@ -87,14 +87,14 @@ export function DiscoveryExperience() {
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-2xl flex-col px-2 py-10">
       <div className="text-center">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1 text-xs font-medium text-ink/60 dark:border-white/10 dark:bg-white/5 dark:text-white/60">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1 text-xs font-medium text-ink/70 dark:border-white/10 dark:bg-white/5 dark:text-white/70">
           <Sparkles className="h-3.5 w-3.5 text-moss dark:text-sea" />
           {t("discover.badge")}
         </span>
         <h1 className="mt-5 text-2xl font-bold tracking-tight text-ink dark:text-white sm:text-3xl">
           {t("discover.title")}
         </h1>
-        <p className="mx-auto mt-3 max-w-lg text-sm leading-7 text-ink/60 dark:text-white/60">{t("discover.subtitle")}</p>
+        <p className="mx-auto mt-3 max-w-lg text-sm leading-7 text-ink/70 dark:text-white/70">{t("discover.subtitle")}</p>
       </div>
 
       <form onSubmit={onSubmit} className="mt-7">
@@ -167,13 +167,13 @@ export function DiscoveryExperience() {
             <Lock className="h-4 w-4" />
             {t("req.requestAccess")}
           </button>
-          <p className="text-center text-xs text-ink/45 dark:text-white/45">{t("discover.requestHint")}</p>
+          <p className="text-center text-xs text-ink/70 dark:text-white/70">{t("discover.requestHint")}</p>
         </div>
       ) : null}
 
       {requests.length ? (
         <div className="mt-8 border-t border-line/70 pt-5 dark:border-white/10">
-          <h3 className="mb-3 text-xs font-semibold text-ink/60 dark:text-white/60">{t("req.myRequests")}</h3>
+          <h3 className="mb-3 text-xs font-semibold text-ink/70 dark:text-white/70">{t("req.myRequests")}</h3>
           <ul className="space-y-2">
             {requests.slice(0, 6).map((r) => (
               <li

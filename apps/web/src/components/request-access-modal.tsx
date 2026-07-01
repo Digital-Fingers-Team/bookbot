@@ -61,7 +61,7 @@ export function RequestAccessModal({
       >
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-ink dark:text-white">{t("req.title")}</h3>
-          <button type="button" onClick={onClose} aria-label="Close" className="text-ink/40 hover:text-ink dark:text-white/40">
+          <button type="button" onClick={onClose} aria-label="Close" className="text-ink/70 hover:text-ink dark:text-white/70">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -77,7 +77,7 @@ export function RequestAccessModal({
                 setBookLabel("");
               }}
               className={`flex-1 rounded-md py-1.5 font-medium transition ${
-                type === option ? "bg-moss text-white" : "text-ink/60 dark:text-white/60"
+                type === option ? "bg-moss text-white" : "text-ink/70 dark:text-white/70"
               }`}
             >
               {option === "book" ? t("req.aBook") : t("req.aCategory")}
@@ -99,7 +99,7 @@ export function RequestAccessModal({
                   setBookLabel("");
                 }}
                 aria-label="clear"
-                className="shrink-0 text-ink/40 hover:text-ink dark:text-white/40"
+                className="shrink-0 text-ink/70 hover:text-ink dark:text-white/70"
               >
                 <X className="h-4 w-4" />
               </button>

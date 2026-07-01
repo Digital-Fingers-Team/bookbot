@@ -68,7 +68,7 @@ export default function AnalyticsPage() {
   if (authLoading || !user) {
     return (
       <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-6 dark:border-white/10 dark:bg-[#0c0c0e]">
-        <div className="flex items-center gap-3 text-sm font-medium text-ink/60 dark:text-white/60">
+        <div className="flex items-center gap-3 text-sm font-medium text-ink/70 dark:text-white/70">
           <Loader2 className="h-4 w-4 animate-spin" />
           {t("lib.checkingSession")}
         </div>
@@ -95,7 +95,7 @@ export default function AnalyticsPage() {
     <div className="space-y-7">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-white">{t("an.title")}</h1>
-        <p className="mt-1.5 text-sm text-ink/55 dark:text-white/55">{t("an.subtitle")}</p>
+        <p className="mt-1.5 text-sm text-ink/70 dark:text-white/70">{t("an.subtitle")}</p>
       </header>
 
       {error ? (
@@ -172,7 +172,7 @@ export default function AnalyticsPage() {
           <section className="space-y-3">
             <div>
               <h2 className="text-sm font-semibold text-ink/70 dark:text-white/70">{t("an.unanswered")}</h2>
-              <p className="mt-0.5 text-xs text-ink/45 dark:text-white/45">{t("an.unansweredNote")}</p>
+              <p className="mt-0.5 text-xs text-ink/70 dark:text-white/70">{t("an.unansweredNote")}</p>
             </div>
             <div className="rounded-2xl border border-line bg-white dark:border-white/10 dark:bg-[#0c0c0e]">
               {stats.unansweredQuestions && stats.unansweredQuestions.length ? (
@@ -187,7 +187,7 @@ export default function AnalyticsPage() {
                   ))}
                 </ul>
               ) : (
-                <p className="px-4 py-8 text-center text-sm text-ink/45 dark:text-white/45">{t("an.noUnanswered")}</p>
+                <p className="px-4 py-8 text-center text-sm text-ink/70 dark:text-white/70">{t("an.noUnanswered")}</p>
               )}
             </div>
           </section>
@@ -215,7 +215,7 @@ export default function AnalyticsPage() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="mt-3 text-sm text-ink/45 dark:text-white/45">{t("an.noReports")}</p>
+                  <p className="mt-3 text-sm text-ink/70 dark:text-white/70">{t("an.noReports")}</p>
                 )}
               </div>
             </div>
@@ -243,8 +243,8 @@ function StatCard({
         <Icon className="h-[18px] w-[18px]" />
       </span>
       <p className="mt-3 text-2xl font-semibold tabular-nums text-ink dark:text-white">{nf.format(value)}</p>
-      <p className="mt-0.5 text-sm text-ink/55 dark:text-white/55">{label}</p>
-      {note ? <p className="mt-2 text-xs leading-5 text-ink/40 dark:text-white/40">{note}</p> : null}
+      <p className="mt-0.5 text-sm text-ink/70 dark:text-white/70">{label}</p>
+      {note ? <p className="mt-2 text-xs leading-5 text-ink/70 dark:text-white/70">{note}</p> : null}
     </div>
   );
 }
@@ -266,8 +266,8 @@ function MoneyCard({
         <Icon className="h-[18px] w-[18px]" />
       </span>
       <p className="mt-3 text-2xl font-semibold tabular-nums text-ink dark:text-white">{value}</p>
-      <p className="mt-0.5 text-sm text-ink/55 dark:text-white/55">{label}</p>
-      {note ? <p className="mt-2 text-xs leading-5 text-ink/40 dark:text-white/40">{note}</p> : null}
+      <p className="mt-0.5 text-sm text-ink/70 dark:text-white/70">{label}</p>
+      {note ? <p className="mt-2 text-xs leading-5 text-ink/70 dark:text-white/70">{note}</p> : null}
     </div>
   );
 }
@@ -295,13 +295,13 @@ function ActivityCard({
         <Icon className="h-[18px] w-[18px]" />
       </span>
       <p className="mt-3 text-2xl font-semibold tabular-nums text-ink dark:text-white">{nf.format(total)}</p>
-      <p className="mt-0.5 text-sm text-ink/55 dark:text-white/55">{label}</p>
+      <p className="mt-0.5 text-sm text-ink/70 dark:text-white/70">{label}</p>
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line/70 pt-3 text-xs dark:border-white/10">
         <span className="inline-flex items-center gap-1 text-moss dark:text-sea">
           <CheckCircle2 className="h-3.5 w-3.5" />
           {nf.format(successful)} {successLabel}
         </span>
-        <span className="inline-flex items-center gap-1 text-ink/45 dark:text-white/45">
+        <span className="inline-flex items-center gap-1 text-ink/70 dark:text-white/70">
           <XCircle className="h-3.5 w-3.5" />
           {nf.format(failed)} {failLabel}
         </span>

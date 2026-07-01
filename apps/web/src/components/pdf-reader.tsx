@@ -150,7 +150,7 @@ export function PdfReader({ bookId, url, title, page, totalPages, onPageChange }
             type="button"
             disabled={page <= 1}
             onClick={() => jumpTo(page - 1)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/60 transition enabled:hover:bg-ink/5 enabled:hover:text-moss disabled:opacity-30 dark:text-white/60 dark:enabled:hover:bg-white/10 dark:enabled:hover:text-sea"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/70 transition enabled:hover:bg-ink/5 enabled:hover:text-moss disabled:opacity-30 dark:text-white/70 dark:enabled:hover:bg-white/10 dark:enabled:hover:text-sea"
             aria-label={t("read.goToPage")}
           >
             <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
@@ -169,13 +169,13 @@ export function PdfReader({ bookId, url, title, page, totalPages, onPageChange }
               aria-label={t("read.goToPage")}
               className="h-8 w-14 rounded-lg border border-line bg-paper text-center font-semibold text-ink outline-none focus:border-moss dark:border-white/10 dark:bg-white/5 dark:text-white"
             />
-            <span className="text-ink/45 dark:text-white/45">/ {pageCount}</span>
+            <span className="text-ink/70 dark:text-white/70">/ {pageCount}</span>
           </form>
           <button
             type="button"
             disabled={page >= pageCount}
             onClick={() => jumpTo(page + 1)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/60 transition enabled:hover:bg-ink/5 enabled:hover:text-moss disabled:opacity-30 dark:text-white/60 dark:enabled:hover:bg-white/10 dark:enabled:hover:text-sea"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/70 transition enabled:hover:bg-ink/5 enabled:hover:text-moss disabled:opacity-30 dark:text-white/70 dark:enabled:hover:bg-white/10 dark:enabled:hover:text-sea"
             aria-label={t("read.goToPage")}
           >
             <ChevronRight className="h-4 w-4 rtl:rotate-180" />
@@ -187,17 +187,17 @@ export function PdfReader({ bookId, url, title, page, totalPages, onPageChange }
             type="button"
             disabled={zoom <= minZoom}
             onClick={() => changeZoom(-1)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/60 transition enabled:hover:bg-ink/5 enabled:hover:text-moss disabled:opacity-30 dark:text-white/60 dark:enabled:hover:bg-white/10 dark:enabled:hover:text-sea"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/70 transition enabled:hover:bg-ink/5 enabled:hover:text-moss disabled:opacity-30 dark:text-white/70 dark:enabled:hover:bg-white/10 dark:enabled:hover:text-sea"
             aria-label="Zoom out"
           >
             <Minus className="h-4 w-4" />
           </button>
-          <span className="min-w-12 text-center text-xs font-semibold text-ink/55 dark:text-white/55">{zoom}%</span>
+          <span className="min-w-12 text-center text-xs font-semibold text-ink/70 dark:text-white/70">{zoom}%</span>
           <button
             type="button"
             disabled={zoom >= maxZoom}
             onClick={() => changeZoom(1)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/60 transition enabled:hover:bg-ink/5 enabled:hover:text-moss disabled:opacity-30 dark:text-white/60 dark:enabled:hover:bg-white/10 dark:enabled:hover:text-sea"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/70 transition enabled:hover:bg-ink/5 enabled:hover:text-moss disabled:opacity-30 dark:text-white/70 dark:enabled:hover:bg-white/10 dark:enabled:hover:text-sea"
             aria-label="Zoom in"
           >
             <Plus className="h-4 w-4" />
@@ -208,7 +208,7 @@ export function PdfReader({ bookId, url, title, page, totalPages, onPageChange }
             aria-pressed={fitMode === "page"}
             title={fitMode === "page" ? t("read.fitWidth") : t("read.fitPage")}
             className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-ink/5 dark:hover:bg-white/10 ${
-              fitMode === "page" ? "text-moss dark:text-sea" : "text-ink/60 dark:text-white/60"
+              fitMode === "page" ? "text-moss dark:text-sea" : "text-ink/70 dark:text-white/70"
             }`}
           >
             {fitMode === "page" ? <MoveHorizontal className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
@@ -217,7 +217,7 @@ export function PdfReader({ bookId, url, title, page, totalPages, onPageChange }
             href={`${url}#page=${page}`}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/60 transition hover:bg-ink/5 hover:text-moss dark:text-white/60 dark:hover:bg-white/10 dark:hover:text-sea"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/70 transition hover:bg-ink/5 hover:text-moss dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-sea"
             aria-label="Open"
           >
             <ExternalLink className="h-4 w-4" />
@@ -225,7 +225,7 @@ export function PdfReader({ bookId, url, title, page, totalPages, onPageChange }
           <a
             href={url}
             download={title}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/60 transition hover:bg-ink/5 hover:text-moss dark:text-white/60 dark:hover:bg-white/10 dark:hover:text-sea"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/70 transition hover:bg-ink/5 hover:text-moss dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-sea"
             aria-label="Download"
           >
             <Download className="h-4 w-4" />
@@ -266,7 +266,7 @@ export function PdfReader({ bookId, url, title, page, totalPages, onPageChange }
 
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center bg-white/35 backdrop-blur-[1px] dark:bg-black/20">
-            <span className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink/60 shadow-sm dark:border-white/10 dark:bg-[#0c0c0e] dark:text-white/60">
+            <span className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink/70 shadow-sm dark:border-white/10 dark:bg-[#0c0c0e] dark:text-white/70">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               {t("read.opening")}
             </span>
