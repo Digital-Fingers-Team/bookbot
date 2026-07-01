@@ -393,7 +393,7 @@ function ChatExperience() {
   }
 
   return (
-    <section className="relative flex h-[calc(100dvh-10rem)] min-h-[30rem] flex-col overflow-hidden rounded-xl border border-line bg-white shadow-soft dark:border-white/10 dark:bg-[#0c0c0e] lg:h-[calc(100dvh-6rem)]">
+    <section className="relative -mx-4 -my-6 flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden border-y border-line bg-white dark:border-white/10 dark:bg-[#0c0c0e] sm:mx-0 sm:my-0 sm:h-[calc(100dvh-9rem)] sm:min-h-[30rem] sm:rounded-xl sm:border sm:shadow-soft lg:h-[calc(100dvh-6rem)]">
       <header className="flex items-center justify-between gap-2 border-b border-line px-4 py-3.5 dark:border-white/10 sm:gap-3 sm:px-5 sm:py-4">
         <div className="flex min-w-0 items-center gap-3">
           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-moss/10 text-moss dark:bg-sea/15 dark:text-sea">

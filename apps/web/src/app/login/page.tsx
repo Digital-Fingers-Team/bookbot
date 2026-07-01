@@ -6,6 +6,7 @@ import { Suspense, type FormEvent, useEffect, useState } from "react";
 import { Eye, EyeOff, Loader2, LogIn } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { AuthField, AuthShell, ErrorBanner, authInputClass } from "@/components/auth-shell";
+import { buttonClass } from "@/components/ui/button";
 import { ApiClientError } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
@@ -94,11 +95,7 @@ function LoginForm() {
 
         {error ? <ErrorBanner message={error} /> : null}
 
-        <button
-          type="submit"
-          disabled={submitting || loading}
-          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
+        <button type="submit" disabled={submitting || loading} className={buttonClass("primary", "w-full")}>
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
           {t("auth.signin")}
         </button>

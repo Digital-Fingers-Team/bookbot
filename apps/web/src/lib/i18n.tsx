@@ -28,6 +28,9 @@ export const STRINGS = {
   "nav.skipToContent": { ar: "تخطّي إلى المحتوى", en: "Skip to content" },
   "nav.adminSection": { ar: "الإدارة", en: "Admin" },
   "nav.newDecisions": { ar: "قرارات جديدة على طلباتك", en: "new decisions on your requests" },
+  "nav.menu": { ar: "القائمة", en: "Menu" },
+  "nav.openMenu": { ar: "فتح القائمة", en: "Open menu" },
+  "nav.closeMenu": { ar: "إغلاق القائمة", en: "Close menu" },
   "role.admin": { ar: "مدير", en: "admin" },
   "role.user": { ar: "مستخدم", en: "user" },
 

@@ -12,6 +12,7 @@ import {
   getOmpLoginLink,
   type OmpAuthorLink
 } from "@/lib/api";
+import { buttonClass } from "@/components/ui/button";
 import { useT } from "@/lib/i18n";
 
 const inputClass =
@@ -297,23 +298,13 @@ function OmpPublishingCard({ token }: { token: string | null }) {
       ) : link?.linked ? (
         <div className="space-y-4">
           <StatusMessage>{t("omp.linked")}</StatusMessage>
-          <button
-            type="button"
-            onClick={openOmp}
-            disabled={opening}
-            className="inline-flex h-9 w-fit items-center justify-center gap-2 rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <button type="button" onClick={openOmp} disabled={opening} className={buttonClass("primary", "w-fit")}>
             {opening ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
             {opening ? t("omp.opening") : t("omp.enter")}
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={activate}
-          disabled={activating}
-          className="inline-flex h-9 w-fit items-center justify-center gap-2 rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
+        <button type="button" onClick={activate} disabled={activating} className={buttonClass("primary", "w-fit")}>
           {activating ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />}
           {activating ? t("omp.activating") : t("omp.activate")}
         </button>
@@ -368,11 +359,7 @@ function SubmitButton({
   children: React.ReactNode;
 }) {
   return (
-    <button
-      type="submit"
-      disabled={loading}
-      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-moss px-4 text-sm font-medium text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50"
-    >
+    <button type="submit" disabled={loading} className={buttonClass("primary", "w-full")}>
       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
       {children}
     </button>

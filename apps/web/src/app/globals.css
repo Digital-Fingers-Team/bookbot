@@ -68,6 +68,18 @@ body {
   word-spacing: 0.04em;
 }
 
+/* On phones iOS Safari zooms the whole page in when a focused field's text is
+   under 16px, which makes layouts jump and feel broken. Force a 16px minimum
+   for form controls on small screens only; larger screens keep the tighter
+   design sizes. */
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 /* Quiet, neutral scrollbars for the minimal surface treatment. */
 * {
   scrollbar-width: thin;

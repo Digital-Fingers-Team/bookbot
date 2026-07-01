@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
-import { Cairo } from "next/font/google";
+import { Cairo, Reem_Kufi } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
 import { AppShell } from "@/components/navigation";
 import { QueryProvider } from "@/components/query-provider";
 import { LanguageProvider } from "@/lib/i18n";
 
-const cairo = Cairo({ subsets: ["arabic", "latin"], display: "swap" });
+// Body: Cairo (highly legible Arabic + Latin). Display: Reem Kufi — a geometric
+// Kufi that gives headings a distinct, authored voice while still covering both
+// scripts, so the type no longer reads as a generic default sans.
+const cairo = Cairo({ subsets: ["arabic", "latin"], display: "swap", variable: "--font-sans" });
+const reemKufi = Reem_Kufi({ subsets: ["arabic", "latin"], display: "swap", variable: "--font-display" });
 
 export const metadata: Metadata = {
   title: "منصة المعرفة — المنظمة العربية للتنمية الإدارية",
@@ -37,7 +41,7 @@ const langScript = `
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
-      <body className={`${cairo.className} min-h-screen antialiased`}>
+      <body className={`${cairo.variable} ${reemKufi.variable} font-sans min-h-screen antialiased`}>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <script dangerouslySetInnerHTML={{ __html: langScript }} />
         <LanguageProvider>
