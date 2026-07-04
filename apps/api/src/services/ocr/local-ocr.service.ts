@@ -1,6 +1,6 @@
 import os from "node:os";
 
-import { createScheduler, createWorker, type RecognizeResult, type Scheduler } from "tesseract.js";
+import { createScheduler, createWorker, PSM, type Block, type RecognizeResult, type Scheduler } from "tesseract.js";
 
 import { env } from "../../config/env.js";
 
@@ -33,6 +33,12 @@ async function createPool(): Promise<Scheduler> {
   await Promise.all(
     Array.from({ length: workerCount }, async () => {
       const worker = await createWorker(langs, LSTM_ONLY, { cachePath: CACHE_PATH });
+
+      // SPARSE_TEXT finds each word/line as an independent region instead of
+      // forcing everything on the page into one reading order. AUTO (the
+      // default) tries to merge diagram labels, arrows and captions into fake
+      // paragraph lines, which is what produced the garbled/random-looking text.
+      await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT });
       scheduler.addWorker(worker);
     })
   );
@@ -49,7 +55,35 @@ async function createPool(): Promise<Scheduler> {
  */
 export async function localOcr(image: Buffer): Promise<string> {
   const scheduler = await getScheduler();
-  const result = (await scheduler.addJob("recognize", image)) as RecognizeResult;
+  const result = (await scheduler.addJob(
+    "recognize",
+    image,
+    {},
+    { text: false, blocks: true }
+  )) as RecognizeResult;
 
-  return (result.data.text ?? "").trim();
+  return blocksToText(result.data.blocks ?? []);
+}
+
+// Reconstructs text word-by-word instead of using tesseract's own line-level
+// `text` output, so a single low-confidence guess (typical for icons/shapes in
+// figures) drops only that word rather than polluting the whole line.
+function blocksToText(blocks: Block[]): string {
+  const lines: string[] = [];
+
+  for (const block of blocks) {
+    for (const paragraph of block.paragraphs) {
+      for (const line of paragraph.lines) {
+        const words = line.words
+          .filter((word) => word.confidence >= env.OCR_LOCAL_MIN_WORD_CONFIDENCE && word.text.trim().length > 0)
+          .map((word) => word.text.trim());
+
+        if (words.length > 0) {
+          lines.push(words.join(" "));
+        }
+      }
+    }
+  }
+
+  return lines.join("\n").trim();
 }

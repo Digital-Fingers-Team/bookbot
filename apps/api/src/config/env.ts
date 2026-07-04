@@ -44,6 +44,9 @@ const schema = z.object({
     .transform((value) => value !== "false" && value !== "0"),
   OCR_PROVIDER: z.enum(["auto", "openrouter", "local"]).default("auto"),
   OCR_LOCAL_LANGS: z.string().default("ara+eng"),
+  // Below this per-word confidence (0-100), local OCR drops the word instead of
+  // emitting the garbled characters tesseract guesses for noisy/figure regions.
+  OCR_LOCAL_MIN_WORD_CONFIDENCE: z.coerce.number().int().min(0).max(100).default(45),
   OCR_VISION_MODEL: z.string().default("google/gemini-2.5-flash"),
   OCR_MIN_TEXT_SCORE: z.coerce.number().int().min(0).max(100).default(65),
   OCR_RENDER_SCALE: z.coerce.number().positive().max(5).default(2),
