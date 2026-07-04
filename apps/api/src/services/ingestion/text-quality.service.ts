@@ -77,7 +77,3 @@ export function evaluateTextQuality(text: string): TextQualityResult {
   score = Math.max(0, Math.min(100, score));
   return { score, reasons };
 }
-
-export function isGoodExtraction(score: number) {
-  return score >= 70;
-}
