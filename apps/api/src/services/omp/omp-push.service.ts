@@ -1,8 +1,7 @@
-import { readFile } from "node:fs/promises";
-import { basename, resolve } from "node:path";
 import type { HydratedDocument } from "mongoose";
 import { env } from "../../config/env.js";
 import { Book, type BookDocument } from "../../models/book.model.js";
+import { storage } from "../storage/storage.service.js";
 import {
   addOmpPublicationAuthor,
   createOmpSubmission,
@@ -18,18 +17,6 @@ function splitAuthorName(raw: string): { givenName: string; familyName: string }
   }
   const [first = "Author", ...rest] = parts;
   return { givenName: first, familyName: rest.length ? rest.join(" ") : first };
-}
-
-/**
- * Read the book's PDF, tolerating a stored absolute path that no longer exists
- * (e.g. the repo moved) by falling back to the current storage dir + filename.
- */
-async function readBookPdf(storedPath: string): Promise<Buffer> {
-  try {
-    return await readFile(storedPath);
-  } catch {
-    return readFile(resolve(env.PDF_STORAGE_DIR, basename(storedPath)));
-  }
 }
 
 /**
@@ -53,7 +40,7 @@ export async function pushBookToOmp(book: HydratedDocument<BookDocument>): Promi
   }
 
   try {
-    const fileBytes = await readBookPdf(book.originalPdfPath);
+    const fileBytes = await storage.get(book.originalPdfPath);
 
     const { submissionId, publicationId } = await createOmpSubmission();
     await setOmpPublicationTitle(submissionId, publicationId, book.title);

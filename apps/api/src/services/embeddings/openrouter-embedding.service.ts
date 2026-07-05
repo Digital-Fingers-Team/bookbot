@@ -27,6 +27,46 @@ export type EmbeddingBatchResult = {
   };
 };
 
+const EMBEDDING_MAX_ATTEMPTS = 3;
+const EMBEDDING_RETRY_DELAY_MS = 2000;
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** POST to the embeddings endpoint, retrying transient network failures (e.g. a
+ * dropped connection mid-way through a long multi-batch ingestion job). */
+async function fetchEmbeddings(texts: string[]): Promise<Response> {
+  for (let attempt = 1; attempt <= EMBEDDING_MAX_ATTEMPTS; attempt++) {
+    try {
+      return await fetch(`${env.OPENROUTER_BASE_URL}/embeddings`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://aradobot.local",
+          "X-Title": "AradoBot"
+        },
+        body: JSON.stringify({
+          input: texts,
+          model: env.OPENROUTER_EMBEDDING_MODEL,
+          encoding_format: "float"
+        })
+      });
+    } catch (error) {
+      if (attempt === EMBEDDING_MAX_ATTEMPTS) {
+        throw error;
+      }
+      console.warn(
+        `[embeddings] fetch attempt ${attempt} failed, retrying:`,
+        error instanceof Error ? error.message : error
+      );
+      await delay(EMBEDDING_RETRY_DELAY_MS * attempt);
+    }
+  }
+  throw new Error("unreachable");
+}
+
 export async function embedTexts(
   texts: string[]
 ): Promise<EmbeddingBatchResult> {
@@ -47,23 +87,7 @@ export async function embedTexts(
     );
   }
 
-  const response = await fetch(
-    `${env.OPENROUTER_BASE_URL}/embeddings`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://aradobot.local",
-        "X-Title": "AradoBot"
-      },
-      body: JSON.stringify({
-        input: texts,
-        model: env.OPENROUTER_EMBEDDING_MODEL,
-        encoding_format: "float"
-      })
-    }
-  );
+  const response = await fetchEmbeddings(texts);
 
   const payload = (await response.json()) as OpenRouterEmbeddingResponse;
 

@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-
 import type { HydratedDocument } from "mongoose";
 
 import { Book, type BookDocument } from "../../models/book.model.js";
@@ -14,6 +12,7 @@ import { env } from "../../config/env.js";
 import { embedTexts } from "../embeddings/openrouter-embedding.service.js";
 import { titleFromFileName } from "../../utils/file-name.js";
 import { cleanExtractedText, normalizeText } from "../../utils/text.js";
+import { storage } from "../storage/storage.service.js";
 import { chunkPages } from "./chunker.service.js";
 import { extractBook } from "./extraction.service.js";
 import { storePdfSource } from "./pdf-storage.service.js";
@@ -87,7 +86,7 @@ export async function processBook(bookId: string): Promise<void> {
   }
 
   try {
-    const buffer = await readFile(book.originalPdfPath);
+    const buffer = await storage.get(book.originalPdfPath);
 
     let lastProgressAt = 0;
     const onProgress = (done: number, total: number) => {

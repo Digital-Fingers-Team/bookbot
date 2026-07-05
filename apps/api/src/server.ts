@@ -6,6 +6,9 @@ import { initSentry } from "./config/sentry.js";
 import { seedDefaultAdmin } from "./services/auth/auth.service.js";
 import { seedDefaultCategories } from "./models/category.model.js";
 import { failStaleProcessingBooks } from "./services/ingestion/ingestion.service.js";
+import { pushPendingBooksToOmp } from "./services/omp/omp-push.service.js";
+
+const OMP_RETRY_INTERVAL_MS = 10 * 60 * 1000;
 
 async function bootstrap() {
   initSentry();
@@ -13,6 +16,12 @@ async function bootstrap() {
   await seedDefaultAdmin();
   await seedDefaultCategories();
   await failStaleProcessingBooks();
+  // Retry any book that finished processing but never made it into OMP (e.g. a
+  // transient OMP outage during the initial push).
+  await pushPendingBooksToOmp().catch((error) => console.error("[omp-push] pending retry failed:", error));
+  setInterval(() => {
+    pushPendingBooksToOmp().catch((error) => console.error("[omp-push] pending retry failed:", error));
+  }, OMP_RETRY_INTERVAL_MS);
   const app = createApp();
   // Models are all registered by now (createApp imports the routes). Build any
   // missing indexes — required in production where autoIndex is disabled.
