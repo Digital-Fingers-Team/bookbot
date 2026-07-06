@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -73,6 +73,8 @@ export default function LibraryPage() {
   const [view, setView] = useState<ViewMode>("grid");
   const [categoryList, setCategoryList] = useState<string[]>([]);
   const [pickerBook, setPickerBook] = useState<Book | null>(null);
+  const [editField, setEditField] = useState<{ book: Book; field: "author" | "price" | "description" } | null>(null);
+  const [confirmDeleteBook, setConfirmDeleteBook] = useState<Book | null>(null);
   const [payBook, setPayBook] = useState<Book | null>(null);
   const [requestsKey, setRequestsKey] = useState(0);
 
@@ -132,11 +134,16 @@ export default function LibraryPage() {
     return () => clearInterval(interval);
   }, [token, hasProcessing]);
 
-  async function removeBook(book: Book) {
-    if (!window.confirm(`${t("lib.deleteConfirm")}\n\n"${book.title}"`)) {
+  function removeBook(book: Book) {
+    setConfirmDeleteBook(book);
+  }
+
+  async function confirmRemoveBook() {
+    const book = confirmDeleteBook;
+    if (!book) {
       return;
     }
-
+    setConfirmDeleteBook(null);
     setDeletingId(book.id);
     setError("");
 
@@ -186,42 +193,41 @@ export default function LibraryPage() {
     await assignCategory(trimmed);
   }
 
-  async function setAuthor(book: Book) {
-    const next = window.prompt(t("lib.authorPrompt"), book.author ?? "");
-    if (next === null) {
-      return;
-    }
-    try {
-      await updateBook(book.id, { author: next.trim() }, token);
-      await refresh();
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t("lib.deleteError"));
-    }
+  function setAuthor(book: Book) {
+    setEditField({ book, field: "author" });
   }
 
-  async function setPrice(book: Book) {
-    const next = window.prompt(t("lib.pricePrompt"), String(book.price ?? 0));
-    if (next === null) {
-      return;
-    }
-    const price = Math.max(0, Number(next) || 0);
-    setBooks((prev) => prev.map((item) => (item.id === book.id ? { ...item, price } : item)));
-    try {
-      await updateBook(book.id, { price }, token);
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t("lib.deleteError"));
-      await refresh();
-    }
+  function setPrice(book: Book) {
+    setEditField({ book, field: "price" });
   }
 
   // Admin: a short blurb the discovery assistant uses to recommend this book.
-  async function setDescription(book: Book) {
-    const next = window.prompt(t("lib.descriptionPrompt"), book.description ?? "");
-    if (next === null) {
+  function setDescription(book: Book) {
+    setEditField({ book, field: "description" });
+  }
+
+  async function saveEditField(value: string) {
+    const current = editField;
+    if (!current) {
       return;
     }
+    const { book, field } = current;
+    setEditField(null);
+
+    if (field === "price") {
+      const price = Math.max(0, Number(value) || 0);
+      setBooks((prev) => prev.map((item) => (item.id === book.id ? { ...item, price } : item)));
+      try {
+        await updateBook(book.id, { price }, token);
+      } catch (err) {
+        setError(err instanceof ApiClientError ? err.message : t("lib.deleteError"));
+        await refresh();
+      }
+      return;
+    }
+
     try {
-      await updateBook(book.id, { description: next.trim() }, token);
+      await updateBook(book.id, { [field]: value.trim() }, token);
       await refresh();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : t("lib.deleteError"));
@@ -558,6 +564,19 @@ export default function LibraryPage() {
           onSelect={assignCategory}
           onCreate={createAndAssignCategory}
         />
+      ) : null}
+
+      {editField ? (
+        <FieldEditModal
+          book={editField.book}
+          field={editField.field}
+          onClose={() => setEditField(null)}
+          onSave={saveEditField}
+        />
+      ) : null}
+
+      {confirmDeleteBook ? (
+        <ConfirmDeleteModal book={confirmDeleteBook} onClose={() => setConfirmDeleteBook(null)} onConfirm={confirmRemoveBook} />
       ) : null}
 
       {payBook ? (
@@ -1113,6 +1132,140 @@ function CategoryOption({ label, active, onClick }: { label: string; active: boo
       <Tag className="h-3.5 w-3.5 shrink-0 opacity-70" />
       {label}
     </button>
+  );
+}
+
+function ConfirmDeleteModal({ book, onClose, onConfirm }: { book: Book; onClose: () => void; onConfirm: () => void }) {
+  const t = useT();
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-full max-w-sm space-y-4 rounded-2xl border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-[#0c0c0e]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300">
+            <Trash2 className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-ink dark:text-white">{t("lib.deleteConfirm")}</h3>
+            <p dir="auto" className="mt-1 truncate text-sm text-ink/70 dark:text-white/70">
+              {book.title}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 items-center rounded-lg border border-line bg-white px-3.5 text-sm font-medium text-ink/70 transition hover:text-ink dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:text-white"
+          >
+            {t("lib.cancel")}
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-red-600 px-3.5 text-sm font-medium text-white transition hover:bg-red-700"
+          >
+            <Trash2 className="h-4 w-4" />
+            {t("lib.delete")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FieldEditModal({
+  book,
+  field,
+  onClose,
+  onSave
+}: {
+  book: Book;
+  field: "author" | "price" | "description";
+  onClose: () => void;
+  onSave: (value: string) => void;
+}) {
+  const t = useT();
+  const isPrice = field === "price";
+  const isDescription = field === "description";
+  const [value, setValue] = useState(
+    field === "author" ? book.author ?? "" : field === "price" ? String(book.price ?? 0) : book.description ?? ""
+  );
+
+  const title = field === "author" ? t("lib.author") : field === "price" ? t("lib.price") : t("lib.description");
+  const hint = field === "author" ? t("lib.authorPrompt") : field === "price" ? t("lib.pricePrompt") : t("lib.descriptionPrompt");
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    onSave(value);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm" onClick={onClose}>
+      <form
+        onSubmit={submit}
+        onClick={(event) => event.stopPropagation()}
+        className="w-full max-w-sm space-y-4 rounded-2xl border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-[#0c0c0e]"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-ink dark:text-white">{title}</h3>
+            <p dir="auto" className="truncate text-xs text-ink/70 dark:text-white/70">{book.title}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-ink/70 transition hover:bg-ink/5 hover:text-ink dark:text-white/70 dark:hover:bg-white/10"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div>
+          <p className="mb-2 text-xs text-ink/70 dark:text-white/70">{hint}</p>
+          {isDescription ? (
+            <textarea
+              autoFocus
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+              rows={3}
+              dir="auto"
+              className="w-full resize-none rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-white/5 dark:text-white"
+            />
+          ) : (
+            <input
+              autoFocus
+              type={isPrice ? "number" : "text"}
+              min={isPrice ? 0 : undefined}
+              value={value}
+              dir={isPrice ? "ltr" : "auto"}
+              onChange={(event) => setValue(event.target.value)}
+              className="h-10 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-white/5 dark:text-white"
+            />
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 items-center rounded-lg border border-line bg-white px-3.5 text-sm font-medium text-ink/70 transition hover:text-ink dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:text-white"
+          >
+            {t("lib.cancel")}
+          </button>
+          <button
+            type="submit"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-moss px-3.5 text-sm font-medium text-white transition hover:bg-moss/90"
+          >
+            {t("lib.save")}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 

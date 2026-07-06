@@ -141,6 +141,9 @@ export const STRINGS = {
   "lib.free": { ar: "مجاني", en: "Free" },
   "lib.setPrice": { ar: "تحديد السعر", en: "Set price" },
   "lib.pricePrompt": { ar: "أدخل سعر الكتاب (0 = مجاني):", en: "Enter the book price (0 = free):" },
+  "lib.description": { ar: "الوصف", en: "Description" },
+  "lib.save": { ar: "حفظ", en: "Save" },
+  "lib.cancel": { ar: "إلغاء", en: "Cancel" },
   "common.currency": { ar: "ج.م", en: "EGP" },
   "common.loadMore": { ar: "تحميل المزيد", en: "Load more" },
 
@@ -201,6 +204,7 @@ export const STRINGS = {
   "lib.loadError": { ar: "تعذّر تحميل المكتبة.", en: "Could not load the library." },
   "lib.deleteError": { ar: "تعذّر حذف هذا الكتاب.", en: "Could not delete this book." },
   "lib.deleteConfirm": { ar: "حذف هذا الكتاب وكل مقاطعه؟", en: "Delete this book and all of its chunks?" },
+  "lib.delete": { ar: "حذف", en: "Delete" },
   "lib.checkingSession": { ar: "جارٍ التحقق من جلستك…", en: "Checking your session…" },
   "lib.redirecting": { ar: "جارٍ التحويل لتسجيل الدخول…", en: "Redirecting to sign in…" },
 
