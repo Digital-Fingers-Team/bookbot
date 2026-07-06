@@ -32,6 +32,7 @@ export const STRINGS = {
   "nav.openMenu": { ar: "فتح القائمة", en: "Open menu" },
   "nav.closeMenu": { ar: "إغلاق القائمة", en: "Close menu" },
   "role.admin": { ar: "مدير", en: "admin" },
+  "role.orgAdmin": { ar: "مدير جامعة", en: "org admin" },
   "role.user": { ar: "مستخدم", en: "user" },
 
   // Footer
@@ -433,7 +434,47 @@ export const STRINGS = {
   "an.viewAllFeedback": { ar: "عرض كل الإجابات غير المرضية ←", en: "View all disliked answers →" },
   "an.adminOnly": { ar: "هذه الصفحة للمديرين فقط.", en: "This page is for admins only." },
   "an.loading": { ar: "جارٍ تحميل التحليلات…", en: "Loading analytics…" },
-  "an.loadError": { ar: "تعذّر تحميل التحليلات.", en: "Could not load analytics." }
+  "an.loadError": { ar: "تعذّر تحميل التحليلات.", en: "Could not load analytics." },
+
+  // Organizations (universities) — platform admin
+  "nav.organizations": { ar: "الجامعات", en: "Organizations" },
+  "org.title": { ar: "الجامعات والمؤسسات", en: "Organizations" },
+  "org.subtitle": {
+    ar: "أضف جامعة، اشترك لها في كتب أو تصنيفات، وعيّن مديرًا يدير طلابها.",
+    en: "Add a university, subscribe it to books or categories, and assign an admin to manage its students."
+  },
+  "org.namePlaceholder": { ar: "اسم الجامعة أو المؤسسة", en: "University or institution name" },
+  "org.create": { ar: "إضافة", en: "Add" },
+  "org.empty": { ar: "لا توجد جامعات بعد.", en: "No organizations yet." },
+  "org.catalog": { ar: "الكتب والتصنيفات المشترك بها", en: "Subscribed books & categories" },
+  "org.students": { ar: "طالب", en: "students" },
+  "org.admins": { ar: "مدير", en: "admins" },
+  "org.assignAdmin": { ar: "تعيين مدير للجامعة", en: "Assign organization admin" },
+  "org.assignAdminEmail": { ar: "إيميل المستخدم", en: "User's email" },
+  "org.assign": { ar: "تعيين", en: "Assign" },
+  "org.assignSuccess": { ar: "تم التعيين", en: "Assigned" },
+  "org.assignError": { ar: "تعذّر العثور على مستخدم بهذا الإيميل.", en: "Could not find a user with that email." },
+  "org.noBooks": { ar: "لا توجد كتب مشترك بها.", en: "No books subscribed." },
+
+  // Org admin — manage own students
+  "nav.orgStudents": { ar: "طلابي", en: "My Students" },
+  "nav.orgAdminSection": { ar: "الجامعة", en: "Organization" },
+  "orgAdmin.title": { ar: "طلاب الجامعة", en: "Organization students" },
+  "orgAdmin.subtitle": {
+    ar: "أضف طلابًا بعد ما يدفعوا لك، وافتحلهم الكتب والتصنيفات اللي جامعتك مشتركة فيها.",
+    en: "Add students once they've paid you, and grant them the books/categories your organization subscribes to."
+  },
+  "orgAdmin.catalogTitle": { ar: "كتب وتصنيفات جامعتك", en: "Your organization's catalog" },
+  "orgAdmin.addStudent": { ar: "إضافة طالب", en: "Add student" },
+  "orgAdmin.studentEmail": { ar: "إيميل الطالب (لازم يكون له حساب بالفعل)", en: "Student's email (must already have an account)" },
+  "orgAdmin.add": { ar: "إضافة", en: "Add" },
+  "orgAdmin.addError": { ar: "تعذّر إضافة هذا الطالب.", en: "Could not add this student." },
+  "orgAdmin.empty": { ar: "لا يوجد طلاب في جامعتك بعد.", en: "No students in your organization yet." },
+  "orgAdmin.remove": { ar: "إزالة من الجامعة", en: "Remove from organization" },
+  "orgAdmin.noCatalog": {
+    ar: "جامعتك لسه مش مشتركة في أي كتاب أو تصنيف — تواصل مع الإدارة.",
+    en: "Your organization hasn't subscribed to any book or category yet — contact the platform admin."
+  }
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

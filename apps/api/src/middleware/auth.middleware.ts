@@ -43,6 +43,26 @@ export async function requireAdmin(req: Request, _res: Response, next: NextFunct
   }
 }
 
+export async function requireOrgAdmin(req: Request, _res: Response, next: NextFunction) {
+  try {
+    const token = bearerToken(req);
+    if (!token) {
+      throw new ApiError(401, "UNAUTHORIZED", "Please sign in to continue.");
+    }
+
+    const user = await getUserFromToken(token);
+    req.user = user;
+
+    if (user.role !== "org_admin" && user.role !== "admin") {
+      throw new ApiError(403, "FORBIDDEN", "Only organization admins can perform this action.");
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
 function bearerToken(req: Request) {
   const header = req.header("authorization");
   if (!header?.toLowerCase().startsWith("bearer ")) {

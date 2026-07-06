@@ -5,14 +5,21 @@ const userSchema = new Schema(
     name: { type: String, required: true, trim: true, maxlength: 120 },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
     passwordHash: { type: String, required: true, select: false },
-    role: { type: String, enum: ["admin", "user"], required: true, default: "user" },
+    role: { type: String, enum: ["admin", "org_admin", "user"], required: true, default: "user" },
     language: { type: String, enum: ["en", "ar"], required: true, default: "en" },
     // --- Access control (admin-granted) ---
     // A user may read / ask the AI about a book only if its id is in
     // allowedBookIds OR its category is in allowedCategories. Admins bypass
-    // this entirely. Granted by an admin after a paid access request.
+    // this entirely. Granted by an admin after a paid access request, or by
+    // an org_admin (scoped to their organization's subscribed catalog).
     allowedBookIds: { type: [Schema.Types.ObjectId], ref: "Book", default: [] },
     allowedCategories: { type: [String], default: [] },
+    // --- Organization membership (universities etc.) ---
+    // Set for students belonging to a subscribing organization, and for the
+    // org_admin(s) who manage them. Just membership — it does not grant
+    // access by itself; an org_admin still grants each student's books
+    // individually from the organization's catalog.
+    organizationId: { type: Schema.Types.ObjectId, ref: "Organization" },
     // Downloading the raw PDF is a separate, narrower grant than read access:
     // a book must be in allowedBookIds AND here before its file can be
     // downloaded. Defaults closed — admins opt users in book by book.
@@ -28,7 +35,7 @@ const userSchema = new Schema(
   { timestamps: { createdAt: true, updatedAt: false } }
 );
 
-export type UserRole = "admin" | "user";
+export type UserRole = "admin" | "org_admin" | "user";
 export type UserDocument = InferSchemaType<typeof userSchema> & {
   _id: unknown;
   role: UserRole;

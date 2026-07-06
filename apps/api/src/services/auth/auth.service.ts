@@ -19,6 +19,8 @@ export type PublicUser = {
   // True when the user can read at least one book (admins always; users once an
   // admin grants them a book or category). Drives the discovery-vs-library UI.
   hasAccess: boolean;
+  // Set for org_admins and students belonging to a subscribing organization.
+  organizationId?: string;
 };
 
 export async function seedDefaultAdmin() {
@@ -134,6 +136,7 @@ function toPublicUser(user: {
   language?: string;
   allowedBookIds?: unknown[];
   allowedCategories?: unknown[];
+  organizationId?: unknown;
 }): PublicUser {
   const hasAccess =
     user.role === "admin" || Boolean(user.allowedBookIds?.length) || Boolean(user.allowedCategories?.length);
@@ -143,6 +146,7 @@ function toPublicUser(user: {
     email: user.email,
     role: user.role,
     language: user.language === "ar" ? "ar" : "en",
-    hasAccess
+    hasAccess,
+    organizationId: user.organizationId ? String(user.organizationId) : undefined
   };
 }

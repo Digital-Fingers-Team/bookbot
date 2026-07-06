@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   BookMarked,
+  GraduationCap,
   Inbox,
   Library,
   LogIn,
@@ -42,8 +43,11 @@ const adminNavItems: NavItem[] = [
   { href: "/requests", key: "nav.requests", icon: Inbox },
   { href: "/feedback", key: "nav.feedback", icon: ThumbsDown },
   { href: "/users", key: "nav.users", icon: UsersRound },
+  { href: "/organizations", key: "nav.organizations", icon: GraduationCap },
   { href: "/analytics", key: "nav.analytics", icon: BarChart3 }
 ];
+
+const orgAdminNavItems: NavItem[] = [{ href: "/org/students", key: "nav.orgStudents", icon: GraduationCap }];
 
 // Highlight the nav item for the current route, including nested routes like
 // /read/[id] (which belongs under Library). "/" must match exactly so it does
@@ -151,13 +155,15 @@ function PublicHeader({ loading = false }: { loading?: boolean }) {
 
 function AuthenticatedShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { user, isAdmin, token } = useAuth();
+  const { user, isAdmin, isOrgAdmin, token } = useAuth();
   const t = useT();
   // Keep user-facing items together and group admin tools under their own
   // labeled section instead of interleaving the two scopes.
   const sections: { label?: string; items: NavItem[] }[] = isAdmin
     ? [{ items: baseNavItems }, { label: t("nav.adminSection"), items: adminNavItems }]
-    : [{ items: baseNavItems }];
+    : isOrgAdmin
+      ? [{ items: baseNavItems }, { label: t("nav.orgAdminSection"), items: orgAdminNavItems }]
+      : [{ items: baseNavItems }];
   const navItems = sections.flatMap((section) => section.items);
 
   // Non-admins: show a dot on "Library" when a paid request was decided.
@@ -222,6 +228,7 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
       userName={user?.name}
       userEmail={user?.email}
       isAdmin={isAdmin}
+      isOrgAdmin={isOrgAdmin}
       t={t}
       onNavigate={onNavigate}
     />
@@ -305,6 +312,7 @@ function SidebarNav({
   userName,
   userEmail,
   isAdmin,
+  isOrgAdmin,
   t,
   onNavigate
 }: {
@@ -315,6 +323,7 @@ function SidebarNav({
   userName?: string;
   userEmail?: string;
   isAdmin: boolean;
+  isOrgAdmin: boolean;
   t: (key: StringKey) => string;
   onNavigate?: () => void;
 }) {
@@ -382,8 +391,14 @@ function SidebarNav({
           <p className="truncate text-xs text-ink/70 dark:text-white/70">{userEmail}</p>
         </div>
         <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-ink/70 dark:text-white/70">
-          {isAdmin ? <ShieldCheck className="h-3.5 w-3.5" /> : <BookOpenText className="h-3.5 w-3.5" />}
-          {isAdmin ? t("role.admin") : t("role.user")}
+          {isAdmin ? (
+            <ShieldCheck className="h-3.5 w-3.5" />
+          ) : isOrgAdmin ? (
+            <GraduationCap className="h-3.5 w-3.5" />
+          ) : (
+            <BookOpenText className="h-3.5 w-3.5" />
+          )}
+          {isAdmin ? t("role.admin") : isOrgAdmin ? t("role.orgAdmin") : t("role.user")}
         </span>
       </Link>
 

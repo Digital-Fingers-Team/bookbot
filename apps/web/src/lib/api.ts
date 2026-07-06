@@ -346,7 +346,7 @@ export type AdminUser = {
   id: string;
   name: string;
   email: string;
-  role: "admin" | "user";
+  role: "admin" | "org_admin" | "user";
   allowedCategories: string[];
   allowedBooks: { id: string; title: string; canDownload: boolean }[];
 };
@@ -667,4 +667,113 @@ export function getBookConversation(bookId: string, token: string) {
 
 export function saveBookConversation(bookId: string, messages: StoredMessage[], token: string) {
   return request<{ ok: true }>(`/api/conversations/book/${bookId}`, { method: "PUT", body: { messages }, token });
+}
+
+// --- Organizations (universities): platform-admin management ---
+
+export type Organization = {
+  id: string;
+  name: string;
+  allowedCategories: string[];
+  allowedBooks: { id: string; title: string }[];
+  studentCount: number;
+  adminCount: number;
+  createdAt: string;
+};
+
+export function listOrganizations(token?: string) {
+  return request<{ organizations: Organization[] }>("/api/organizations", { token });
+}
+
+export function createOrganization(name: string, token?: string) {
+  return request<{ id: string; name: string }>("/api/organizations", { method: "POST", body: { name }, token });
+}
+
+export function grantOrgCatalog(orgId: string, targetType: "book" | "category", targetValue: string, token?: string) {
+  return request<{ ok: boolean }>(`/api/organizations/${orgId}/grant`, {
+    method: "POST",
+    body: { targetType, targetValue },
+    token
+  });
+}
+
+export function revokeOrgCatalog(orgId: string, targetType: "book" | "category", targetValue: string, token?: string) {
+  return request<{ ok: boolean }>(`/api/organizations/${orgId}/revoke`, {
+    method: "POST",
+    body: { targetType, targetValue },
+    token
+  });
+}
+
+export function assignOrgAdmin(orgId: string, userId: string, token?: string) {
+  return request<{ ok: boolean }>(`/api/organizations/${orgId}/assign-admin`, {
+    method: "POST",
+    body: { userId },
+    token
+  });
+}
+
+// --- Org admin self-service: manage the org's own students ---
+
+export type MyOrganization = {
+  id: string;
+  name: string;
+  allowedCategories: string[];
+  allowedBooks: { id: string; title: string }[];
+};
+
+export type OrgStudent = {
+  id: string;
+  name: string;
+  email: string;
+  allowedCategories: string[];
+  allowedBooks: { id: string; title: string; canDownload: boolean }[];
+};
+
+export function getMyOrganization(token?: string) {
+  return request<MyOrganization>("/api/org-admin/organization", { token });
+}
+
+export function listOrgStudents(token?: string, search?: string, cursor?: string) {
+  const qs = new URLSearchParams();
+  if (search) qs.set("search", search);
+  if (cursor) qs.set("cursor", cursor);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return request<{ students: OrgStudent[]; nextCursor: string | null }>(`/api/org-admin/students${suffix}`, { token });
+}
+
+export function addOrgStudent(email: string, token?: string) {
+  return request<{ id: string; name: string; email: string }>("/api/org-admin/students", {
+    method: "POST",
+    body: { email },
+    token
+  });
+}
+
+export function removeOrgStudent(studentId: string, token?: string) {
+  return request<{ ok: boolean }>(`/api/org-admin/students/${studentId}/remove`, { method: "POST", token });
+}
+
+export function grantStudentAccess(studentId: string, targetType: "book" | "category", targetValue: string, token?: string) {
+  return request<{ ok: boolean }>(`/api/org-admin/students/${studentId}/grant`, {
+    method: "POST",
+    body: { targetType, targetValue },
+    token
+  });
+}
+
+export function revokeStudentAccess(studentId: string, targetType: "book" | "category", targetValue: string, token?: string) {
+  return request<{ ok: boolean }>(`/api/org-admin/students/${studentId}/revoke`, {
+    method: "POST",
+    body: { targetType, targetValue },
+    token
+  });
+}
+
+export function setStudentDownloadAccess(studentId: string, bookId: string, canDownload: boolean, token?: string) {
+  return request<{ ok: boolean }>(`/api/org-admin/students/${studentId}/download-${canDownload ? "grant" : "revoke"}`, {
+    method: "POST",
+    body: { bookId },
+    token
+  });
 }

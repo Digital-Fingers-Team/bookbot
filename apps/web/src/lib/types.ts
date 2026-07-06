@@ -6,7 +6,7 @@ export type ApiErrorResponse = {
   };
 };
 
-export type UserRole = "admin" | "user";
+export type UserRole = "admin" | "org_admin" | "user";
 
 export type User = {
   id: string;
@@ -16,6 +16,8 @@ export type User = {
   language?: "en" | "ar";
   // True when the user can read at least one book (drives discovery-vs-library).
   hasAccess?: boolean;
+  // Set for org_admins and students belonging to a subscribing organization.
+  organizationId?: string;
 };
 
 export type AuthSession = {

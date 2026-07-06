@@ -13,6 +13,8 @@ import { chatRouter } from "./routes/chat.routes.js";
 import { conversationsRouter } from "./routes/conversations.routes.js";
 import { feedbackRouter } from "./routes/feedback.routes.js";
 import { ompRouter } from "./routes/omp.routes.js";
+import { orgAdminRouter } from "./routes/org-admin.routes.js";
+import { organizationsRouter } from "./routes/organizations.routes.js";
 import { statsRouter } from "./routes/stats.routes.js";
 import { uploadRouter } from "./routes/upload.routes.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware.js";
@@ -45,6 +47,8 @@ export function createApp(): Express {
   app.use("/api/categories", categoriesRouter);
   app.use("/api/access-requests", accessRequestsRouter);
   app.use("/api/admin/users", adminUsersRouter);
+  app.use("/api/organizations", organizationsRouter);
+  app.use("/api/org-admin", orgAdminRouter);
   app.use("/api/conversations", conversationsRouter);
   app.use("/api/feedback", feedbackRouter);
   app.use("/api/stats", statsRouter);

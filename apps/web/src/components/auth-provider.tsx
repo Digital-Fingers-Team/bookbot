@@ -9,6 +9,7 @@ type AuthContextValue = {
   user: User | null;
   loading: boolean;
   isAdmin: boolean;
+  isOrgAdmin: boolean;
   login: (input: { email: string; password: string }) => Promise<void>;
   register: (input: { name: string; email: string; password: string }) => Promise<void>;
   updateProfile: (input: { name: string; language: "en" | "ar" }) => Promise<void>;
@@ -107,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       isAdmin: user?.role === "admin",
+      isOrgAdmin: user?.role === "org_admin",
       login,
       register,
       updateProfile,
