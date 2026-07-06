@@ -36,3 +36,16 @@ export function canAccessBook(scope: AccessScope, bookId: string): boolean {
 export function allowedBookIdList(scope: AccessScope): string[] | null {
   return scope.all ? null : Array.from(scope.bookIds);
 }
+
+/**
+ * Whether a user may download the raw file for a book. Narrower than read
+ * access: admins always can, everyone else needs an explicit per-book grant
+ * (defaults closed, unlike allowedBookIds/allowedCategories view access).
+ */
+export async function canDownloadBook(user: Pick<PublicUser, "id" | "role">, bookId: string): Promise<boolean> {
+  if (user.role === "admin") {
+    return true;
+  }
+  const record = await User.findById(user.id, { allowedDownloadBookIds: 1 }).lean();
+  return (record?.allowedDownloadBookIds ?? []).some((id) => String(id) === String(bookId));
+}

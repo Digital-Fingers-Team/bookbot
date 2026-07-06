@@ -4,8 +4,17 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Search, ShieldCheck, Users, X } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { getCategories, grantAccess, listUsers, revokeAccess, type AdminUser, type CatalogBook } from "@/lib/api";
+import {
+  getCategories,
+  grantAccess,
+  listUsers,
+  revokeAccess,
+  setBookDownloadAccess,
+  type AdminUser,
+  type CatalogBook
+} from "@/lib/api";
 import { BookPicker } from "@/components/book-picker";
+import { Switch } from "@/components/ui/switch";
 import { useT } from "@/lib/i18n";
 
 export default function UsersPage() {
@@ -18,6 +27,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [downloadBusyKey, setDownloadBusyKey] = useState("");
 
   const refresh = useCallback(async () => {
     if (!token) return;
@@ -68,6 +78,26 @@ export default function UsersPage() {
   async function revoke(user: AdminUser, type: "book" | "category", value: string) {
     await revokeAccess(user.id, type, value, token);
     await refresh();
+  }
+
+  async function toggleDownload(user: AdminUser, book: AdminUser["allowedBooks"][number]) {
+    const key = `${user.id}:${book.id}`;
+    const next = !book.canDownload;
+    setDownloadBusyKey(key);
+    try {
+      await setBookDownloadAccess(user.id, book.id, next, token);
+      // In-place update instead of a full refetch — this toggle is meant to be
+      // quick and shouldn't collapse the rest of the list's expanded state.
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id
+            ? { ...u, allowedBooks: u.allowedBooks.map((b) => (b.id === book.id ? { ...b, canDownload: next } : b)) }
+            : u
+        )
+      );
+    } finally {
+      setDownloadBusyKey("");
+    }
   }
 
   if (authLoading || !isAdmin) {
@@ -134,27 +164,38 @@ export default function UsersPage() {
                     <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/70 dark:text-white/70">
                       {t("users.books")}
                     </p>
-                    <div className="mb-2 flex flex-wrap items-center gap-1.5">
+                    <div className="mb-2 space-y-1.5">
                       {user.allowedBooks.length === 0 ? (
-                        <span className="text-xs text-ink/35 dark:text-white/35">—</span>
-                      ) : null}
-                      {user.allowedBooks.map((book) => (
-                        <span
-                          key={book.id}
-                          dir="auto"
-                          className="inline-flex max-w-[14rem] items-center gap-1 rounded-full bg-moss/10 py-0.5 pe-1 ps-2 text-[11px] font-medium text-moss dark:bg-sea/15 dark:text-sea"
-                        >
-                          <span className="truncate">{book.title}</span>
-                          <button
-                            type="button"
-                            onClick={() => revoke(user, "book", book.id)}
-                            aria-label="remove"
-                            className="hover:text-red-500"
+                        <p className="text-xs text-ink/35 dark:text-white/35">{t("users.noBooks")}</p>
+                      ) : (
+                        user.allowedBooks.map((book) => (
+                          <div
+                            key={book.id}
+                            className="flex items-center gap-2 rounded-lg border border-line px-2.5 py-1.5 dark:border-white/10"
                           >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))}
+                            <span dir="auto" className="min-w-0 flex-1 truncate text-xs font-medium text-ink dark:text-white">
+                              {book.title}
+                            </span>
+                            <span className="flex shrink-0 items-center gap-1.5">
+                              <span className="text-[11px] text-ink/70 dark:text-white/70">{t("users.canDownload")}</span>
+                              <Switch
+                                checked={book.canDownload}
+                                disabled={downloadBusyKey === `${user.id}:${book.id}`}
+                                onChange={() => toggleDownload(user, book)}
+                                label={t("users.canDownload")}
+                              />
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => revoke(user, "book", book.id)}
+                              aria-label="remove"
+                              className="shrink-0 text-ink/40 transition hover:text-red-500"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))
+                      )}
                     </div>
                     <BookPicker
                       size="sm"

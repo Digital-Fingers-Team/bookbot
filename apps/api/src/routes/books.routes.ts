@@ -2,8 +2,8 @@ import { Router, type Router as ExpressRouter } from "express";
 import { isValidObjectId } from "mongoose";
 import { storage } from "../services/storage/storage.service.js";
 import { requireAdmin, requireAuth } from "../middleware/auth.middleware.js";
-import { requireBookAccess } from "../middleware/access.middleware.js";
-import { allowedBookIdList, canAccessBook, resolveAccessScope } from "../services/access/access.service.js";
+import { requireBookAccess, requireDownloadAccess } from "../middleware/access.middleware.js";
+import { allowedBookIdList, canAccessBook, canDownloadBook, resolveAccessScope } from "../services/access/access.service.js";
 import { Book } from "../models/book.model.js";
 import { BookState } from "../models/book-state.model.js";
 import { Chunk } from "../models/chunk.model.js";
@@ -231,21 +231,23 @@ booksRouter.get(
   requireAuth,
   requireBookAccess,
   asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) {
+    const bookId = routeId(req.params.id);
+    if (!isValidObjectId(bookId)) {
       throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
     }
 
-    const book = await Book.findById(req.params.id, BOOK_CARD_FIELDS).lean();
+    const book = await Book.findById(bookId, BOOK_CARD_FIELDS).lean();
     if (!book) {
       throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
     }
 
-    const [firstPage, state] = await Promise.all([
-      Chunk.findOne({ bookId: req.params.id, pageNumber: 1 }, { chunkText: 1 }).lean(),
-      BookState.findOne({ userId: req.user!.id, bookId: req.params.id }).lean()
+    const [firstPage, state, canDownload] = await Promise.all([
+      Chunk.findOne({ bookId, pageNumber: 1 }, { chunkText: 1 }).lean(),
+      BookState.findOne({ userId: req.user!.id, bookId }).lean(),
+      canDownloadBook(req.user!, bookId)
     ]);
 
-    res.json(bookCard(book, firstPage ? excerpt(firstPage.chunkText, 220) : "", state));
+    res.json({ ...bookCard(book, firstPage ? excerpt(firstPage.chunkText, 220) : "", state), canDownload });
   })
 );
 
@@ -289,6 +291,7 @@ booksRouter.get(
   "/:id/pdf",
   requireAuth,
   requireBookAccess,
+  requireDownloadAccess,
   asyncHandler(async (req, res) => {
     const book = await findBookPdf(routeId(req.params.id));
 
@@ -302,6 +305,7 @@ booksRouter.get(
   "/:id/pdf-data",
   requireAuth,
   requireBookAccess,
+  requireDownloadAccess,
   asyncHandler(async (req, res) => {
     const book = await findBookPdf(routeId(req.params.id));
 

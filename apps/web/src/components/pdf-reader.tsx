@@ -8,6 +8,7 @@ import {
   Download,
   ExternalLink,
   Loader2,
+  Lock,
   Maximize2,
   Minus,
   MoveHorizontal,
@@ -20,6 +21,10 @@ import { useT } from "@/lib/i18n";
 type PdfReaderProps = {
   bookId: string;
   url: string;
+  // Whether an admin has granted this user download rights for this book.
+  // When false, the Open/Download toolbar buttons are shown disabled instead
+  // of hidden, so it's clear the capability exists but was turned off.
+  canDownload: boolean;
   title: string;
   page: number;
   totalPages?: number;
@@ -33,7 +38,7 @@ const maxZoom = 150;
 
 type FitMode = "width" | "page";
 
-export function PdfReader({ bookId, url, title, page, totalPages, onPageChange }: PdfReaderProps) {
+export function PdfReader({ bookId, url, canDownload, title, page, totalPages, onPageChange }: PdfReaderProps) {
   const { token } = useAuth();
   const t = useT();
   const pageCount = totalPages ?? 1;
@@ -213,23 +218,37 @@ export function PdfReader({ bookId, url, title, page, totalPages, onPageChange }
           >
             {fitMode === "page" ? <MoveHorizontal className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
-          <a
-            href={`${url}#page=${page}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/70 transition hover:bg-ink/5 hover:text-moss dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-sea"
-            aria-label="Open"
-          >
-            <ExternalLink className="h-4 w-4" />
-          </a>
-          <a
-            href={url}
-            download={title}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/70 transition hover:bg-ink/5 hover:text-moss dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-sea"
-            aria-label="Download"
-          >
-            <Download className="h-4 w-4" />
-          </a>
+          {canDownload && url ? (
+            <>
+              <a
+                href={`${url}#page=${page}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/70 transition hover:bg-ink/5 hover:text-moss dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-sea"
+                aria-label="Open"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </a>
+              <a
+                href={url}
+                download={title}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/70 transition hover:bg-ink/5 hover:text-moss dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-sea"
+                aria-label="Download"
+              >
+                <Download className="h-4 w-4" />
+              </a>
+            </>
+          ) : (
+            <button
+              type="button"
+              disabled
+              title={t("read.downloadDisabled")}
+              aria-label={t("read.downloadDisabled")}
+              className="inline-flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-lg text-ink/25 dark:text-white/25"
+            >
+              <Lock className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
 

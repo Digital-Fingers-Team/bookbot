@@ -47,6 +47,10 @@ export type Book = {
   // True when the current user may actually open/read this book. The library
   // lists every book; locked ones (accessible === false) can't be opened.
   accessible?: boolean;
+  // True when an admin has separately granted this user download rights for
+  // this book (narrower than read access; only set on the single-book detail
+  // response). Missing/false hides the reader's Download/Open-in-tab buttons.
+  canDownload?: boolean;
   firstPageText: string;
 };
 

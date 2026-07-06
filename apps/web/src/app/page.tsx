@@ -433,11 +433,16 @@ function ChatExperience() {
           <EmptyState onPick={(prompt) => send(prompt)} disabled={busy} lastRead={lastRead} />
         ) : (
           <div className="mx-auto flex max-w-5xl flex-col gap-6">
-            {messages.map((message) =>
+            {messages.map((message, index) =>
               message.role === "user" ? (
                 <UserBubble key={message.id} message={message} />
               ) : (
-                <AssistantBubble key={message.id} message={message} onOpenSource={openSource} />
+                <AssistantBubble
+                  key={message.id}
+                  message={message}
+                  question={messages[index - 1]?.role === "user" ? (messages[index - 1]?.content ?? "") : ""}
+                  onOpenSource={openSource}
+                />
               )
             )}
           </div>
@@ -788,7 +793,15 @@ function InlineMarkdown({ text }: { text: string }) {
   );
 }
 
-function AssistantBubble({ message, onOpenSource }: { message: ChatMessage; onOpenSource: (source: Source) => void }) {
+function AssistantBubble({
+  message,
+  question,
+  onOpenSource
+}: {
+  message: ChatMessage;
+  question: string;
+  onOpenSource: (source: Source) => void;
+}) {
   const t = useT();
   const searching = message.status === "searching";
   const streaming = message.status === "streaming";
@@ -834,7 +847,7 @@ function AssistantBubble({ message, onOpenSource }: { message: ChatMessage; onOp
                   <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line/70 pt-3 dark:border-white/10">
                     <CopyButton text={message.content} />
                     <PrintButton message={message} />
-                    <Feedback answer={message.content} />
+                    <Feedback question={question} answer={message.content} sources={message.sources} evidence={message.evidence} />
                     {message.usage?.retrievedChunks ? (
                       <MetaChip>
                         {message.usage.retrievedChunks} {t("ask.chunks")}
@@ -1214,14 +1227,31 @@ function HelpButton() {
   );
 }
 
-function Feedback({ answer }: { answer: string }) {
+function Feedback({
+  question,
+  answer,
+  sources,
+  evidence
+}: {
+  question: string;
+  answer: string;
+  sources: Source[];
+  evidence: EvidenceChunk[];
+}) {
   const t = useT();
   const [state, setState] = useState<"idle" | "report" | "done">("idle");
   const [note, setNote] = useState("");
 
   function submit(vote: "up" | "down", reportNote?: string) {
     setState("done");
-    void sendFeedback({ vote, note: reportNote, answer: answer.slice(0, 2000) }).catch(() => undefined);
+    void sendFeedback({
+      vote,
+      note: reportNote,
+      question: question.slice(0, 500),
+      answer: answer.slice(0, 2000),
+      sources,
+      evidence
+    }).catch(() => undefined);
   }
 
   if (state === "done") {

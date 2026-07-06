@@ -1,4 +1,4 @@
-import type { ApiErrorResponse, AuthSession, Book, ChatResponse, Stats, User } from "./types";
+import type { ApiErrorResponse, AuthSession, Book, ChatResponse, EvidenceChunk, Source, Stats, User } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -348,7 +348,7 @@ export type AdminUser = {
   email: string;
   role: "admin" | "user";
   allowedCategories: string[];
-  allowedBooks: { id: string; title: string }[];
+  allowedBooks: { id: string; title: string; canDownload: boolean }[];
 };
 
 export function listUsers(token?: string, search?: string, cursor?: string) {
@@ -371,6 +371,15 @@ export function revokeAccess(userId: string, targetType: "book" | "category", ta
   return request<{ ok: boolean }>(`/api/admin/users/${userId}/revoke`, {
     method: "POST",
     body: { targetType, targetValue },
+    token
+  });
+}
+
+/** Admin: allow/deny a user downloading the raw file for a book they already have view access to. */
+export function setBookDownloadAccess(userId: string, bookId: string, canDownload: boolean, token?: string) {
+  return request<{ ok: boolean }>(`/api/admin/users/${userId}/download-${canDownload ? "grant" : "revoke"}`, {
+    method: "POST",
+    body: { bookId },
     token
   });
 }
@@ -517,8 +526,92 @@ export function getOmpLoginLink(token: string) {
   return request<{ url: string }>("/api/omp/login-link", { method: "POST", token });
 }
 
-export function sendFeedback(input: { vote: "up" | "down"; note?: string; question?: string; answer?: string }) {
-  return request<{ received: true }>("/api/feedback", { method: "POST", body: input });
+export type FeedbackSource = { bookName: string; pageNumber: number; supportingText: string };
+export type FeedbackEvidence = { bookName: string; pageNumber: number; chunkText: string; score?: number };
+
+// Keep the feedback payload small: cap how much cited/retrieved evidence rides
+// along with a vote so a chatty answer with 20 chunks doesn't bloat every row.
+const FEEDBACK_EVIDENCE_LIMIT = 8;
+const FEEDBACK_SNIPPET_LIMIT = 400;
+
+function compactSources(sources?: Source[]): FeedbackSource[] | undefined {
+  if (!sources?.length) return undefined;
+  return sources.slice(0, FEEDBACK_EVIDENCE_LIMIT).map((s) => ({
+    bookName: s.bookName,
+    pageNumber: s.pageNumber,
+    supportingText: s.supportingText.slice(0, FEEDBACK_SNIPPET_LIMIT)
+  }));
+}
+
+function compactEvidence(evidence?: EvidenceChunk[]): FeedbackEvidence[] | undefined {
+  if (!evidence?.length) return undefined;
+  return evidence.slice(0, FEEDBACK_EVIDENCE_LIMIT).map((e) => ({
+    bookName: e.bookName,
+    pageNumber: e.pageNumber,
+    chunkText: e.chunkText.slice(0, FEEDBACK_SNIPPET_LIMIT),
+    score: e.score
+  }));
+}
+
+/** Submit answer feedback, carrying along the question + evidence that produced it so admins can tell a retrieval miss from a generation miss. */
+export function sendFeedback(input: {
+  vote: "up" | "down";
+  note?: string;
+  question?: string;
+  answer?: string;
+  sources?: Source[];
+  evidence?: EvidenceChunk[];
+}) {
+  return request<{ received: true }>("/api/feedback", {
+    method: "POST",
+    body: {
+      vote: input.vote,
+      note: input.note,
+      question: input.question,
+      answer: input.answer,
+      sources: compactSources(input.sources),
+      evidence: compactEvidence(input.evidence)
+    }
+  });
+}
+
+export type FeedbackItem = {
+  id: string;
+  vote: "up" | "down";
+  note: string;
+  question: string;
+  answer: string;
+  sources: FeedbackSource[];
+  evidence: FeedbackEvidence[];
+  resolved: boolean;
+  createdAt: string;
+};
+
+/** Admin: browse submitted answer feedback (disliked answers by default). */
+export function listFeedback(
+  token: string | undefined,
+  filters: { vote?: "up" | "down"; resolved?: boolean; cursor?: string } = {}
+) {
+  const qs = new URLSearchParams();
+  if (filters.vote) qs.set("vote", filters.vote);
+  if (filters.resolved !== undefined) qs.set("resolved", String(filters.resolved));
+  if (filters.cursor) qs.set("cursor", filters.cursor);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return request<{ items: FeedbackItem[]; nextCursor: string | null }>(`/api/feedback${suffix}`, { token });
+}
+
+/** Admin: how many disliked answers still need review (nav badge). */
+export function unresolvedFeedbackCount(token?: string) {
+  return request<{ count: number }>("/api/feedback/unresolved-count", { token });
+}
+
+/** Admin: mark a piece of feedback reviewed/unreviewed. */
+export function setFeedbackResolved(id: string, resolved: boolean, token?: string) {
+  return request<{ id: string; resolved: boolean }>(`/api/feedback/${id}`, {
+    method: "PATCH",
+    body: { resolved },
+    token
+  });
 }
 
 export type StoredSource = {

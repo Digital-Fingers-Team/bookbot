@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
@@ -208,7 +209,7 @@ export default function AnalyticsPage() {
                 <p className="text-sm font-semibold text-ink dark:text-white">{t("an.reports")}</p>
                 {stats.reports && stats.reports.length ? (
                   <ul className="mt-3 space-y-2">
-                    {stats.reports.map((report, index) => (
+                    {stats.reports.slice(0, 5).map((report, index) => (
                       <li key={index} dir="auto" className="border-s-2 border-red-300 ps-2.5 text-xs text-ink/70 dark:border-red-500/40 dark:text-white/70">
                         {report.note}
                       </li>
@@ -217,6 +218,12 @@ export default function AnalyticsPage() {
                 ) : (
                   <p className="mt-3 text-sm text-ink/70 dark:text-white/70">{t("an.noReports")}</p>
                 )}
+                <Link
+                  href="/feedback"
+                  className="mt-3 inline-block text-xs font-medium text-moss hover:underline dark:text-sea"
+                >
+                  {t("an.viewAllFeedback")}
+                </Link>
               </div>
             </div>
           </section>

@@ -17,6 +17,9 @@ export default function ReadPage() {
   const t = useT();
 
   const [book, setBook] = useState<MyBook | null>(null);
+  // The full PDF is only fetched when the admin has granted this user download
+  // rights (see canDownload below) — page-by-page viewing never needs it, so a
+  // user without download rights still reads normally, just without a raw file.
   const [url, setUrl] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -45,15 +48,17 @@ export default function ReadPage() {
         setBook(detail);
         setFav(detail.favorite);
         setPage(detail.lastPage || 1);
-
-        const blob = await getBookPdf(id, token);
-        createdUrl = URL.createObjectURL(blob);
-        if (cancelled) {
-          URL.revokeObjectURL(createdUrl);
-          return;
-        }
-        setUrl(createdUrl);
         void setProgress(id, detail.lastPage || 1, token).catch(() => undefined);
+
+        if (detail.canDownload) {
+          const blob = await getBookPdf(id, token);
+          createdUrl = URL.createObjectURL(blob);
+          if (cancelled) {
+            URL.revokeObjectURL(createdUrl);
+            return;
+          }
+          setUrl(createdUrl);
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof ApiClientError ? err.message : t("read.notFound"));
@@ -156,13 +161,14 @@ export default function ReadPage() {
                   {error}
                 </div>
               </div>
-            ) : url ? (
+            ) : book ? (
               <PdfReader
                 bookId={id}
                 url={url}
-                title={book?.title ?? "book"}
+                canDownload={Boolean(book.canDownload)}
+                title={book.title}
                 page={page}
-                totalPages={book?.pageCount}
+                totalPages={book.pageCount}
                 onPageChange={jumpTo}
               />
             ) : null}
