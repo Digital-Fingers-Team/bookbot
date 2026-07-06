@@ -455,6 +455,12 @@ export const STRINGS = {
   "org.assignSuccess": { ar: "تم التعيين", en: "Assigned" },
   "org.assignError": { ar: "تعذّر العثور على مستخدم بهذا الإيميل.", en: "Could not find a user with that email." },
   "org.noBooks": { ar: "لا توجد كتب مشترك بها.", en: "No books subscribed." },
+  "org.delete": { ar: "حذف الجامعة", en: "Delete organization" },
+  "org.deleteConfirm": {
+    ar: "حذف هذه الجامعة؟ سيتم فصل كل الطلاب والمديرين عنها (كتبهم الممنوحة تبقى كما هي).",
+    en: "Delete this organization? All its students and admins will be unlinked (their granted books stay untouched)."
+  },
+  "org.deleteError": { ar: "تعذّر حذف الجامعة.", en: "Could not delete this organization." },
 
   // Org admin — manage own students
   "nav.orgStudents": { ar: "طلابي", en: "My Students" },

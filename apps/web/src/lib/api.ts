@@ -689,6 +689,10 @@ export function createOrganization(name: string, token?: string) {
   return request<{ id: string; name: string }>("/api/organizations", { method: "POST", body: { name }, token });
 }
 
+export function deleteOrganization(orgId: string, token?: string) {
+  return request<{ ok: boolean }>(`/api/organizations/${orgId}`, { method: "DELETE", token });
+}
+
 export function grantOrgCatalog(orgId: string, targetType: "book" | "category", targetValue: string, token?: string) {
   return request<{ ok: boolean }>(`/api/organizations/${orgId}/grant`, {
     method: "POST",

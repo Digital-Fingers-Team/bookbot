@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { GraduationCap, Loader2, Plus, ShieldPlus, X } from "lucide-react";
+import { GraduationCap, Loader2, Plus, ShieldPlus, Trash2, X } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import {
   assignOrgAdmin,
   createOrganization,
+  deleteOrganization,
   getCategories,
   grantOrgCatalog,
   listOrganizations,
@@ -75,6 +76,16 @@ export default function OrganizationsPage() {
     await refresh();
   }
 
+  async function remove(org: Organization) {
+    if (!window.confirm(t("org.deleteConfirm"))) return;
+    try {
+      await deleteOrganization(org.id, token);
+      await refresh();
+    } catch {
+      window.alert(t("org.deleteError"));
+    }
+  }
+
   if (authLoading || !isAdmin) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center text-ink/70 dark:text-white/70">
@@ -126,6 +137,7 @@ export default function OrganizationsPage() {
               categories={categories}
               onGrant={(type, value) => grant(org, type, value)}
               onRevoke={(type, value) => revoke(org, type, value)}
+              onRemove={() => remove(org)}
               onRefresh={refresh}
               token={token}
             />
@@ -141,6 +153,7 @@ function OrgCard({
   categories,
   onGrant,
   onRevoke,
+  onRemove,
   onRefresh,
   token
 }: {
@@ -148,6 +161,7 @@ function OrgCard({
   categories: string[];
   onGrant: (type: "book" | "category", value: string) => void;
   onRevoke: (type: "book" | "category", value: string) => void;
+  onRemove: () => void;
   onRefresh: () => void;
   token: string;
 }) {
@@ -182,9 +196,20 @@ function OrgCard({
   return (
     <li className="rounded-xl border border-line bg-white p-4 dark:border-white/10 dark:bg-[#0c0c0e]">
       <div className="flex items-center justify-between gap-2">
-        <p className="truncate text-sm font-semibold text-ink dark:text-white">{org.name}</p>
-        <span className="shrink-0 text-xs text-ink/70 dark:text-white/70">
-          {org.studentCount} {t("org.students")} · {org.adminCount} {t("org.admins")}
+        <p className="min-w-0 truncate text-sm font-semibold text-ink dark:text-white">{org.name}</p>
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="text-xs text-ink/70 dark:text-white/70">
+            {org.studentCount} {t("org.students")} · {org.adminCount} {t("org.admins")}
+          </span>
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label={t("org.delete")}
+            title={t("org.delete")}
+            className="text-ink/40 transition hover:text-red-500"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
         </span>
       </div>
 

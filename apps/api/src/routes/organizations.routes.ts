@@ -135,6 +135,24 @@ organizationsRouter.post(
   })
 );
 
+/** Delete an organization. Members are unlinked (org_admins fall back to plain users); their individually granted books/categories are untouched. */
+organizationsRouter.delete(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const orgId = requireOrgId(req.params.id);
+    const deleted = await Organization.findByIdAndDelete(orgId);
+    if (!deleted) {
+      throw new ApiError(404, "ORG_NOT_FOUND", "This organization was not found.");
+    }
+
+    // Only org_admin/user roles ever carry an organizationId (assign-admin
+    // excludes platform admins), so it's always safe to reset role to "user".
+    await User.updateMany({ organizationId: orgId }, { $unset: { organizationId: "" }, $set: { role: "user" } });
+
+    res.json({ ok: true });
+  })
+);
+
 function requireOrgId(value: unknown): string {
   if (typeof value !== "string" || !isValidObjectId(value)) {
     throw new ApiError(400, "INVALID_ORG_ID", "The organization id is invalid.");
