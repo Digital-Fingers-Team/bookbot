@@ -109,7 +109,7 @@ export default function OrganizationsPage() {
           onKeyDown={(event) => event.key === "Enter" && create()}
           placeholder={t("org.namePlaceholder")}
           dir="auto"
-          className="h-9 flex-1 bg-transparent px-2 text-sm text-ink outline-none placeholder:text-ink/35 dark:text-white"
+          className="h-9 flex-1 bg-transparent px-2 text-sm text-ink outline-none placeholder:text-ink/35 dark:text-white dark:placeholder:text-white/45"
         />
         <button
           type="button"
@@ -263,19 +263,19 @@ function OrgCard({
               onChange={(event) => setAdminEmail(event.target.value)}
               onKeyDown={(event) => event.key === "Enter" && assign()}
               placeholder={t("org.assignAdminEmail")}
-              className="h-9 flex-1 rounded-lg border border-line bg-white px-2.5 text-sm text-ink outline-none placeholder:text-ink/35 dark:border-white/10 dark:bg-white/5 dark:text-white"
+              className="h-9 flex-1 rounded-lg border border-line bg-white px-2.5 text-sm text-ink outline-none placeholder:text-ink/35 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/45"
             />
             <button
               type="button"
               onClick={assign}
               disabled={!adminEmail.trim() || assigning}
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line px-3 text-sm font-medium text-ink/70 transition hover:text-moss disabled:opacity-50 dark:border-white/10 dark:text-white/70"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line px-3 text-sm font-medium text-ink/70 transition hover:text-moss disabled:opacity-50 dark:border-white/10 dark:text-white/80"
             >
               {assigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldPlus className="h-4 w-4" />}
               {t("org.assign")}
             </button>
           </div>
-          {assignMsg ? <p className="mt-1.5 text-xs text-ink/70 dark:text-white/70">{assignMsg}</p> : null}
+          {assignMsg ? <p className="mt-1.5 text-xs text-ink/70 dark:text-white/75">{assignMsg}</p> : null}
         </div>
       </div>
     </li>
@@ -300,9 +300,9 @@ function AccessSection({
   const [adding, setAdding] = useState(false);
   return (
     <div>
-      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/70 dark:text-white/70">{label}</p>
+      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/70 dark:text-white/80">{label}</p>
       <div className="flex flex-wrap items-center gap-1.5">
-        {chips.length === 0 ? <span className="text-xs text-ink/35 dark:text-white/35">—</span> : null}
+        {chips.length === 0 ? <span className="text-xs text-ink/35 dark:text-white/55">—</span> : null}
         {chips.map((chip) => (
           <span
             key={chip.value}
@@ -338,7 +338,7 @@ function AccessSection({
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-line px-2 py-0.5 text-[11px] font-medium text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/15 dark:text-white/70"
+            className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-line px-2 py-0.5 text-[11px] font-medium text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/15 dark:text-white/80"
           >
             <Plus className="h-3 w-3" />
           </button>

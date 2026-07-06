@@ -18,7 +18,7 @@ Rules:
 Respond with a JSON object exactly like:
 {"answer": "<your helpful reply>", "bookIds": ["<id of each recommended book, most relevant first>"]}`;
 
-type CatalogEntry = { id: string; title: string; author: string; category: string; description: string };
+type CatalogEntry = { id: string; title: string; author: string; category: string; categories: string[]; description: string };
 
 /** Recommend books from catalog metadata only (no access / no content). */
 export async function discoverBooks(question: string, language: "ar" | "en" = "ar"): Promise<DiscoveryResult> {
@@ -82,7 +82,7 @@ export async function discoverBooks(question: string, language: "ar" | "en" = "a
 async function loadCatalog(): Promise<CatalogEntry[]> {
   const books = await Book.find(
     { status: "ready" },
-    { title: 1, originalFileName: 1, author: 1, category: 1, description: 1 }
+    { title: 1, originalFileName: 1, author: 1, category: 1, categories: 1, description: 1 }
   )
     .sort({ createdAt: -1 })
     .limit(80)
@@ -92,7 +92,8 @@ async function loadCatalog(): Promise<CatalogEntry[]> {
     id: String(book._id),
     title: readableBookTitle({ title: book.title, originalFileName: book.originalFileName, firstPageText: "" }),
     author: book.author ?? "",
-    category: book.category ?? "",
+    category: book.categories?.[0] ?? book.category ?? "",
+    categories: normalizeCategories(book.categories, book.category),
     description: book.description ?? ""
   }));
 }
@@ -100,12 +101,24 @@ async function loadCatalog(): Promise<CatalogEntry[]> {
 function buildCatalogPrompt(question: string, catalog: CatalogEntry[]): string {
   const lines = catalog.map((entry) => {
     const parts = [`id: ${entry.id}`, `title: ${entry.title}`];
-    if (entry.category) parts.push(`category: ${entry.category}`);
+    if (entry.categories.length) parts.push(`categories: ${entry.categories.join(", ")}`);
     if (entry.author) parts.push(`author: ${entry.author}`);
     if (entry.description) parts.push(`description: ${entry.description}`);
     return `- ${parts.join(" | ")}`;
   });
   return `Catalog:\n${lines.join("\n")}\n\nUser question:\n${question}`;
+}
+
+function normalizeCategories(categories: unknown, legacyCategory: unknown): string[] {
+  const current = Array.isArray(categories) ? categories.filter((value): value is string => typeof value === "string") : [];
+  const cleaned = current.map((value) => value.trim()).filter(Boolean);
+  if (cleaned.length) {
+    return Array.from(new Set(cleaned));
+  }
+  if (typeof legacyCategory === "string" && legacyCategory.trim()) {
+    return [legacyCategory.trim()];
+  }
+  return [];
 }
 
 function parseDiscovery(content: string | undefined): { answer: string; bookIds: string[] } {

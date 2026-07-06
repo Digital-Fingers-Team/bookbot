@@ -41,6 +41,7 @@ export type Book = {
   error: string;
   author: string;
   category: string;
+  categories: string[];
   description?: string;
   favorite?: boolean;
   featured?: boolean;

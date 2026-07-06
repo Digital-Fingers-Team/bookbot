@@ -158,27 +158,29 @@ export default function LibraryPage() {
   }
 
   function setCategory(book: Book) {
-    // Open the category picker (managed list + add new) instead of a free prompt.
     setPickerBook(book);
   }
 
-  // Assign a category to the picker's book (empty string clears it).
-  async function assignCategory(category: string) {
+  async function assignCategories(categories: string[]) {
     const book = pickerBook;
     if (!book) {
       return;
     }
-    setBooks((prev) => prev.map((item) => (item.id === book.id ? { ...item, category } : item)));
+    const nextCategories = Array.from(new Set(categories.map((value) => value.trim()).filter(Boolean)));
+    setBooks((prev) =>
+      prev.map((item) =>
+        item.id === book.id ? { ...item, categories: nextCategories, category: nextCategories[0] ?? "" } : item
+      )
+    );
     setPickerBook(null);
     try {
-      await updateBook(book.id, { category }, token);
+      await updateBook(book.id, { categories: nextCategories }, token);
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : t("lib.deleteError"));
       await refresh();
     }
   }
 
-  // Add a new category to the managed list, then select it for the book.
   async function createAndAssignCategory(name: string) {
     const trimmed = name.trim();
     if (!trimmed) {
@@ -190,7 +192,8 @@ export default function LibraryPage() {
     } catch {
       // Even if the list call fails, still try to assign the typed value.
     }
-    await assignCategory(trimmed);
+    const current = pickerBook?.categories ?? [];
+    await assignCategories([...current, trimmed]);
   }
 
   function setAuthor(book: Book) {
@@ -235,13 +238,17 @@ export default function LibraryPage() {
   }
 
   function openBook(book: Book) {
-    // Locked books appear in the catalog but can't be opened until granted —
-    // clicking one opens the payment / request-access popup instead.
-    if (book.accessible === false) {
+    // Free books open directly. Paid books still go through the request flow
+    // unless the user was granted access explicitly.
+    if (!isBookOpenable(book)) {
       setPayBook(book);
       return;
     }
     router.push(`/read/${book.id}`);
+  }
+
+  function isBookOpenable(book: Book) {
+    return (book.price ?? 0) <= 0 || book.accessible !== false;
   }
 
   async function toggleFavorite(book: Book) {
@@ -278,8 +285,8 @@ export default function LibraryPage() {
   const categories = useMemo(() => {
     const set = new Set<string>(categoryList);
     for (const book of books) {
-      if (book.category) {
-        set.add(book.category);
+      for (const category of book.categories ?? []) {
+        set.add(category);
       }
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -291,10 +298,10 @@ export default function LibraryPage() {
       if (statusFilter !== "all" && book.status !== statusFilter) {
         return false;
       }
-      if (categoryFilter === "__none__" && book.category) {
+      if (categoryFilter === "__none__" && (book.categories?.length ?? 0) > 0) {
         return false;
       }
-      if (categoryFilter !== "all" && categoryFilter !== "__none__" && book.category !== categoryFilter) {
+      if (categoryFilter !== "all" && categoryFilter !== "__none__" && !book.categories?.includes(categoryFilter)) {
         return false;
       }
       if (!query) {
@@ -304,7 +311,7 @@ export default function LibraryPage() {
         book.title.toLowerCase().includes(query) ||
         book.originalFileName.toLowerCase().includes(query) ||
         (book.author ?? "").toLowerCase().includes(query) ||
-        (book.category ?? "").toLowerCase().includes(query)
+        (book.categories ?? []).some((category) => category.toLowerCase().includes(query))
       );
     });
 
@@ -561,7 +568,8 @@ export default function LibraryPage() {
           book={pickerBook}
           categories={categories}
           onClose={() => setPickerBook(null)}
-          onSelect={assignCategory}
+          onSelect={(category) => assignCategories([...(pickerBook?.categories ?? []), category])}
+          onDeselect={(category) => assignCategories((pickerBook?.categories ?? []).filter((item) => item !== category))}
           onCreate={createAndAssignCategory}
         />
       ) : null}
@@ -650,7 +658,7 @@ function BookCard({
 }) {
   const t = useT();
   const { lang } = useLang();
-  const locked = book.accessible === false;
+  const locked = !((book.price ?? 0) <= 0 || book.accessible !== false);
   const uploadedOn = formatDate(book.createdAt, lang);
   const activatedOn = formatDate(book.readyAt, lang);
   return (
@@ -725,7 +733,7 @@ function BookCard({
             onEdit={onSetAuthor}
           />
           <MetaControl
-            value={book.category}
+            value={book.categories?.join(" · ") || book.category}
             icon={Tag}
             addLabel={t("lib.addCategory")}
             editTitle={t("lib.category")}
@@ -823,7 +831,7 @@ function BookRow({
   onToggleFeatured: () => void;
 }) {
   const t = useT();
-  const locked = book.accessible === false;
+  const locked = !((book.price ?? 0) <= 0 || book.accessible !== false);
   return (
     <div
       role="button"
@@ -867,8 +875,8 @@ function BookRow({
           isAdmin={isAdmin}
           onEdit={onSetAuthor}
         />
-        <MetaControl
-          value={book.category}
+          <MetaControl
+          value={book.categories?.join(" · ") || book.category}
           icon={Tag}
           addLabel={t("lib.addCategory")}
           editTitle={t("lib.category")}
@@ -1041,12 +1049,14 @@ function CategoryPickerModal({
   categories,
   onClose,
   onSelect,
+  onDeselect,
   onCreate
 }: {
   book: Book;
   categories: string[];
   onClose: () => void;
   onSelect: (category: string) => void;
+  onDeselect: (category: string) => void;
   onCreate: (name: string) => void;
 }) {
   const t = useT();
@@ -1077,13 +1087,12 @@ function CategoryPickerModal({
         </div>
 
         <div className="max-h-60 space-y-1 overflow-y-auto">
-          <CategoryOption label={t("lib.uncategorized")} active={!book.category} onClick={() => onSelect("")} />
           {categories.map((category) => (
             <CategoryOption
               key={category}
               label={category}
-              active={book.category === category}
-              onClick={() => onSelect(category)}
+              active={book.categories?.includes(category)}
+              onClick={() => (book.categories?.includes(category) ? onDeselect(category) : onSelect(category))}
             />
           ))}
         </div>

@@ -415,10 +415,10 @@ export function addCategory(name: string, token?: string) {
 
 export function updateBook(
   id: string,
-  patch: { category?: string; author?: string; featured?: boolean; description?: string; price?: number },
+  patch: { category?: string; categories?: string[]; author?: string; featured?: boolean; description?: string; price?: number },
   token?: string
 ) {
-  return request<{ id: string; category: string; author: string; featured: boolean; description: string; price: number }>(
+  return request<{ id: string; category: string; categories: string[]; author: string; featured: boolean; description: string; price: number }>(
     `/api/books/${id}`,
     { method: "PATCH", body: patch, token }
   );

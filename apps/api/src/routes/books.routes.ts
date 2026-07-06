@@ -25,7 +25,7 @@ booksRouter.get(
     const scope = await resolveAccessScope(req.user!);
     const books = await Book.find(
       {},
-      { title: 1, originalFileName: 1, createdAt: 1, readyAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, author: 1, featured: 1, description: 1, price: 1 }
+      { title: 1, originalFileName: 1, createdAt: 1, readyAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, categories: 1, author: 1, featured: 1, description: 1, price: 1 }
     )
       .sort({ createdAt: -1 })
       .lean();
@@ -57,7 +57,8 @@ booksRouter.get(
           processedPages: book.processedPages ?? 0,
           error: book.error ?? "",
           author: book.author ?? "",
-          category: book.category ?? "",
+          category: book.categories?.[0] ?? book.category ?? "",
+          categories: normalizeCategories(book.categories, book.category),
           favorite: favoriteIds.has(String(book._id)),
           featured: Boolean(book.featured),
           description: book.description ?? "",
@@ -118,7 +119,7 @@ booksRouter.get(
       filter.$or = [{ title: rx }, { originalFileName: rx }, { author: rx }];
     }
 
-    const books = await Book.find(filter, { title: 1, originalFileName: 1, author: 1, category: 1 })
+    const books = await Book.find(filter, { title: 1, originalFileName: 1, author: 1, category: 1, categories: 1 })
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
@@ -128,7 +129,7 @@ booksRouter.get(
         id: String(book._id),
         title: readableBookTitle({ title: book.title, originalFileName: book.originalFileName, firstPageText: "" }),
         author: book.author ?? "",
-        category: book.category ?? ""
+        category: book.categories?.[0] ?? book.category ?? ""
       }))
     });
   })
@@ -145,6 +146,7 @@ const BOOK_CARD_FIELDS = {
   processedPages: 1,
   error: 1,
   category: 1,
+  categories: 1,
   author: 1,
   description: 1,
   featured: 1,
@@ -170,7 +172,8 @@ function bookCard(book: Record<string, unknown>, firstPageText: string, state: B
     processedPages: book.processedPages ?? 0,
     error: book.error ?? "",
     author: (book.author as string) ?? "",
-    category: (book.category as string) ?? "",
+    category: normalizeCategories(book.categories as string[] | undefined, book.category as string | undefined)[0] ?? "",
+    categories: normalizeCategories(book.categories as string[] | undefined, book.category as string | undefined),
     description: (book.description as string) ?? "",
     featured: Boolean(book.featured),
     price: (book.price as number) ?? 0,
@@ -372,9 +375,18 @@ booksRouter.patch(
       throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
     }
 
-    const update: { category?: string; author?: string; featured?: boolean; description?: string; price?: number } = {};
-    if (typeof req.body?.category === "string") {
-      update.category = req.body.category.trim().slice(0, 80);
+    const update: { category?: string; categories?: string[]; author?: string; featured?: boolean; description?: string; price?: number } = {};
+    if (Array.isArray(req.body?.categories)) {
+      const categories = req.body.categories
+        .filter((value: unknown): value is string => typeof value === "string")
+        .map((value: string) => value.trim().slice(0, 80))
+        .filter(Boolean);
+      update.categories = Array.from(new Set(categories));
+      update.category = update.categories[0] ?? "";
+    } else if (typeof req.body?.category === "string") {
+      const category = req.body.category.trim().slice(0, 80);
+      update.category = category;
+      update.categories = category ? [category] : [];
     }
     if (req.body?.price !== undefined) {
       const price = Number(req.body.price);
@@ -400,7 +412,8 @@ booksRouter.patch(
 
     res.json({
       id: String(book._id),
-      category: book.category ?? "",
+      category: normalizeCategories(book.categories, book.category)[0] ?? "",
+      categories: normalizeCategories(book.categories, book.category),
       author: book.author ?? "",
       featured: Boolean(book.featured),
       description: book.description ?? "",
@@ -473,4 +486,16 @@ async function findBookPdf(id: string) {
     buffer,
     originalFileName: book.originalFileName
   };
+}
+
+function normalizeCategories(categories: unknown, legacyCategory: unknown): string[] {
+  const current = Array.isArray(categories) ? categories.filter((value): value is string => typeof value === "string") : [];
+  const cleaned = current.map((value) => value.trim()).filter(Boolean);
+  if (cleaned.length) {
+    return Array.from(new Set(cleaned));
+  }
+  if (typeof legacyCategory === "string" && legacyCategory.trim()) {
+    return [legacyCategory.trim()];
+  }
+  return [];
 }

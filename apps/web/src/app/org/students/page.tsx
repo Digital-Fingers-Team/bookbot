@@ -182,7 +182,7 @@ export default function OrgStudentsPage() {
             onChange={(event) => setEmail(event.target.value)}
             onKeyDown={(event) => event.key === "Enter" && addStudent()}
             placeholder={t("orgAdmin.studentEmail")}
-            className="h-10 flex-1 rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none placeholder:text-ink/35 dark:border-white/10 dark:bg-[#0c0c0e] dark:text-white"
+            className="h-10 flex-1 rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none placeholder:text-ink/35 dark:border-white/10 dark:bg-[#0c0c0e] dark:text-white dark:placeholder:text-white/45"
           />
           <button
             type="button"
@@ -203,7 +203,7 @@ export default function OrgStudentsPage() {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder={t("users.search")}
-          className="h-10 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink/35 dark:text-white"
+          className="h-10 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink/35 dark:text-white dark:placeholder:text-white/45"
         />
       </div>
 

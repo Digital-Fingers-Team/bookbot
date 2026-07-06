@@ -18,10 +18,19 @@ export async function resolveAccessScope(user: Pick<PublicUser, "id" | "role">):
   const categories = record?.allowedCategories ?? [];
 
   if (categories.length) {
-    const inCategories = await Book.find({ category: { $in: categories } }, { _id: 1 }).lean();
+    const inCategories = await Book.find(
+      { $or: [{ categories: { $in: categories } }, { category: { $in: categories } }] },
+      { _id: 1 }
+    ).lean();
     for (const book of inCategories) {
       bookIds.add(String(book._id));
     }
+  }
+
+  // Free books should be readable without an explicit grant.
+  const freeBooks = await Book.find({ price: { $lte: 0 }, status: "ready" }, { _id: 1 }).lean();
+  for (const book of freeBooks) {
+    bookIds.add(String(book._id));
   }
 
   return { all: false, bookIds };

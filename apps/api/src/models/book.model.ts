@@ -24,7 +24,11 @@ const bookSchema = new Schema(
     // When processing finished and the book became readable ("activation" date).
     readyAt: { type: Date },
     error: { type: String, trim: true },
+    // Primary/legacy single-category field kept for compatibility with older
+    // clients and existing documents.
     category: { type: String, trim: true, default: "" },
+    // New multi-category field for books that belong to multiple topics.
+    categories: { type: [String], trim: true, default: [] },
     author: { type: String, trim: true, default: "" },
     // Sale price shown under the book (admin-set on upload or later). 0 = free.
     price: { type: Number, default: 0, min: 0 },
