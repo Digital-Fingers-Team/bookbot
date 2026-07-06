@@ -126,7 +126,22 @@ export async function extractBook(
       }
     }
 
-    const pages = selected.filter((page): page is ExtractionPage => page !== undefined);
+    const extracted = selected.filter((page): page is ExtractionPage => page !== undefined);
+
+    // Even after the OCR fallback, a page's best candidate can still be
+    // unreadable garble (e.g. a damaged scan). Drop those instead of letting
+    // them become chunks and show up as evidence with weird words/characters.
+    const pages = extracted.filter((page) => {
+      if (page.qualityScore < env.OCR_DROP_BELOW_SCORE) {
+        console.warn(
+          `[extraction] dropping page ${page.page.pageNumber}: quality score ${page.qualityScore} ` +
+            `below floor (${page.qualityReasons.join(", ")})`
+        );
+        return false;
+      }
+      return true;
+    });
+
     logSummary(pages);
 
     return { pages, pageCount };

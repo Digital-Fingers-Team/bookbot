@@ -6,8 +6,11 @@ export function cleanCorruptedText(value: string): string {
   // Remove repeated Arabic characters: "الإسااالام" -> "الإسلام"
   let result = value.replace(/([ا-ي])\1{2,}/g, "$1");
   
-  // Fix space-separated single characters at end of words
-  result = result.replace(/([ا-ي])\s+([ا-ي])\s+([ا-ي])\s+([ا-ي])(?=\s|$)/g, "$1$2$3$4");
+  // Fix space-separated single characters (visual-order extraction splitting a
+  // word into one glyph per token, e.g. "ا س ل ا م" -> "اسلام"). Two or more
+  // consecutive single-letter tokens are essentially never real standalone
+  // words in Arabic, so any run this long is treated as a split word.
+  result = result.replace(/(?:^|(?<=\s))(?:[ا-ي]\s+){1,}[ا-ي](?=\s|$)/g, (match) => match.replace(/\s+/g, ""));
   
   // Remove excessive spaces
   result = result.replace(/\s{2,}/g, " ");

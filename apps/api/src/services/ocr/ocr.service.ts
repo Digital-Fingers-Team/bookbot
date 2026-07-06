@@ -1,6 +1,7 @@
 import { env } from "../../config/env.js";
 import { ApiError } from "../../utils/api-error.js";
 import { createLimiter } from "../../utils/concurrency.js";
+import { evaluateTextQuality } from "../ingestion/text-quality.service.js";
 import { localOcr } from "./local-ocr.service.js";
 import { visionOcr } from "./vision-ocr.service.js";
 
@@ -57,7 +58,20 @@ async function dispatch(image: Buffer, mimeType: string): Promise<string> {
   }
 
   try {
-    return await visionOcr(image, mimeType);
+    const visionText = await visionOcr(image, mimeType);
+
+    // The vision model is usually the more reliable reader, but it can still
+    // misfire on a hard page. When its own output looks weak, get a second
+    // opinion from local tesseract and keep whichever one actually scores
+    // better, instead of committing to a single engine's mistake.
+    if (evaluateTextQuality(visionText).score < env.OCR_MIN_TEXT_SCORE) {
+      const localText = await localOcr(image).catch(() => "");
+      if (localText && evaluateTextQuality(localText).score > evaluateTextQuality(visionText).score) {
+        return localText;
+      }
+    }
+
+    return visionText;
   } catch (error) {
     if (error instanceof ApiError && FALLBACK_CODES.has(error.code)) {
       if (!warnedFallback) {

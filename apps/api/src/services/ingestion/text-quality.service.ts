@@ -6,6 +6,12 @@ export type TextQualityResult = {
 const ARABIC = /[؀-ۿ]/g;
 const LATIN = /[A-Za-z]/g;
 
+// Scripts that have no business appearing in an Arabic/English book. OCR and
+// broken font decoders occasionally guess Cyrillic/Greek/CJK glyphs for
+// unrecognized shapes; a handful of these is a strong garble signal even when
+// none of the other heuristics fire.
+const UNEXPECTED_SCRIPT = /[Ѐ-ӿͰ-Ͽ一-鿿぀-ヿ가-힯]/g;
+
 /**
  * Score how trustworthy an extracted page of text is (0-100). A low score means
  * the text layer is corrupt or missing and the page should be sent to OCR.
@@ -40,6 +46,14 @@ export function evaluateTextQuality(text: string): TextQualityResult {
   if (/[□■◼◻◆◇◊¤]/.test(text)) {
     score -= 20;
     reasons.push("unknown-symbols");
+  }
+
+  // Cyrillic/Greek/CJK glyphs mixed into Arabic/English prose: near-certain
+  // misreads, not legitimate content.
+  const unexpectedScriptChars = (text.match(UNEXPECTED_SCRIPT) ?? []).length;
+  if (unexpectedScriptChars > 0) {
+    score -= Math.min(60, unexpectedScriptChars * 15);
+    reasons.push("unexpected-script");
   }
 
   // Repeated identical letters (>=3 in a row). Arabic words essentially never

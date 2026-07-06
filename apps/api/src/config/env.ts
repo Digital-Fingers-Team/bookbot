@@ -49,6 +49,11 @@ const schema = z.object({
   OCR_LOCAL_MIN_WORD_CONFIDENCE: z.coerce.number().int().min(0).max(100).default(45),
   OCR_VISION_MODEL: z.string().default("google/gemini-2.5-flash"),
   OCR_MIN_TEXT_SCORE: z.coerce.number().int().min(0).max(100).default(65),
+  // Absolute floor for the *final* chosen text of a page, checked after the OCR
+  // fallback has already had a chance to fix it. Pages still below this are
+  // dropped from chunking/embedding entirely rather than surfacing garbled
+  // evidence to users.
+  OCR_DROP_BELOW_SCORE: z.coerce.number().int().min(0).max(100).default(30),
   OCR_RENDER_SCALE: z.coerce.number().positive().max(5).default(2),
   OCR_MAX_PAGES: z.coerce.number().int().positive().default(600),
   OCR_CONCURRENCY: z.coerce.number().int().positive().max(32).default(6),

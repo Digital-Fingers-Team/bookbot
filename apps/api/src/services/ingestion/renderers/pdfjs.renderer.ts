@@ -32,7 +32,18 @@ class PdfJsOpenedRenderer implements OpenedRenderer {
     const page = await this.document.getPage(pageNumber);
 
     try {
-      const viewport = page.getViewport({ scale });
+      let viewport = page.getViewport({ scale });
+
+      // Oversized scans (e.g. poster-sized pages) at scale=2 can ask for a
+      // canvas buffer past Node's max ArrayBuffer size, which throws an
+      // uncatchable-looking RangeError that crashes the whole process.
+      // Clamp pixel area and fall back to a smaller scale instead.
+      const MAX_PIXELS = 40_000_000; // ~40MP, well under the allocation ceiling
+      if (viewport.width * viewport.height > MAX_PIXELS) {
+        const safeScale = scale * Math.sqrt(MAX_PIXELS / (viewport.width * viewport.height));
+        viewport = page.getViewport({ scale: safeScale });
+      }
+
       const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
       const context = canvas.getContext("2d");
 
