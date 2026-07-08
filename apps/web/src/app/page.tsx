@@ -48,6 +48,7 @@ import { EvidenceText } from "@/components/evidence-text";
 import { answerOverlapHighlights, citeSentences } from "@/lib/highlight";
 import { Landing } from "@/components/landing";
 import { DiscoveryExperience } from "@/components/discovery-experience";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useLang, useT } from "@/lib/i18n";
 
 type ChatMessage = {
@@ -506,6 +507,7 @@ function HistoryDrawer({
   onNew: () => void;
 }) {
   const t = useT();
+  const [pendingDelete, setPendingDelete] = useState<ConversationSummary | null>(null);
 
   useEffect(() => {
     function onKey(event: globalThis.KeyboardEvent) {
@@ -570,11 +572,7 @@ function HistoryDrawer({
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (window.confirm(t("ask.deleteChatConfirm"))) {
-                      onDelete(conversation.id);
-                    }
-                  }}
+                  onClick={() => setPendingDelete(conversation)}
                   className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-ink/30 opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover/conv:opacity-100 dark:text-white/30 dark:hover:bg-red-500/10 dark:hover:text-red-300"
                   aria-label={t("ask.deleteChat")}
                   title={t("ask.deleteChat")}
@@ -588,6 +586,18 @@ function HistoryDrawer({
           )}
         </div>
       </aside>
+
+      {pendingDelete ? (
+        <ConfirmDialog
+          title={t("ask.deleteChat")}
+          message={t("ask.deleteChatConfirm")}
+          onClose={() => setPendingDelete(null)}
+          onConfirm={() => {
+            onDelete(pendingDelete.id);
+            setPendingDelete(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

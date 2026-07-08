@@ -8,6 +8,7 @@ import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { normalizeUploadedFileName } from "../utils/file-name.js";
 import { detectSourceFormat } from "../utils/source-format.js";
+import { matchesBookSourceFormat } from "../utils/file-signature.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -44,6 +45,14 @@ uploadRouter.post(
     for (const file of files) {
       // fileFilter already validated this file, so the format is always known here.
       const format = detectSourceFormat(file.originalname, file.mimetype)!;
+      if (!matchesBookSourceFormat(file.buffer, format)) {
+        throw new ApiError(
+          400,
+          "FILE_CONTENT_MISMATCH",
+          `"${file.originalname}" doesn't look like a valid ${format.toUpperCase()} file.`
+        );
+      }
+
       const created = await createProcessingBook({
         buffer: file.buffer,
         originalFileName: normalizeUploadedFileName(file.originalname),

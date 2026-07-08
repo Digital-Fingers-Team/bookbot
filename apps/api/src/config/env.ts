@@ -78,6 +78,10 @@ const schema = z.object({
     .transform((value) => value !== "false" && value !== "0"),
   UPLOAD_MAX_MB: z.coerce.number().int().positive().default(25),
   UPLOAD_MAX_FILES: z.coerce.number().int().positive().default(10),
+  // Guards against zip-bomb style EPUB/DOCX uploads: the total *decompressed*
+  // size of all entries (read from the zip central directory, not by actually
+  // inflating them) must stay under this cap.
+  INGESTION_MAX_DECOMPRESSED_MB: z.coerce.number().int().positive().default(500),
   // --- OMP (Open Monograph Press) integration ---
   // Base URL of the OMP install whose catalog/API we read from.
   OMP_BASE_URL: z.string().url().default("http://localhost:8091"),

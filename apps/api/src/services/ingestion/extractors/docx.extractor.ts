@@ -1,9 +1,11 @@
+import JSZip from "jszip";
 import mammoth from "mammoth";
 
 import { BaseOpenedDocument, BasePageExtractor } from "./base.extractor.js";
 
 import { cleanExtractedText } from "../../../utils/text.js";
 import { paginate } from "./paginate.js";
+import { assertSafeZipSize } from "./zip-guard.js";
 
 import type { ExtractedPage, OpenedDocument } from "./extractor.js";
 
@@ -32,6 +34,9 @@ export class DocxExtractor extends BasePageExtractor {
   readonly name = "mammoth";
 
   async open(buffer: Buffer): Promise<OpenedDocument> {
+    const zip = await JSZip.loadAsync(buffer);
+    assertSafeZipSize(zip);
+
     const result = await mammoth.extractRawText({ buffer });
     const pages = paginate(result.value);
 

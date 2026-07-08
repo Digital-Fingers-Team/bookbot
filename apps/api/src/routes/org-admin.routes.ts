@@ -1,5 +1,4 @@
 import { Router, type Router as ExpressRouter, type Request } from "express";
-import { isValidObjectId } from "mongoose";
 import { z } from "zod";
 import { requireOrgAdmin } from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
@@ -9,7 +8,9 @@ import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { readableBookTitle } from "../utils/file-name.js";
+import { requireBookId, requireUserId } from "../utils/object-id.js";
 import { cursorFilter, nextCursor, parsePageParams } from "../utils/pagination.js";
+import { escapeRegExp } from "../utils/text.js";
 
 const targetSchema = z.object({
   targetType: z.enum(["book", "category"]),
@@ -54,7 +55,12 @@ orgAdminRouter.get(
     const orgId = requireMyOrgId(req);
     const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
     const searchFilter = search
-      ? { $or: [{ name: { $regex: search, $options: "i" } }, { email: { $regex: search, $options: "i" } }] }
+      ? {
+          $or: [
+            { name: { $regex: escapeRegExp(search), $options: "i" } },
+            { email: { $regex: escapeRegExp(search), $options: "i" } }
+          ]
+        }
       : {};
 
     const { limit, cursor } = parsePageParams(req.query, 50, 100);
@@ -242,18 +248,4 @@ function requireMyOrgId(req: Request): string {
     throw new ApiError(403, "NO_ORGANIZATION", "Your account isn't linked to an organization.");
   }
   return orgId;
-}
-
-function requireUserId(value: unknown): string {
-  if (typeof value !== "string" || !isValidObjectId(value)) {
-    throw new ApiError(400, "INVALID_USER_ID", "The user id is invalid.");
-  }
-  return value;
-}
-
-function requireBookId(value: unknown): string {
-  if (typeof value !== "string" || !isValidObjectId(value)) {
-    throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
-  }
-  return value;
 }

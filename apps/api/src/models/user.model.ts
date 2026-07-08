@@ -41,4 +41,6 @@ export type UserDocument = InferSchemaType<typeof userSchema> & {
   role: UserRole;
 };
 
+userSchema.index({ organizationId: 1 });
+
 export const User = model("User", userSchema);

@@ -1,15 +1,15 @@
 import { Router, type Router as ExpressRouter } from "express";
-import { isValidObjectId } from "mongoose";
 import { z } from "zod";
 import { requireAdmin } from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
 import { Book } from "../models/book.model.js";
-import { Category } from "../models/category.model.js";
 import { Organization } from "../models/organization.model.js";
 import { User } from "../models/user.model.js";
+import { resolveGrantTarget } from "../services/access/target-resolution.service.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { readableBookTitle } from "../utils/file-name.js";
+import { requireOrgId, requireUserId } from "../utils/object-id.js";
 
 const createSchema = z.object({ name: z.string().trim().min(2).max(200) });
 const targetSchema = z.object({
@@ -84,7 +84,7 @@ organizationsRouter.post(
   validate({ body: targetSchema }),
   asyncHandler(async (req, res) => {
     const orgId = requireOrgId(req.params.id);
-    const { targetType, targetValue } = await parseTarget(req.body);
+    const { targetType, targetValue } = await resolveGrantTarget(req.body);
     const field = targetType === "book" ? "allowedBookIds" : "allowedCategories";
     const result = await Organization.updateOne({ _id: orgId }, { $addToSet: { [field]: targetValue } });
     if (!result.matchedCount) {
@@ -100,9 +100,7 @@ organizationsRouter.post(
   validate({ body: targetSchema }),
   asyncHandler(async (req, res) => {
     const orgId = requireOrgId(req.params.id);
-    const raw = req.body as { targetType?: unknown; targetValue?: unknown };
-    const targetType = raw.targetType === "category" ? "category" : "book";
-    const targetValue = typeof raw.targetValue === "string" ? raw.targetValue.trim() : "";
+    const { targetType, targetValue } = await resolveGrantTarget(req.body, { validate: false });
     const field = targetType === "book" ? "allowedBookIds" : "allowedCategories";
     const result = await Organization.updateOne({ _id: orgId }, { $pull: { [field]: targetValue } });
     if (!result.matchedCount) {
@@ -121,11 +119,9 @@ organizationsRouter.post(
     if (!(await Organization.exists({ _id: orgId }))) {
       throw new ApiError(404, "ORG_NOT_FOUND", "This organization was not found.");
     }
-    if (!isValidObjectId(req.body.userId)) {
-      throw new ApiError(400, "INVALID_USER_ID", "The user id is invalid.");
-    }
+    const userId = requireUserId(req.body.userId);
     const result = await User.updateOne(
-      { _id: req.body.userId, role: { $ne: "admin" } },
+      { _id: userId, role: { $ne: "admin" } },
       { $set: { role: "org_admin", organizationId: orgId } }
     );
     if (!result.matchedCount) {
@@ -152,29 +148,3 @@ organizationsRouter.delete(
     res.json({ ok: true });
   })
 );
-
-function requireOrgId(value: unknown): string {
-  if (typeof value !== "string" || !isValidObjectId(value)) {
-    throw new ApiError(400, "INVALID_ORG_ID", "The organization id is invalid.");
-  }
-  return value;
-}
-
-async function parseTarget(body: unknown) {
-  const raw = body as { targetType?: unknown; targetValue?: unknown };
-  const targetType = raw.targetType === "category" ? "category" : raw.targetType === "book" ? "book" : "";
-  const targetValue = typeof raw.targetValue === "string" ? raw.targetValue.trim() : "";
-  if (!targetType || !targetValue) {
-    throw new ApiError(400, "INVALID_TARGET", "Please provide a book or category.");
-  }
-
-  if (targetType === "book") {
-    if (!isValidObjectId(targetValue) || !(await Book.exists({ _id: targetValue }))) {
-      throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
-    }
-  } else if (!(await Category.exists({ name: targetValue }))) {
-    throw new ApiError(404, "CATEGORY_NOT_FOUND", "This category was not found.");
-  }
-
-  return { targetType, targetValue };
-}

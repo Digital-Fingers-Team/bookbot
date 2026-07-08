@@ -74,15 +74,18 @@ describe("access scope — resolveAccessScope", () => {
 
   it("handles a user with no grants", async () => {
     userFindById.mockReturnValue(lean({ allowedBookIds: [], allowedCategories: [] }));
+    // No granted categories, so only the free/ready-books lookup runs.
+    bookFind.mockReturnValue(lean([]));
 
     const scope = await resolveAccessScope({ id: "u1", role: "user" });
 
     expect(scope).toEqual({ all: false, bookIds: new Set() });
-    expect(bookFind).not.toHaveBeenCalled();
+    expect(bookFind).toHaveBeenCalledTimes(1);
   });
 
   it("handles a missing user record gracefully", async () => {
     userFindById.mockReturnValue(lean(null));
+    bookFind.mockReturnValue(lean([]));
 
     const scope = await resolveAccessScope({ id: "ghost", role: "user" });
 

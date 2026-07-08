@@ -5,6 +5,7 @@ import { htmlToText } from "html-to-text";
 import { BaseOpenedDocument, BasePageExtractor } from "./base.extractor.js";
 
 import { cleanExtractedText } from "../../../utils/text.js";
+import { assertSafeZipSize } from "./zip-guard.js";
 
 import type { ExtractedPage, OpenedDocument } from "./extractor.js";
 
@@ -36,6 +37,7 @@ export class EpubExtractor extends BasePageExtractor {
 
   async open(buffer: Buffer): Promise<OpenedDocument> {
     const zip = await JSZip.loadAsync(buffer);
+    assertSafeZipSize(zip);
 
     const containerXml = await readZipText(zip, "META-INF/container.xml");
     const container = xmlParser.parse(containerXml);

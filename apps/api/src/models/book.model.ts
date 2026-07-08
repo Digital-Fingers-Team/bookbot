@@ -29,9 +29,9 @@ const bookSchema = new Schema(
     error: { type: String, trim: true },
     // Primary/legacy single-category field kept for compatibility with older
     // clients and existing documents.
-    category: { type: String, trim: true, default: "" },
+    category: { type: String, trim: true, default: "", index: true },
     // New multi-category field for books that belong to multiple topics.
-    categories: { type: [String], trim: true, default: [] },
+    categories: { type: [String], trim: true, default: [], index: true },
     author: { type: String, trim: true, default: "" },
     // Sale price shown under the book (admin-set on upload or later). 0 = free.
     price: { type: Number, default: 0, min: 0 },

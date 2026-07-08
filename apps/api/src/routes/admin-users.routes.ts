@@ -1,15 +1,16 @@
 import { Router, type Router as ExpressRouter } from "express";
-import { isValidObjectId } from "mongoose";
 import { z } from "zod";
 import { requireAdmin } from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
 import { Book } from "../models/book.model.js";
-import { Category } from "../models/category.model.js";
 import { User } from "../models/user.model.js";
+import { resolveGrantTarget } from "../services/access/target-resolution.service.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { readableBookTitle } from "../utils/file-name.js";
+import { requireBookId, requireUserId } from "../utils/object-id.js";
 import { cursorFilter, nextCursor, parsePageParams } from "../utils/pagination.js";
+import { escapeRegExp } from "../utils/text.js";
 
 const targetSchema = z.object({
   targetType: z.enum(["book", "category"]),
@@ -30,7 +31,12 @@ adminUsersRouter.get(
   asyncHandler(async (req, res) => {
     const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
     const searchFilter = search
-      ? { $or: [{ name: { $regex: search, $options: "i" } }, { email: { $regex: search, $options: "i" } }] }
+      ? {
+          $or: [
+            { name: { $regex: escapeRegExp(search), $options: "i" } },
+            { email: { $regex: escapeRegExp(search), $options: "i" } }
+          ]
+        }
       : {};
 
     // Combine the search $or and the cursor $or under $and so neither clobbers
@@ -85,7 +91,7 @@ adminUsersRouter.post(
   "/:id/grant",
   validate({ body: targetSchema }),
   asyncHandler(async (req, res) => {
-    const { targetType, targetValue } = await parseTarget(req.body);
+    const { targetType, targetValue } = await resolveGrantTarget(req.body);
     const userId = requireUserId(req.params.id);
     const field = targetType === "book" ? "allowedBookIds" : "allowedCategories";
     const result = await User.updateOne({ _id: userId }, { $addToSet: { [field]: targetValue } });
@@ -101,7 +107,7 @@ adminUsersRouter.post(
   "/:id/revoke",
   validate({ body: targetSchema }),
   asyncHandler(async (req, res) => {
-    const { targetType, targetValue } = await parseTarget(req.body, { validate: false });
+    const { targetType, targetValue } = await resolveGrantTarget(req.body, { validate: false });
     const userId = requireUserId(req.params.id);
     const field = targetType === "book" ? "allowedBookIds" : "allowedCategories";
     // Revoking a book's view access also revokes its download grant — a stale
@@ -153,38 +159,3 @@ adminUsersRouter.post(
     res.json({ ok: true });
   })
 );
-
-function requireBookId(value: unknown): string {
-  if (typeof value !== "string" || !isValidObjectId(value)) {
-    throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
-  }
-  return value;
-}
-
-function requireUserId(value: unknown): string {
-  if (typeof value !== "string" || !isValidObjectId(value)) {
-    throw new ApiError(400, "INVALID_USER_ID", "The user id is invalid.");
-  }
-  return value;
-}
-
-async function parseTarget(body: unknown, options: { validate?: boolean } = {}) {
-  const raw = body as { targetType?: unknown; targetValue?: unknown };
-  const targetType = raw.targetType === "category" ? "category" : raw.targetType === "book" ? "book" : "";
-  const targetValue = typeof raw.targetValue === "string" ? raw.targetValue.trim() : "";
-  if (!targetType || !targetValue) {
-    throw new ApiError(400, "INVALID_TARGET", "Please provide a book or category.");
-  }
-
-  if (options.validate !== false) {
-    if (targetType === "book") {
-      if (!isValidObjectId(targetValue) || !(await Book.exists({ _id: targetValue }))) {
-        throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
-      }
-    } else if (!(await Category.exists({ name: targetValue }))) {
-      throw new ApiError(404, "CATEGORY_NOT_FOUND", "This category was not found.");
-    }
-  }
-
-  return { targetType, targetValue };
-}

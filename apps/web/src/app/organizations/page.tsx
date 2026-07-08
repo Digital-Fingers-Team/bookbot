@@ -17,6 +17,7 @@ import {
   type Organization
 } from "@/lib/api";
 import { BookPicker } from "@/components/book-picker";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useT } from "@/lib/i18n";
 
 export default function OrganizationsPage() {
@@ -28,6 +29,9 @@ export default function OrganizationsPage() {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [confirmDeleteOrg, setConfirmDeleteOrg] = useState<Organization | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const refresh = useCallback(async () => {
     if (!token) return;
@@ -76,13 +80,18 @@ export default function OrganizationsPage() {
     await refresh();
   }
 
-  async function remove(org: Organization) {
-    if (!window.confirm(t("org.deleteConfirm"))) return;
+  async function confirmRemoveOrg() {
+    if (!confirmDeleteOrg || deleting) return;
+    setDeleting(true);
+    setDeleteError("");
     try {
-      await deleteOrganization(org.id, token);
+      await deleteOrganization(confirmDeleteOrg.id, token);
+      setConfirmDeleteOrg(null);
       await refresh();
     } catch {
-      window.alert(t("org.deleteError"));
+      setDeleteError(t("org.deleteError"));
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -137,13 +146,27 @@ export default function OrganizationsPage() {
               categories={categories}
               onGrant={(type, value) => grant(org, type, value)}
               onRevoke={(type, value) => revoke(org, type, value)}
-              onRemove={() => remove(org)}
+              onRemove={() => {
+                setDeleteError("");
+                setConfirmDeleteOrg(org);
+              }}
               onRefresh={refresh}
               token={token}
             />
           ))}
         </ul>
       )}
+
+      {confirmDeleteOrg ? (
+        <ConfirmDialog
+          title={t("org.delete")}
+          message={t("org.deleteConfirm")}
+          busy={deleting}
+          error={deleteError}
+          onClose={() => (deleting ? undefined : setConfirmDeleteOrg(null))}
+          onConfirm={confirmRemoveOrg}
+        />
+      ) : null}
     </div>
   );
 }

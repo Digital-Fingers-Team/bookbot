@@ -1,17 +1,18 @@
 import { Router, type Router as ExpressRouter } from "express";
-import { isValidObjectId } from "mongoose";
 import { storage } from "../services/storage/storage.service.js";
 import { requireAdmin, requireAuth } from "../middleware/auth.middleware.js";
 import { requireBookAccess, requireDownloadAccess } from "../middleware/access.middleware.js";
 import { allowedBookIdList, canAccessBook, canDownloadBook, resolveAccessScope } from "../services/access/access.service.js";
 import { Book } from "../models/book.model.js";
+import { Category } from "../models/category.model.js";
 import { BookState } from "../models/book-state.model.js";
 import { BookPage } from "../models/book-page.model.js";
 import { Chunk } from "../models/chunk.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { normalizeUploadedFileName, readableBookTitle } from "../utils/file-name.js";
-import { excerpt } from "../utils/text.js";
+import { requireBookId } from "../utils/object-id.js";
+import { escapeRegExp, excerpt } from "../utils/text.js";
 import { deleteStoredPdf } from "../services/ingestion/pdf-storage.service.js";
 import { PdfJsRenderer } from "../services/ingestion/renderers/pdfjs.renderer.js";
 import { renderPlaceholderCover } from "../services/ingestion/placeholder-cover.service.js";
@@ -118,8 +119,7 @@ booksRouter.get(
 
     const filter: Record<string, unknown> = { status: "ready" };
     if (q) {
-      const safe = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const rx = new RegExp(safe, "i");
+      const rx = new RegExp(escapeRegExp(q), "i");
       filter.$or = [{ title: rx }, { originalFileName: rx }, { author: rx }];
     }
 
@@ -240,10 +240,7 @@ booksRouter.get(
   requireAuth,
   requireBookAccess,
   asyncHandler(async (req, res) => {
-    const bookId = routeId(req.params.id);
-    if (!isValidObjectId(bookId)) {
-      throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
-    }
+    const bookId = requireBookId(routeId(req.params.id));
 
     const book = await Book.findById(bookId, BOOK_CARD_FIELDS).lean();
     if (!book) {
@@ -265,9 +262,7 @@ booksRouter.put(
   requireAuth,
   requireBookAccess,
   asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) {
-      throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
-    }
+    requireBookId(req.params.id);
     const favorite = Boolean(req.body?.favorite);
     await BookState.findOneAndUpdate(
       { userId: req.user!.id, bookId: req.params.id },
@@ -283,9 +278,7 @@ booksRouter.put(
   requireAuth,
   requireBookAccess,
   asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) {
-      throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
-    }
+    requireBookId(req.params.id);
     const lastPage = Math.max(1, Math.floor(Number(req.body?.lastPage) || 1));
     await BookState.findOneAndUpdate(
       { userId: req.user!.id, bookId: req.params.id },
@@ -361,10 +354,7 @@ booksRouter.get(
   requireAuth,
   requireBookAccess,
   asyncHandler(async (req, res) => {
-    const id = routeId(req.params.id);
-    if (!isValidObjectId(id)) {
-      throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
-    }
+    const id = requireBookId(routeId(req.params.id));
     const pageNumber = Math.max(1, Math.floor(Number(req.params.page) || 1));
 
     const page = await BookPage.findOne({ bookId: id, pageNumber }, { pageNumber: 1, text: 1 }).lean();
@@ -419,10 +409,7 @@ booksRouter.get(
 booksRouter.get(
   "/:id/cover",
   asyncHandler(async (req, res) => {
-    const id = routeId(req.params.id);
-    if (!isValidObjectId(id)) {
-      throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
-    }
+    const id = requireBookId(routeId(req.params.id));
 
     const summary = await Book.findById(id, { title: 1, sourceFormat: 1 }).lean();
     if (!summary) {
@@ -456,20 +443,28 @@ booksRouter.patch(
   "/:id",
   requireAdmin,
   asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) {
-      throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
-    }
+    requireBookId(req.params.id);
 
     const update: { category?: string; categories?: string[]; author?: string; featured?: boolean; description?: string; price?: number } = {};
     if (Array.isArray(req.body?.categories)) {
-      const categories = req.body.categories
+      const categories: string[] = req.body.categories
         .filter((value: unknown): value is string => typeof value === "string")
         .map((value: string) => value.trim().slice(0, 80))
         .filter(Boolean);
-      update.categories = Array.from(new Set(categories));
+      const uniqueCategories: string[] = Array.from(new Set(categories));
+      if (uniqueCategories.length > 0) {
+        const knownCount = await Category.countDocuments({ name: { $in: uniqueCategories } });
+        if (knownCount !== uniqueCategories.length) {
+          throw new ApiError(400, "UNKNOWN_CATEGORY", "One or more categories are not in the curated category list.");
+        }
+      }
+      update.categories = uniqueCategories;
       update.category = update.categories[0] ?? "";
     } else if (typeof req.body?.category === "string") {
       const category = req.body.category.trim().slice(0, 80);
+      if (category && !(await Category.exists({ name: category }))) {
+        throw new ApiError(400, "UNKNOWN_CATEGORY", "This category is not in the curated category list.");
+      }
       update.category = category;
       update.categories = category ? [category] : [];
     }
@@ -511,9 +506,7 @@ booksRouter.delete(
   "/:id",
   requireAdmin,
   asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) {
-      throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
-    }
+    requireBookId(req.params.id);
 
     const book = await Book.findById(req.params.id);
     if (!book) {
@@ -561,9 +554,7 @@ async function loadBookSourceBuffer(book: { originalPdfPath?: string | null; ori
 
 /** PDF-only lookup used by `/pdf`, `/pdf-data`, `/pages/:page/image`. */
 async function findBookPdf(id: string) {
-  if (!isValidObjectId(id)) {
-    throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
-  }
+  requireBookId(id);
 
   const book = await Book.findById(id, { originalPdfPath: 1, originalFileName: 1, sourceFormat: 1 }).lean();
   if (!book) {
@@ -585,9 +576,7 @@ async function findBookPdf(id: string) {
 
 /** Format-agnostic lookup used by `/source`, `/source-data`. */
 async function findBookSource(id: string) {
-  if (!isValidObjectId(id)) {
-    throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
-  }
+  requireBookId(id);
 
   const book = await Book.findById(id, { originalPdfPath: 1, originalFileName: 1, sourceFormat: 1 }).lean();
   if (!book) {

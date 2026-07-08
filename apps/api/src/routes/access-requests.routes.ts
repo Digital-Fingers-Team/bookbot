@@ -12,6 +12,8 @@ import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { readableBookTitle } from "../utils/file-name.js";
+import { matchesReceiptMimeType } from "../utils/file-signature.js";
+import { requireBookId } from "../utils/object-id.js";
 
 const RECEIPT_EXT: Record<string, string> = {
   "image/png": "png",
@@ -45,6 +47,9 @@ accessRequestsRouter.post(
     if (!file) {
       throw new ApiError(400, "MISSING_RECEIPT", "Please attach your payment receipt.");
     }
+    if (!matchesReceiptMimeType(file.buffer, file.mimetype)) {
+      throw new ApiError(400, "INVALID_RECEIPT", "This file doesn't look like a valid image or PDF receipt.");
+    }
 
     const targetType = req.body?.targetType === "category" ? "category" : req.body?.targetType === "book" ? "book" : "";
     const targetValue = typeof req.body?.targetValue === "string" ? req.body.targetValue.trim() : "";
@@ -58,9 +63,7 @@ accessRequestsRouter.post(
     let targetLabel = targetValue;
     let amount = 0;
     if (targetType === "book") {
-      if (!isValidObjectId(targetValue)) {
-        throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
-      }
+      requireBookId(targetValue);
       const book = await Book.findById(targetValue, { title: 1, originalFileName: 1, price: 1 }).lean();
       if (!book) {
         throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
