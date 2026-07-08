@@ -1,6 +1,7 @@
 import type { HydratedDocument } from "mongoose";
 
 import { Book, type BookDocument } from "../../models/book.model.js";
+import { BookPage } from "../../models/book-page.model.js";
 import { Chunk } from "../../models/chunk.model.js";
 import { UsageEvent } from "../../models/usage-event.model.js";
 import {
@@ -14,9 +15,10 @@ import { titleFromFileName } from "../../utils/file-name.js";
 import { cleanExtractedText, normalizeText } from "../../utils/text.js";
 import { storage } from "../storage/storage.service.js";
 import { chunkPages } from "./chunker.service.js";
-import { extractBook } from "./extraction.service.js";
+import { extractDocument } from "./extraction.service.js";
 import { storePdfSource } from "./pdf-storage.service.js";
 import { pushBookToOmp } from "../omp/omp-push.service.js";
+import type { SourceFormat } from "../../utils/source-format.js";
 
 const MAX_EMBEDDING_CHARS = 50000;
 const PROGRESS_INTERVAL_MS = 1500;
@@ -37,6 +39,7 @@ export async function createProcessingBook(input: {
   buffer: Buffer;
   originalFileName: string;
   price?: number;
+  format: SourceFormat;
 }): Promise<CreatedBook> {
   const title = titleFromFileName(input.originalFileName);
   const storedPdf = await storePdfSource(input);
@@ -45,6 +48,7 @@ export async function createProcessingBook(input: {
     title,
     originalFileName: input.originalFileName,
     originalPdfPath: storedPdf.originalPdfPath,
+    sourceFormat: input.format,
     storageProvider: storedPdf.storageProvider,
     uploadChecksum: storedPdf.uploadChecksum,
     uploadedAt: storedPdf.uploadedAt,
@@ -81,9 +85,11 @@ export async function processBook(bookId: string): Promise<void> {
   }
 
   if (!book.originalPdfPath) {
-    await markFailed(book, "The stored PDF could not be found.");
+    await markFailed(book, "The stored file could not be found.");
     return;
   }
+
+  const format = (book.sourceFormat as SourceFormat) ?? "pdf";
 
   try {
     const buffer = await storage.get(book.originalPdfPath);
@@ -100,13 +106,25 @@ export async function processBook(bookId: string): Promise<void> {
       );
     };
 
-    const { pages, pageCount } = await extractBook(buffer, onProgress);
+    const { pages, pageCount } = await extractDocument(buffer, format, onProgress);
     const chunks = chunkPages(pages.map((entry) => entry.page));
 
     if (!chunks.length) {
-      await markFailed(book, "This PDF does not contain readable text.");
+      await markFailed(book, "This file does not contain readable text.");
       await recordUsage("failure", { pageCount, startedAt });
       return;
+    }
+
+    if (format !== "pdf") {
+      await BookPage.deleteMany({ bookId: book._id });
+      await BookPage.insertMany(
+        pages.map((entry) => ({
+          bookId: book._id,
+          pageNumber: entry.page.pageNumber,
+          text: entry.page.text
+        })),
+        { ordered: false }
+      );
     }
 
     // Display text stays clean and readable; the normalized form is kept

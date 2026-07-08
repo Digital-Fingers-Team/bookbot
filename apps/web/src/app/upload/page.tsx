@@ -18,6 +18,20 @@ import { useAuth } from "@/components/auth-provider";
 import { ApiClientError, type UploadedBook, uploadPdfs } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
+const ACCEPTED_EXTENSIONS = [".pdf", ".epub", ".docx", ".txt"];
+const ACCEPTED_MIME_TYPES = [
+  "application/pdf",
+  "application/epub+zip",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain"
+];
+const ACCEPTED_INPUT_ATTR = [...ACCEPTED_EXTENSIONS, ...ACCEPTED_MIME_TYPES].join(",");
+
+function isAcceptedFile(file: File) {
+  const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+  return ACCEPTED_MIME_TYPES.includes(file.type) || ACCEPTED_EXTENSIONS.includes(ext);
+}
+
 export default function UploadPage() {
   const { token, user, isAdmin, loading: authLoading } = useAuth();
   const t = useT();
@@ -37,7 +51,7 @@ export default function UploadPage() {
       return;
     }
 
-    const invalid = incoming.find((file) => file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf"));
+    const invalid = incoming.find((file) => !isAcceptedFile(file));
     if (invalid) {
       setError(`"${invalid.name}" ${t("up.notPdf")}`);
       return;
@@ -141,7 +155,7 @@ export default function UploadPage() {
         </span>
         <input
           type="file"
-          accept="application/pdf,.pdf"
+          accept={ACCEPTED_INPUT_ATTR}
           multiple
           className="sr-only"
           onChange={(event: ChangeEvent<HTMLInputElement>) => {

@@ -17,6 +17,7 @@ type RequestOptions = {
   token?: string;
   body?: unknown;
   method?: string;
+  signal?: AbortSignal;
 };
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -34,7 +35,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     method: options.method ?? "GET",
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined,
-    cache: "no-store"
+    cache: "no-store",
+    signal: options.signal
   });
 
   if (!response.ok) {
@@ -465,6 +467,32 @@ export async function getBookPdf(id: string, token?: string) {
   }
 
   return new Blob([bytes], { type: payload.mimeType || "application/pdf" });
+}
+
+export async function getBookPageText(id: string, page: number, token?: string, signal?: AbortSignal) {
+  return request<{ pageNumber: number; text: string }>(`/api/books/${id}/pages/${page}/text`, {
+    token,
+    signal
+  });
+}
+
+export async function getBookSource(id: string, token?: string) {
+  const payload = await request<{ fileName: string; mimeType: string; data: string }>(
+    `/api/books/${id}/source-data`,
+    { token }
+  );
+  const binary = atob(payload.data);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return new Blob([bytes], { type: payload.mimeType || "application/octet-stream" });
+}
+
+export function bookSourceUrl(id: string) {
+  return `${API_URL}/api/books/${id}/source`;
 }
 
 export async function getBookPageImage(id: string, page: number, token?: string, signal?: AbortSignal) {

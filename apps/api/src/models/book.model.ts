@@ -5,6 +5,9 @@ const bookSchema = new Schema(
     title: { type: String, required: true, trim: true },
     originalFileName: { type: String, required: true, trim: true },
     originalPdfPath: { type: String, trim: true },
+    // Format of the originally uploaded file. Defaults to "pdf" for backward
+    // compatibility with documents created before EPUB/DOCX/TXT support existed.
+    sourceFormat: { type: String, enum: ["pdf", "epub", "docx", "txt"], required: true, default: "pdf" },
     storageProvider: { type: String, required: true, default: "local", trim: true },
     uploadChecksum: { type: String, trim: true, index: true },
     uploadedAt: { type: Date, required: true, default: Date.now },

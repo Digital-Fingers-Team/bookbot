@@ -22,7 +22,7 @@ describe("PDF source storage", () => {
     const { storePdfSource } = await import("../src/services/ingestion/pdf-storage.service.js");
     const { storage } = await import("../src/services/storage/storage.service.js");
     const buffer = Buffer.from("%PDF test content");
-    const stored = await storePdfSource({ buffer, originalFileName: "Example.pdf" });
+    const stored = await storePdfSource({ buffer, originalFileName: "Example.pdf", format: "pdf" });
 
     expect(stored.storageProvider).toBe("local");
     expect(stored.originalPdfPath).toMatch(/^pdfs\//);

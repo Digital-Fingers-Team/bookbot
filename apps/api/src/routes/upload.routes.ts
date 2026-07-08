@@ -7,6 +7,7 @@ import { enqueueBookProcessing } from "../services/ingestion/processing-queue.js
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { normalizeUploadedFileName } from "../utils/file-name.js";
+import { detectSourceFormat } from "../utils/source-format.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -15,8 +16,8 @@ const upload = multer({
     files: env.UPLOAD_MAX_FILES
   },
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype !== "application/pdf" && !file.originalname.toLowerCase().endsWith(".pdf")) {
-      cb(new ApiError(400, "INVALID_FILE_TYPE", "Please upload a PDF file."));
+    if (!detectSourceFormat(file.originalname, file.mimetype)) {
+      cb(new ApiError(400, "INVALID_FILE_TYPE", "Please upload a PDF, EPUB, DOCX, or TXT file."));
       return;
     }
     cb(null, true);
@@ -32,7 +33,7 @@ uploadRouter.post(
   asyncHandler(async (req, res) => {
     const files = req.files;
     if (!Array.isArray(files) || !files.length) {
-      throw new ApiError(400, "MISSING_FILE", "Please choose at least one PDF file to upload.");
+      throw new ApiError(400, "MISSING_FILE", "Please choose at least one file to upload.");
     }
 
     // One price applies to the whole batch (admin sets it on the upload form).
@@ -41,10 +42,13 @@ uploadRouter.post(
 
     const books = [];
     for (const file of files) {
+      // fileFilter already validated this file, so the format is always known here.
+      const format = detectSourceFormat(file.originalname, file.mimetype)!;
       const created = await createProcessingBook({
         buffer: file.buffer,
         originalFileName: normalizeUploadedFileName(file.originalname),
-        price
+        price,
+        format
       });
 
       enqueueBookProcessing(created.bookId);

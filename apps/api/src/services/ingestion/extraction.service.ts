@@ -1,16 +1,22 @@
 import os from "node:os";
 
 import type { PageText } from "./chunker.service.js";
-import type { OpenedDocument } from "./extractors/extractor.js";
+import type { OpenedDocument, PageExtractor } from "./extractors/extractor.js";
 
 import { env } from "../../config/env.js";
 import { mapWithConcurrency } from "../../utils/concurrency.js";
 import { evaluateTextQuality } from "./text-quality.service.js";
 import { isOcrAvailable } from "../ocr/ocr.service.js";
+import type { SourceFormat } from "../../utils/source-format.js";
 
 import { PdfJsExtractor } from "./extractors/pdfjs.extractor.js";
 import { FallbackExtractor } from "./extractors/fallback.extractor.js";
 import { OcrExtractor } from "./extractors/ocr.extractor.js";
+import { EpubExtractor } from "./extractors/epub.extractor.js";
+import { DocxExtractor } from "./extractors/docx.extractor.js";
+import { TxtExtractor } from "./extractors/txt.extractor.js";
+
+export type { SourceFormat } from "../../utils/source-format.js";
 
 // The text pass is light (CPU + a shared pdfjs worker), so a modest pool is
 // plenty and avoids starving the rest of the process.
@@ -148,6 +154,68 @@ export async function extractBook(
   } finally {
     await pdf?.close?.();
     await fallback?.close?.();
+  }
+}
+
+/**
+ * Extract a non-PDF, natively text-based document (EPUB/DOCX/TXT). Unlike
+ * `extractBook`, there's no scanned-image path here — the source already is
+ * text — so there's a single extractor and no OCR/quality-gated fallback.
+ */
+async function extractNative(
+  buffer: Buffer,
+  extractor: PageExtractor,
+  onProgress?: ExtractionProgress
+): Promise<ExtractionResult> {
+  const doc = await extractor.open(buffer);
+  const pageCount = doc.pageCount;
+  const pageNumbers = Array.from({ length: pageCount }, (_, index) => index + 1);
+  const pages: (ExtractionPage | undefined)[] = new Array(pageCount).fill(undefined);
+
+  try {
+    onProgress?.(0, pageCount);
+    let done = 0;
+
+    await mapWithConcurrency(pageNumbers, TEXT_CONCURRENCY, async (pageNumber) => {
+      const text = await extractSafely(doc, pageNumber);
+      if (text !== undefined) {
+        pages[pageNumber - 1] = toExtractionPage(pageNumber, scoreCandidate(text, extractor.name));
+      }
+      done += 1;
+      onProgress?.(done, pageCount);
+    });
+
+    const extracted = pages.filter(
+      (page): page is ExtractionPage => page !== undefined && page.page.text.length > 0
+    );
+
+    logSummary(extracted);
+
+    return { pages: extracted, pageCount };
+  } finally {
+    await doc.close?.();
+  }
+}
+
+/**
+ * Single entry point for the ingestion pipeline: dispatches to the PDF
+ * text+OCR pipeline or a native text extractor based on the book's source
+ * format.
+ */
+export async function extractDocument(
+  buffer: Buffer,
+  format: SourceFormat,
+  onProgress?: ExtractionProgress
+): Promise<ExtractionResult> {
+  switch (format) {
+    case "pdf":
+      return extractBook(buffer, onProgress);
+    case "epub":
+      return extractNative(buffer, new EpubExtractor(), onProgress);
+    case "docx":
+      return extractNative(buffer, new DocxExtractor(), onProgress);
+    case "txt":
+      return extractNative(buffer, new TxtExtractor(), onProgress);
   }
 }
 

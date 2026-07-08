@@ -6,6 +6,7 @@ import { requireBookAccess, requireDownloadAccess } from "../middleware/access.m
 import { allowedBookIdList, canAccessBook, canDownloadBook, resolveAccessScope } from "../services/access/access.service.js";
 import { Book } from "../models/book.model.js";
 import { BookState } from "../models/book-state.model.js";
+import { BookPage } from "../models/book-page.model.js";
 import { Chunk } from "../models/chunk.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
@@ -13,6 +14,8 @@ import { normalizeUploadedFileName, readableBookTitle } from "../utils/file-name
 import { excerpt } from "../utils/text.js";
 import { deleteStoredPdf } from "../services/ingestion/pdf-storage.service.js";
 import { PdfJsRenderer } from "../services/ingestion/renderers/pdfjs.renderer.js";
+import { renderPlaceholderCover } from "../services/ingestion/placeholder-cover.service.js";
+import { SOURCE_CONTENT_TYPES, type SourceFormat } from "../utils/source-format.js";
 
 export const booksRouter: ExpressRouter = Router();
 
@@ -25,7 +28,7 @@ booksRouter.get(
     const scope = await resolveAccessScope(req.user!);
     const books = await Book.find(
       {},
-      { title: 1, originalFileName: 1, createdAt: 1, readyAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, categories: 1, author: 1, featured: 1, description: 1, price: 1 }
+      { title: 1, originalFileName: 1, sourceFormat: 1, createdAt: 1, readyAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, categories: 1, author: 1, featured: 1, description: 1, price: 1 }
     )
       .sort({ createdAt: -1 })
       .lean();
@@ -49,6 +52,7 @@ booksRouter.get(
             firstPageText
           }),
           originalFileName: normalizeUploadedFileName(book.originalFileName),
+          sourceFormat: book.sourceFormat ?? "pdf",
           createdAt: book.createdAt,
           readyAt: book.readyAt ?? null,
           chunkCount: book.chunkCount,
@@ -138,6 +142,7 @@ booksRouter.get(
 const BOOK_CARD_FIELDS = {
   title: 1,
   originalFileName: 1,
+  sourceFormat: 1,
   createdAt: 1,
   readyAt: 1,
   chunkCount: 1,
@@ -164,6 +169,7 @@ function bookCard(book: Record<string, unknown>, firstPageText: string, state: B
       firstPageText
     }),
     originalFileName: normalizeUploadedFileName(book.originalFileName as string),
+    sourceFormat: (book.sourceFormat as string) ?? "pdf",
     createdAt: book.createdAt,
     readyAt: book.readyAt ?? null,
     chunkCount: book.chunkCount,
@@ -347,13 +353,92 @@ booksRouter.get(
 );
 
 /**
+ * Page text for the non-PDF (EPUB/DOCX/TXT) reader, persisted at ingestion
+ * time into `BookPage` — see `ingestion.service.ts`.
+ */
+booksRouter.get(
+  "/:id/pages/:page/text",
+  requireAuth,
+  requireBookAccess,
+  asyncHandler(async (req, res) => {
+    const id = routeId(req.params.id);
+    if (!isValidObjectId(id)) {
+      throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
+    }
+    const pageNumber = Math.max(1, Math.floor(Number(req.params.page) || 1));
+
+    const page = await BookPage.findOne({ bookId: id, pageNumber }, { pageNumber: 1, text: 1 }).lean();
+    if (!page) {
+      throw new ApiError(404, "PAGE_NOT_FOUND", "This page was not found.");
+    }
+
+    res.json({ pageNumber: page.pageNumber, text: page.text });
+  })
+);
+
+/**
+ * Format-agnostic original-file download, for books that aren't PDFs (the
+ * `/pdf` and `/pdf-data` routes above stay PDF-only and are used by the
+ * existing PDF reader).
+ */
+booksRouter.get(
+  "/:id/source",
+  requireAuth,
+  requireBookAccess,
+  requireDownloadAccess,
+  asyncHandler(async (req, res) => {
+    const book = await findBookSource(routeId(req.params.id));
+
+    res.setHeader("Content-Type", SOURCE_CONTENT_TYPES[book.format]);
+    res.setHeader("Content-Disposition", contentDisposition(normalizeUploadedFileName(book.originalFileName), book.format));
+    res.send(book.buffer);
+  })
+);
+
+booksRouter.get(
+  "/:id/source-data",
+  requireAuth,
+  requireBookAccess,
+  requireDownloadAccess,
+  asyncHandler(async (req, res) => {
+    const book = await findBookSource(routeId(req.params.id));
+
+    res.json({
+      fileName: normalizeUploadedFileName(book.originalFileName),
+      mimeType: SOURCE_CONTENT_TYPES[book.format],
+      data: book.buffer.toString("base64")
+    });
+  })
+);
+
+/**
  * Public cover image (first page) for the landing showcase carousel (no auth).
- * Publicly cacheable since it only exposes a book's front page.
+ * Publicly cacheable since it only exposes a book's front page. Non-PDF books
+ * have no page to rasterize, so they get a generated placeholder instead.
  */
 booksRouter.get(
   "/:id/cover",
   asyncHandler(async (req, res) => {
-    const book = await findBookPdf(routeId(req.params.id));
+    const id = routeId(req.params.id);
+    if (!isValidObjectId(id)) {
+      throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
+    }
+
+    const summary = await Book.findById(id, { title: 1, sourceFormat: 1 }).lean();
+    if (!summary) {
+      throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
+    }
+
+    const format = ((summary.sourceFormat as SourceFormat | undefined) ?? "pdf") as SourceFormat;
+    if (format !== "pdf") {
+      const placeholder = await renderPlaceholderCover(summary.title ?? "?", format);
+      res.setHeader("Content-Type", "image/png");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.send(placeholder);
+      return;
+    }
+
+    const book = await findBookPdf(id);
     const renderer = await new PdfJsRenderer().open(book.buffer);
 
     try {
@@ -437,6 +522,7 @@ booksRouter.delete(
 
     await Chunk.deleteMany({ bookId: book._id });
     await BookState.deleteMany({ bookId: book._id });
+    await BookPage.deleteMany({ bookId: book._id });
     await deleteStoredPdf(book.originalPdfPath ?? undefined);
     await book.deleteOne();
 
@@ -444,8 +530,8 @@ booksRouter.delete(
   })
 );
 
-function contentDisposition(fileName: string) {
-  const fallback = fileName.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_") || "book.pdf";
+function contentDisposition(fileName: string, format: SourceFormat = "pdf") {
+  const fallback = fileName.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_") || `book.${format}`;
   return `inline; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 }
 
@@ -453,38 +539,68 @@ function routeId(value: unknown) {
   return typeof value === "string" ? value : "";
 }
 
-async function findBookPdf(id: string) {
-  if (!isValidObjectId(id)) {
-    throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
-  }
-
-  const book = await Book.findById(id, { originalPdfPath: 1, originalFileName: 1 }).lean();
-  if (!book) {
-    throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
-  }
-
+async function loadBookSourceBuffer(book: { originalPdfPath?: string | null; originalFileName: string }) {
   if (!book.originalPdfPath) {
-    throw new ApiError(404, "PDF_NOT_AVAILABLE", "The original PDF is not available for this book.");
+    throw new ApiError(404, "FILE_NOT_AVAILABLE", "The original file is not available for this book.");
   }
 
   // Load via the storage provider. Tolerate a legacy absolute/relative path that
   // no longer resolves by retrying with a "pdfs/<basename>" key.
   const key = book.originalPdfPath;
-  let buffer: Buffer;
   try {
-    buffer = await storage.get(key);
+    return await storage.get(key);
   } catch {
     const fallbackKey = `pdfs/${key.split(/[/\\]/).pop()}`;
     try {
-      buffer = await storage.get(fallbackKey);
+      return await storage.get(fallbackKey);
     } catch {
-      throw new ApiError(404, "PDF_NOT_AVAILABLE", "The original PDF file could not be found.");
+      throw new ApiError(404, "FILE_NOT_AVAILABLE", "The original file could not be found.");
     }
   }
+}
+
+/** PDF-only lookup used by `/pdf`, `/pdf-data`, `/pages/:page/image`. */
+async function findBookPdf(id: string) {
+  if (!isValidObjectId(id)) {
+    throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
+  }
+
+  const book = await Book.findById(id, { originalPdfPath: 1, originalFileName: 1, sourceFormat: 1 }).lean();
+  if (!book) {
+    throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
+  }
+
+  const format = ((book.sourceFormat as SourceFormat | undefined) ?? "pdf") as SourceFormat;
+  if (format !== "pdf") {
+    throw new ApiError(400, "NOT_A_PDF", "This book's original file is not a PDF.");
+  }
+
+  const buffer = await loadBookSourceBuffer(book);
 
   return {
     buffer,
     originalFileName: book.originalFileName
+  };
+}
+
+/** Format-agnostic lookup used by `/source`, `/source-data`. */
+async function findBookSource(id: string) {
+  if (!isValidObjectId(id)) {
+    throw new ApiError(400, "INVALID_BOOK_ID", "The book id is invalid.");
+  }
+
+  const book = await Book.findById(id, { originalPdfPath: 1, originalFileName: 1, sourceFormat: 1 }).lean();
+  if (!book) {
+    throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
+  }
+
+  const format = ((book.sourceFormat as SourceFormat | undefined) ?? "pdf") as SourceFormat;
+  const buffer = await loadBookSourceBuffer(book);
+
+  return {
+    buffer,
+    originalFileName: book.originalFileName,
+    format
   };
 }
 

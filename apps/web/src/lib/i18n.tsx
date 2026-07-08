@@ -230,7 +230,10 @@ export const STRINGS = {
   "up.queued": { ar: "تمت إضافة الكتب للمعالجة", en: "Queued books for processing" },
   "up.trackProgress": { ar: "تابع التقدّم في المكتبة", en: "Track progress in the Library" },
   "up.uploadFailed": { ar: "فشل الرفع. حاول مرة أخرى.", en: "Upload failed. Please try again." },
-  "up.notPdf": { ar: "ليس ملف PDF.", en: "is not a PDF file." },
+  "up.notPdf": {
+    ar: "نوع ملف غير مدعوم. يُرجى رفع PDF أو EPUB أو DOCX أو TXT.",
+    en: "is not a supported file type. Please upload PDF, EPUB, DOCX, or TXT."
+  },
   "up.infoSplitTitle": { ar: "تقسيم بالصفحات", en: "Split by page" },
   "up.infoSplitBody": { ar: "يُقسّم كل ملف مع حفظ صفحته المصدر للاستشهاد.", en: "Each PDF is chunked with its source page kept for citations." },
   "up.infoOcrTitle": { ar: "تعرّف ضوئي احتياطي", en: "OCR fallback" },

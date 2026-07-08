@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { AlertCircle, ArrowRight, BookOpenText, Heart, Loader2, MessageSquareText } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { ApiClientError, getBook, getBookPdf, setFavorite, setProgress, type MyBook } from "@/lib/api";
+import { ApiClientError, getBook, getBookPdf, getBookSource, setFavorite, setProgress, type MyBook } from "@/lib/api";
 import { BookAssistant } from "@/components/book-assistant";
 import { PdfReader } from "@/components/pdf-reader";
+import { TextReader } from "@/components/text-reader";
 import { useT } from "@/lib/i18n";
 
 export default function ReadPage() {
@@ -51,7 +52,7 @@ export default function ReadPage() {
         void setProgress(id, detail.lastPage || 1, token).catch(() => undefined);
 
         if (detail.canDownload) {
-          const blob = await getBookPdf(id, token);
+          const blob = detail.sourceFormat === "pdf" ? await getBookPdf(id, token) : await getBookSource(id, token);
           createdUrl = URL.createObjectURL(blob);
           if (cancelled) {
             URL.revokeObjectURL(createdUrl);
@@ -161,10 +162,20 @@ export default function ReadPage() {
                   {error}
                 </div>
               </div>
-            ) : book ? (
+            ) : book && book.sourceFormat === "pdf" ? (
               <PdfReader
                 bookId={id}
                 url={url}
+                canDownload={Boolean(book.canDownload)}
+                title={book.title}
+                page={page}
+                totalPages={book.pageCount}
+                onPageChange={jumpTo}
+              />
+            ) : book ? (
+              <TextReader
+                bookId={id}
+                sourceUrl={url}
                 canDownload={Boolean(book.canDownload)}
                 title={book.title}
                 page={page}

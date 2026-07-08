@@ -26,11 +26,13 @@ export type AuthSession = {
 };
 
 export type BookStatus = "processing" | "ready" | "failed";
+export type SourceFormat = "pdf" | "epub" | "docx" | "txt";
 
 export type Book = {
   id: string;
   title: string;
   originalFileName: string;
+  sourceFormat: SourceFormat;
   createdAt: string;
   // When processing finished and the book became readable ("activation" date).
   readyAt?: string | null;
