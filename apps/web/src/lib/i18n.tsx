@@ -348,6 +348,10 @@ export const STRINGS = {
   "req.viewReceipt": { ar: "عرض الإيصال", en: "View receipt" },
   "req.approve": { ar: "تفعيل", en: "Approve" },
   "req.reject": { ar: "رفض", en: "Reject" },
+  "req.rejectReasonPlaceholder": { ar: "اكتب سبب الرفض…", en: "Write the reason for rejecting…" },
+  "req.rejectReasonRequired": { ar: "من فضلك اكتب سبب الرفض.", en: "Please write a reason for rejecting." },
+  "req.confirmReject": { ar: "تأكيد الرفض", en: "Confirm reject" },
+  "req.cancel": { ar: "إلغاء", en: "Cancel" },
 
   // Disliked-answers admin page
   "fb.title": { ar: "الإجابات غير المرضية", en: "Disliked answers" },
