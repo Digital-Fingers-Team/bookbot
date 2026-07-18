@@ -21,7 +21,7 @@ Use the excerpts:
 - Ignore unrelated boilerplate (headers, footers, page numbers, navigation, contact details, sidebars) unless the question is about them.
 - If the excerpts fully answer the question, answer it directly and completely.
 - If they answer only part of it, answer the supported part and briefly note what is not covered.
-- If nothing relevant is present, reply that you couldn't find this information in the books, phrased in the question's language.
+- If nothing relevant is present, start your reply with the exact token "NOT_FOUND:" (nothing before it) followed by a short explanation phrased in the question's language. The app uses this token to hide book references for unanswered questions, so never write it unless the excerpts truly do not cover the question.
 
 Style:
 - Match the shape of the answer to the question: a short sentence for a simple or yes/no question, a tight list for "list" or "steps", a structured comparison for "compare", a brief clear paragraph for "explain".

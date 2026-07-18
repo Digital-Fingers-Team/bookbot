@@ -12,6 +12,20 @@ import { asyncHandler } from "../utils/async-handler.js";
 
 const NOT_FOUND_ANSWER = "I couldn't find this information in the books.";
 
+// The prompt instructs the model to prefix "not found" answers with this
+// token so we can strip book references from them even when retrieval did
+// return (irrelevant) chunks — the app must never cite pages for an answer
+// it admits it couldn't find.
+const NOT_FOUND_PREFIX = "NOT_FOUND:";
+
+function extractNotFound(rawAnswer: string): { answer: string; notFound: boolean } {
+  const trimmed = rawAnswer.trimStart();
+  if (trimmed.slice(0, NOT_FOUND_PREFIX.length).toUpperCase() === NOT_FOUND_PREFIX) {
+    return { answer: trimmed.slice(NOT_FOUND_PREFIX.length).trimStart(), notFound: true };
+  }
+  return { answer: rawAnswer, notFound: false };
+}
+
 const chatSchema = z.object({
   question: z.string().trim().min(1, "Question is required.").max(2000),
   topK: z.number().int().min(1).max(75).optional(),
@@ -113,6 +127,7 @@ chatRouter.post(
           history: parsed.data.history
         });
     const generationUsage = generation.usage ?? {};
+    const { answer: cleanAnswer, notFound } = extractNotFound(generation.answer);
 
     await UsageEvent.create({
       type: "chat",
@@ -121,17 +136,17 @@ chatRouter.post(
       chunkCount: chunks.length,
       latencyMs: Date.now() - startedAt,
       question: parsed.data.question.slice(0, 300),
-      answered: true,
+      answered: !notFound,
       promptTokens: generationUsage.promptTokens,
       completionTokens: generationUsage.completionTokens,
       totalTokens: generationUsage.totalTokens
     });
 
     res.json({
-      answer: generation.answer,
-      books,
-      sources,
-      evidence: chunks,
+      answer: cleanAnswer,
+      books: notFound ? [] : books,
+      sources: notFound ? [] : sources,
+      evidence: notFound ? [] : chunks,
       usage: {
         model: generation.model,
         retrievedChunks: chunks.length,
@@ -206,6 +221,47 @@ chatRouter.post("/stream", async (req, res) => {
 
     const provider = createLLMProvider(parsed.data.provider);
     let answer = "";
+    let notFound = false;
+
+    // Sources were already sent in the "meta" event above (for a live feel),
+    // before we know whether the model will actually find an answer. If the
+    // stream turns out to start with the NOT_FOUND sentinel, correct that
+    // earlier event by re-sending "meta" with everything cleared, and strip
+    // the sentinel out of what reaches the client.
+    const clearMetaForNotFound = () => {
+      notFound = true;
+      send("meta", {
+        books: [],
+        sources: [],
+        evidence: [],
+        usage: { retrievedChunks: 0, vectorCandidateCount: retrieval.vectorCandidateCount }
+      });
+    };
+
+    let pendingBuffer = "";
+    let prefixChecked = false;
+    const forwardChecked = (text: string) => {
+      if (!text) {
+        return;
+      }
+      answer += text;
+      send("token", { delta: text });
+    };
+    const checkPrefix = (final: boolean) => {
+      if (prefixChecked) {
+        return;
+      }
+      if (!final && pendingBuffer.length < NOT_FOUND_PREFIX.length) {
+        return;
+      }
+      prefixChecked = true;
+      if (pendingBuffer.slice(0, NOT_FOUND_PREFIX.length).toUpperCase() === NOT_FOUND_PREFIX) {
+        clearMetaForNotFound();
+        pendingBuffer = pendingBuffer.slice(NOT_FOUND_PREFIX.length).trimStart();
+      }
+      forwardChecked(pendingBuffer);
+      pendingBuffer = "";
+    };
 
     if (provider.streamAnswer) {
       for await (const delta of provider.streamAnswer({
@@ -217,9 +273,14 @@ chatRouter.post("/stream", async (req, res) => {
         if (aborted) {
           break;
         }
-        answer += delta;
-        send("token", { delta });
+        if (prefixChecked) {
+          forwardChecked(delta);
+        } else {
+          pendingBuffer += delta;
+          checkPrefix(false);
+        }
       }
+      checkPrefix(true);
     } else {
       const generated = await provider.generateAnswer({
         question: parsed.data.question,
@@ -227,8 +288,8 @@ chatRouter.post("/stream", async (req, res) => {
         model: parsed.data.model,
         history: parsed.data.history
       });
-      answer = generated.answer;
-      send("token", { delta: answer });
+      pendingBuffer = generated.answer;
+      checkPrefix(true);
     }
 
     send("done", {
@@ -244,7 +305,7 @@ chatRouter.post("/stream", async (req, res) => {
         chunkCount: chunks.length,
         latencyMs: Date.now() - startedAt,
         question: parsed.data.question.slice(0, 300),
-        answered: true
+        answered: !notFound
       });
     }
 
