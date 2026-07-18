@@ -19,6 +19,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useT } from "@/lib/i18n";
 
+const nf = new Intl.NumberFormat("en");
+
 export default function OrgStudentsPage() {
   const router = useRouter();
   const { token, isOrgAdmin, loading: authLoading } = useAuth();
@@ -175,10 +177,22 @@ export default function OrgStudentsPage() {
               <span
                 key={b.id}
                 dir="auto"
-                className="rounded-full border border-line px-2 py-0.5 text-[11px] font-medium text-ink/70 dark:border-white/10 dark:text-white/70"
+                className="inline-flex items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[11px] font-medium text-ink/70 dark:border-white/10 dark:text-white/70"
               >
-                {b.title}
-                {b.quota != null ? ` (${b.granted}/${b.quota})` : ""}
+                <span>
+                  {b.title}
+                  {b.quota != null ? ` (${b.granted}/${b.quota})` : ""}
+                </span>
+                {b.price > 0 ? (
+                  <span className="text-ink/40 dark:text-white/40">
+                    · {nf.format(b.price)} {t("common.currency")}
+                  </span>
+                ) : null}
+                {b.price > 0 && b.quota != null ? (
+                  <span className="font-semibold text-moss dark:text-sea">
+                    = {nf.format(b.price * b.quota)} {t("common.currency")}
+                  </span>
+                ) : null}
               </span>
             ))}
           </div>

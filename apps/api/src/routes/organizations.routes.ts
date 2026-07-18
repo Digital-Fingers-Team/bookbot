@@ -41,12 +41,15 @@ organizationsRouter.get(
 
     const allBookIds = [...new Set(orgs.flatMap((o) => (o.allowedBookIds ?? []).map((id) => String(id))))];
     const books = allBookIds.length
-      ? await Book.find({ _id: { $in: allBookIds } }, { title: 1, originalFileName: 1 }).lean()
+      ? await Book.find({ _id: { $in: allBookIds } }, { title: 1, originalFileName: 1, price: 1 }).lean()
       : [];
-    const titleById = new Map(
+    const infoById = new Map(
       books.map((b) => [
         String(b._id),
-        readableBookTitle({ title: b.title, originalFileName: b.originalFileName, firstPageText: "" })
+        {
+          title: readableBookTitle({ title: b.title, originalFileName: b.originalFileName, firstPageText: "" }),
+          price: b.price ?? 0
+        }
       ])
     );
 
@@ -71,12 +74,16 @@ organizationsRouter.get(
           id: String(o._id),
           name: o.name,
           allowedCategories: o.allowedCategories ?? [],
-          allowedBooks: (o.allowedBookIds ?? []).map((id) => ({
-            id: String(id),
-            title: titleById.get(String(id)) ?? "—",
-            quota: quotas[String(id)] ?? null,
-            granted: grantedPerBook.get(`${o._id}:${id}`) ?? 0
-          })),
+          allowedBooks: (o.allowedBookIds ?? []).map((id) => {
+            const info = infoById.get(String(id));
+            return {
+              id: String(id),
+              title: info?.title ?? "—",
+              price: info?.price ?? 0,
+              quota: quotas[String(id)] ?? null,
+              granted: grantedPerBook.get(`${o._id}:${id}`) ?? 0
+            };
+          }),
           studentCount: studentCounts.get(String(o._id)) ?? 0,
           adminCount: adminCounts.get(String(o._id)) ?? 0,
           createdAt: o.createdAt

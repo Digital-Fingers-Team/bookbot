@@ -53,7 +53,7 @@ orgAdminRouter.get(
     }
 
     const books = org.allowedBookIds?.length
-      ? await Book.find({ _id: { $in: org.allowedBookIds } }, { title: 1, originalFileName: 1 }).lean()
+      ? await Book.find({ _id: { $in: org.allowedBookIds } }, { title: 1, originalFileName: 1, price: 1 }).lean()
       : [];
     const grantedPerBook = await countGrantedPerBook(String(org._id));
     const quotas = (org.bookQuotas ?? {}) as Record<string, number>;
@@ -65,6 +65,7 @@ orgAdminRouter.get(
       allowedBooks: books.map((b) => ({
         id: String(b._id),
         title: readableBookTitle({ title: b.title, originalFileName: b.originalFileName, firstPageText: "" }),
+        price: b.price ?? 0,
         quota: quotas[String(b._id)] ?? null,
         granted: grantedPerBook.get(String(b._id)) ?? 0
       }))

@@ -26,6 +26,7 @@ import {
   X
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ApiClientError,
   type ConversationSummary,
@@ -67,8 +68,18 @@ const RESPONSE_DEPTH = 3;
 
 export default function HomePage() {
   const { user, loading } = useAuth();
+  const router = useRouter();
 
-  if (loading) {
+  // Org admins manage access from their own panel rather than requesting it
+  // for themselves — send them there instead of the pay-to-request flow below.
+  const isUnlicensedOrgAdmin = user?.role === "org_admin" && user.hasAccess === false;
+  useEffect(() => {
+    if (isUnlicensedOrgAdmin) {
+      router.replace("/org/students");
+    }
+  }, [isUnlicensedOrgAdmin, router]);
+
+  if (loading || isUnlicensedOrgAdmin) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center text-ink/70 dark:text-white/70">
         <Loader2 className="h-5 w-5 animate-spin" />

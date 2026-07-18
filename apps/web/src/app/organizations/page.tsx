@@ -21,6 +21,8 @@ import { BookPicker } from "@/components/book-picker";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useT } from "@/lib/i18n";
 
+const nf = new Intl.NumberFormat("en");
+
 export default function OrganizationsPage() {
   const router = useRouter();
   const { token, isAdmin, loading: authLoading } = useAuth();
@@ -259,8 +261,13 @@ function OrgCard({
                   key={book.id}
                   className="flex items-center gap-2 rounded-lg border border-line px-2.5 py-1.5 dark:border-white/10"
                 >
-                  <span dir="auto" className="min-w-0 flex-1 truncate text-xs font-medium text-ink dark:text-white">
-                    {book.title}
+                  <span dir="auto" className="flex min-w-0 flex-1 items-baseline gap-1.5 truncate">
+                    <span className="truncate text-xs font-medium text-ink dark:text-white">{book.title}</span>
+                    {book.price > 0 ? (
+                      <span className="shrink-0 text-[11px] text-ink/50 dark:text-white/50">
+                        ({nf.format(book.price)} {t("common.currency")})
+                      </span>
+                    ) : null}
                   </span>
                   <BookQuotaEditor orgId={org.id} book={book} onSaved={onRefresh} token={token} />
                   <button
@@ -327,6 +334,12 @@ function BookQuotaEditor({
     setValue(book.quota == null ? "" : String(book.quota));
   }, [book.quota]);
 
+  const parsedValue = Number(value.trim());
+  const total =
+    book.price > 0 && value.trim() !== "" && Number.isInteger(parsedValue) && parsedValue >= 0
+      ? parsedValue * book.price
+      : null;
+
   async function save() {
     const trimmed = value.trim();
     const parsed = trimmed === "" ? null : Number(trimmed);
@@ -361,6 +374,11 @@ function BookQuotaEditor({
         aria-label={t("org.quota")}
         className="h-6 w-14 rounded border border-line bg-white px-1 text-[11px] text-ink outline-none placeholder:text-ink/35 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/45"
       />
+      {total != null ? (
+        <span className="text-[11px] font-semibold text-moss dark:text-sea">
+          = {nf.format(total)} {t("common.currency")}
+        </span>
+      ) : null}
       {saving ? <Loader2 className="h-3 w-3 animate-spin text-ink/40" /> : null}
       {error ? <span className="text-[11px] text-red-500">{t("org.quotaError")}</span> : null}
     </span>

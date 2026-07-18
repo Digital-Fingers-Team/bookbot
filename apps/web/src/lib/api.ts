@@ -703,7 +703,7 @@ export type Organization = {
   id: string;
   name: string;
   allowedCategories: string[];
-  allowedBooks: { id: string; title: string; quota: number | null; granted: number }[];
+  allowedBooks: { id: string; title: string; price: number; quota: number | null; granted: number }[];
   studentCount: number;
   adminCount: number;
   createdAt: string;
@@ -759,7 +759,7 @@ export type MyOrganization = {
   id: string;
   name: string;
   allowedCategories: string[];
-  allowedBooks: { id: string; title: string; quota: number | null; granted: number }[];
+  allowedBooks: { id: string; title: string; price: number; quota: number | null; granted: number }[];
 };
 
 export type OrgStudent = {
