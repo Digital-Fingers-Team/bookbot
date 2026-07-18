@@ -13,6 +13,7 @@ import {
   listOrganizations,
   listUsers,
   revokeOrgCatalog,
+  setBookQuota,
   type CatalogBook,
   type Organization
 } from "@/lib/api";
@@ -261,6 +262,7 @@ function OrgCard({
                   <span dir="auto" className="min-w-0 flex-1 truncate text-xs font-medium text-ink dark:text-white">
                     {book.title}
                   </span>
+                  <BookQuotaEditor orgId={org.id} book={book} onSaved={onRefresh} token={token} />
                   <button
                     type="button"
                     onClick={() => onRevoke("book", book.id)}
@@ -302,6 +304,66 @@ function OrgCard({
         </div>
       </div>
     </li>
+  );
+}
+
+function BookQuotaEditor({
+  orgId,
+  book,
+  onSaved,
+  token
+}: {
+  orgId: string;
+  book: Organization["allowedBooks"][number];
+  onSaved: () => void;
+  token: string;
+}) {
+  const t = useT();
+  const [value, setValue] = useState(book.quota == null ? "" : String(book.quota));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    setValue(book.quota == null ? "" : String(book.quota));
+  }, [book.quota]);
+
+  async function save() {
+    const trimmed = value.trim();
+    const parsed = trimmed === "" ? null : Number(trimmed);
+    if (parsed !== null && (!Number.isInteger(parsed) || parsed < 0)) {
+      setError(true);
+      return;
+    }
+    setSaving(true);
+    setError(false);
+    try {
+      await setBookQuota(orgId, book.id, parsed, token);
+      onSaved();
+    } catch {
+      setError(true);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <span className="flex shrink-0 items-center gap-1" title={t("org.quota")}>
+      <span className="text-[11px] text-ink/50 dark:text-white/50">{book.granted}/</span>
+      <input
+        type="number"
+        min={0}
+        step={1}
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        onBlur={save}
+        onKeyDown={(event) => event.key === "Enter" && save()}
+        placeholder={t("org.quotaPlaceholder")}
+        aria-label={t("org.quota")}
+        className="h-6 w-14 rounded border border-line bg-white px-1 text-[11px] text-ink outline-none placeholder:text-ink/35 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/45"
+      />
+      {saving ? <Loader2 className="h-3 w-3 animate-spin text-ink/40" /> : null}
+      {error ? <span className="text-[11px] text-red-500">{t("org.quotaError")}</span> : null}
+    </span>
   );
 }
 

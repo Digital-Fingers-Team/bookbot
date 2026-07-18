@@ -468,6 +468,9 @@ export const STRINGS = {
     en: "Delete this organization? All its students and admins will be unlinked (their granted books stay untouched)."
   },
   "org.deleteError": { ar: "تعذّر حذف الجامعة.", en: "Could not delete this organization." },
+  "org.quota": { ar: "عدد النسخ لهذا الكتاب (حسب ما دفعت عنه الجامعة)", en: "Seats for this book (what the org paid for)" },
+  "org.quotaPlaceholder": { ar: "بدون حد", en: "Unlimited" },
+  "org.quotaError": { ar: "تعذّر تحديث الحد.", en: "Could not update the limit." },
 
   // Org admin — manage own students
   "nav.orgStudents": { ar: "طلابي", en: "My Students" },
@@ -487,7 +490,9 @@ export const STRINGS = {
   "orgAdmin.noCatalog": {
     ar: "جامعتك لسه مش مشتركة في أي كتاب أو تصنيف — تواصل مع الإدارة.",
     en: "Your organization hasn't subscribed to any book or category yet — contact the platform admin."
-  }
+  },
+  "orgAdmin.grantError": { ar: "تعذّر منح هذا الكتاب.", en: "Could not grant this book." },
+  "orgAdmin.seatsLeft": { ar: "نسخة متبقية", en: "left" }
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

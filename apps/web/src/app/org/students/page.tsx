@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { GraduationCap, Loader2, Plus, Search, X } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import {
+  ApiClientError,
   addOrgStudent,
   getMyOrganization,
   grantStudentAccess,
@@ -32,6 +33,12 @@ export default function OrgStudentsPage() {
   const [email, setEmail] = useState("");
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState("");
+  const [grantError, setGrantError] = useState("");
+
+  const refreshOrg = useCallback(() => {
+    if (!token) return;
+    getMyOrganization(token).then(setOrg).catch(() => undefined);
+  }, [token]);
 
   const refresh = useCallback(async () => {
     if (!token) return;
@@ -66,8 +73,8 @@ export default function OrgStudentsPage() {
       router.replace("/");
       return;
     }
-    getMyOrganization(token).then(setOrg).catch(() => setOrg(null));
-  }, [authLoading, isOrgAdmin, router, token]);
+    refreshOrg();
+  }, [authLoading, isOrgAdmin, router, refreshOrg]);
 
   useEffect(() => {
     if (isOrgAdmin) refresh();
@@ -89,15 +96,20 @@ export default function OrgStudentsPage() {
     }
   }
 
-  async function grant(student: OrgStudent, type: "book" | "category", value: string) {
-    if (!value) return;
-    await grantStudentAccess(student.id, type, value, token);
-    await refresh();
+  async function grant(student: OrgStudent, bookId: string) {
+    if (!bookId) return;
+    setGrantError("");
+    try {
+      await grantStudentAccess(student.id, bookId, token);
+      await Promise.all([refresh(), Promise.resolve(refreshOrg())]);
+    } catch (err) {
+      setGrantError(err instanceof ApiClientError ? err.message : t("orgAdmin.grantError"));
+    }
   }
 
   async function revoke(student: OrgStudent, type: "book" | "category", value: string) {
     await revokeStudentAccess(student.id, type, value, token);
-    await refresh();
+    await Promise.all([refresh(), Promise.resolve(refreshOrg())]);
   }
 
   async function remove(student: OrgStudent) {
@@ -166,11 +178,16 @@ export default function OrgStudentsPage() {
                 className="rounded-full border border-line px-2 py-0.5 text-[11px] font-medium text-ink/70 dark:border-white/10 dark:text-white/70"
               >
                 {b.title}
+                {b.quota != null ? ` (${b.granted}/${b.quota})` : ""}
               </span>
             ))}
           </div>
         )}
       </div>
+
+      {grantError ? (
+        <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-500">{grantError}</p>
+      ) : null}
 
       <div className="mb-3">
         <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/70 dark:text-white/70">
@@ -233,15 +250,15 @@ export default function OrgStudentsPage() {
                 </div>
 
                 <div className="mt-3 space-y-3">
-                  <AccessSection
-                    label={t("users.categories")}
-                    chips={student.allowedCategories.map((c) => ({ value: c, label: c }))}
-                    options={catalogCategories
-                      .filter((c) => !student.allowedCategories.includes(c))
-                      .map((c) => ({ value: c, label: c }))}
-                    onAdd={(v) => grant(student, "category", v)}
-                    onRemove={(v) => revoke(student, "category", v)}
-                  />
+                  {student.allowedCategories.length > 0 ? (
+                    <AccessSection
+                      label={t("users.categories")}
+                      chips={student.allowedCategories.map((c) => ({ value: c, label: c }))}
+                      options={[]}
+                      onAdd={() => undefined}
+                      onRemove={(v) => revoke(student, "category", v)}
+                    />
+                  ) : null}
                   <div>
                     <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/70 dark:text-white/70">
                       {t("users.books")}
@@ -284,8 +301,12 @@ export default function OrgStudentsPage() {
                       chips={[]}
                       options={catalogBooks
                         .filter((b) => !student.allowedBooks.some((sb) => sb.id === b.id))
-                        .map((b) => ({ value: b.id, label: b.title }))}
-                      onAdd={(v) => grant(student, "book", v)}
+                        .filter((b) => b.quota == null || b.granted < b.quota)
+                        .map((b) => ({
+                          value: b.id,
+                          label: b.quota != null ? `${b.title} (${b.quota - b.granted} ${t("orgAdmin.seatsLeft")})` : b.title
+                        }))}
+                      onAdd={(v) => grant(student, v)}
                       onRemove={() => undefined}
                       hideChips
                     />

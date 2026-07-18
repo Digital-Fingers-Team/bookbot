@@ -17,6 +17,17 @@ const targetSchema = z.object({
   targetValue: z.string().trim().min(1).max(200)
 });
 const assignAdminSchema = z.object({ userId: z.string().trim().min(1) });
+const bookQuotaSchema = z.object({ quota: z.number().int().min(0).nullable() });
+
+/** How many students in each org have been granted each book, keyed by `${orgId}:${bookId}`. */
+async function countGrantedPerBook(orgIds: unknown[]): Promise<Map<string, number>> {
+  const rows = await User.aggregate<{ _id: { org: unknown; book: unknown }; count: number }>([
+    { $match: { organizationId: { $in: orgIds }, role: "user" } },
+    { $unwind: "$allowedBookIds" },
+    { $group: { _id: { org: "$organizationId", book: "$allowedBookIds" }, count: { $sum: 1 } } }
+  ]);
+  return new Map(rows.map((row) => [`${row._id.org}:${row._id.book}`, row.count]));
+}
 
 export const organizationsRouter: ExpressRouter = Router();
 
@@ -51,20 +62,52 @@ organizationsRouter.get(
       else studentCounts.set(key, (studentCounts.get(key) ?? 0) + row.count);
     }
 
+    const grantedPerBook = await countGrantedPerBook(orgs.map((o) => o._id));
+
     res.json({
-      organizations: orgs.map((o) => ({
-        id: String(o._id),
-        name: o.name,
-        allowedCategories: o.allowedCategories ?? [],
-        allowedBooks: (o.allowedBookIds ?? []).map((id) => ({
-          id: String(id),
-          title: titleById.get(String(id)) ?? "—"
-        })),
-        studentCount: studentCounts.get(String(o._id)) ?? 0,
-        adminCount: adminCounts.get(String(o._id)) ?? 0,
-        createdAt: o.createdAt
-      }))
+      organizations: orgs.map((o) => {
+        const quotas = (o.bookQuotas ?? {}) as Record<string, number>;
+        return {
+          id: String(o._id),
+          name: o.name,
+          allowedCategories: o.allowedCategories ?? [],
+          allowedBooks: (o.allowedBookIds ?? []).map((id) => ({
+            id: String(id),
+            title: titleById.get(String(id)) ?? "—",
+            quota: quotas[String(id)] ?? null,
+            granted: grantedPerBook.get(`${o._id}:${id}`) ?? 0
+          })),
+          studentCount: studentCounts.get(String(o._id)) ?? 0,
+          adminCount: adminCounts.get(String(o._id)) ?? 0,
+          createdAt: o.createdAt
+        };
+      })
     });
+  })
+);
+
+/** Set (or clear) how many students may be granted a specific book — what the org paid for that title. */
+organizationsRouter.post(
+  "/:id/books/:bookId/quota",
+  validate({ body: bookQuotaSchema }),
+  asyncHandler(async (req, res) => {
+    const orgId = requireOrgId(req.params.id);
+    const bookId = req.params.bookId;
+    const { quota } = req.body as { quota: number | null };
+
+    const org = await Organization.findById(orgId, { allowedBookIds: 1 }).lean();
+    if (!org) {
+      throw new ApiError(404, "ORG_NOT_FOUND", "This organization was not found.");
+    }
+    if (!(org.allowedBookIds ?? []).some((id) => String(id) === bookId)) {
+      throw new ApiError(400, "NOT_IN_CATALOG", "This organization hasn't subscribed to this book.");
+    }
+
+    await Organization.updateOne(
+      { _id: orgId },
+      quota === null ? { $unset: { [`bookQuotas.${bookId}`]: "" } } : { $set: { [`bookQuotas.${bookId}`]: quota } }
+    );
+    res.json({ ok: true });
   })
 );
 
@@ -94,7 +137,7 @@ organizationsRouter.post(
   })
 );
 
-/** Unsubscribe the organization from a book or category. */
+/** Unsubscribe the organization from a book or category (also clears that book's quota, if any). */
 organizationsRouter.post(
   "/:id/revoke",
   validate({ body: targetSchema }),
@@ -102,7 +145,11 @@ organizationsRouter.post(
     const orgId = requireOrgId(req.params.id);
     const { targetType, targetValue } = await resolveGrantTarget(req.body, { validate: false });
     const field = targetType === "book" ? "allowedBookIds" : "allowedCategories";
-    const result = await Organization.updateOne({ _id: orgId }, { $pull: { [field]: targetValue } });
+    const update =
+      targetType === "book"
+        ? { $pull: { [field]: targetValue }, $unset: { [`bookQuotas.${targetValue}`]: "" } }
+        : { $pull: { [field]: targetValue } };
+    const result = await Organization.updateOne({ _id: orgId }, update);
     if (!result.matchedCount) {
       throw new ApiError(404, "ORG_NOT_FOUND", "This organization was not found.");
     }

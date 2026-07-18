@@ -27,8 +27,13 @@ export async function resolveAccessScope(user: Pick<PublicUser, "id" | "role">):
     }
   }
 
-  // Free books should be readable without an explicit grant.
-  const freeBooks = await Book.find({ price: { $lte: 0 }, status: "ready" }, { _id: 1 }).lean();
+  // Free books should be readable without an explicit grant. Books created
+  // before the `price` field existed have no price stored at all, and $lte
+  // doesn't match a missing field, so treat "missing" the same as "<= 0".
+  const freeBooks = await Book.find(
+    { $or: [{ price: { $lte: 0 } }, { price: { $exists: false } }], status: "ready" },
+    { _id: 1 }
+  ).lean();
   for (const book of freeBooks) {
     bookIds.add(String(book._id));
   }

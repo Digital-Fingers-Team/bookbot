@@ -1,4 +1,5 @@
 import { Router, type Router as ExpressRouter, type Request } from "express";
+import { Types } from "mongoose";
 import { z } from "zod";
 import { requireOrgAdmin } from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
@@ -16,8 +17,27 @@ const targetSchema = z.object({
   targetType: z.enum(["book", "category"]),
   targetValue: z.string().trim().min(1).max(200)
 });
+const grantSchema = z.object({
+  targetType: z.literal("book"),
+  targetValue: z.string().trim().min(1).max(200)
+});
 const bookIdSchema = z.object({ bookId: z.string().trim().min(1) });
 const addStudentSchema = z.object({ email: z.string().trim().email() });
+
+/** How many students in this org already have a given book granted. */
+async function countStudentsWithBook(orgId: string, bookId: string): Promise<number> {
+  return User.countDocuments({ organizationId: orgId, role: "user", allowedBookIds: bookId });
+}
+
+/** How many students in this org have been granted each book, keyed by book id. */
+async function countGrantedPerBook(orgId: string): Promise<Map<string, number>> {
+  const rows = await User.aggregate<{ _id: unknown; count: number }>([
+    { $match: { organizationId: new Types.ObjectId(orgId), role: "user" } },
+    { $unwind: "$allowedBookIds" },
+    { $group: { _id: "$allowedBookIds", count: { $sum: 1 } } }
+  ]);
+  return new Map(rows.map((row) => [String(row._id), row.count]));
+}
 
 export const orgAdminRouter: ExpressRouter = Router();
 
@@ -35,6 +55,8 @@ orgAdminRouter.get(
     const books = org.allowedBookIds?.length
       ? await Book.find({ _id: { $in: org.allowedBookIds } }, { title: 1, originalFileName: 1 }).lean()
       : [];
+    const grantedPerBook = await countGrantedPerBook(String(org._id));
+    const quotas = (org.bookQuotas ?? {}) as Record<string, number>;
 
     res.json({
       id: String(org._id),
@@ -42,7 +64,9 @@ orgAdminRouter.get(
       allowedCategories: org.allowedCategories ?? [],
       allowedBooks: books.map((b) => ({
         id: String(b._id),
-        title: readableBookTitle({ title: b.title, originalFileName: b.originalFileName, firstPageText: "" })
+        title: readableBookTitle({ title: b.title, originalFileName: b.originalFileName, firstPageText: "" }),
+        quota: quotas[String(b._id)] ?? null,
+        granted: grantedPerBook.get(String(b._id)) ?? 0
       }))
     });
   })
@@ -148,32 +172,48 @@ orgAdminRouter.post(
   })
 );
 
-/** Grant a student access to a book or category — must already be in the org's subscribed catalog. */
+/**
+ * Grant a student access to a book — must already be in the org's subscribed
+ * catalog, and within that book's per-title seat limit (set by the platform
+ * admin for how many copies the org paid for). Categories can no longer be
+ * granted to individual students, since an open-ended category can't be
+ * counted against a fixed per-book quota.
+ */
 orgAdminRouter.post(
   "/students/:id/grant",
-  validate({ body: targetSchema }),
+  validate({ body: grantSchema }),
   asyncHandler(async (req, res) => {
     const orgId = requireMyOrgId(req);
     const userId = requireUserId(req.params.id);
-    const { targetType, targetValue } = req.body as { targetType: "book" | "category"; targetValue: string };
+    const { targetValue: bookId } = req.body as { targetType: "book"; targetValue: string };
 
-    const org = await Organization.findById(orgId, { allowedBookIds: 1, allowedCategories: 1 }).lean();
-    const inCatalog =
-      targetType === "book"
-        ? (org?.allowedBookIds ?? []).some((id) => String(id) === targetValue)
-        : (org?.allowedCategories ?? []).includes(targetValue);
-    if (!inCatalog) {
-      throw new ApiError(400, "NOT_IN_CATALOG", "Your organization hasn't subscribed to this book or category.");
+    const org = await Organization.findById(orgId, { allowedBookIds: 1, bookQuotas: 1 }).lean();
+    if (!(org?.allowedBookIds ?? []).some((id) => String(id) === bookId)) {
+      throw new ApiError(400, "NOT_IN_CATALOG", "Your organization hasn't subscribed to this book.");
     }
 
-    const field = targetType === "book" ? "allowedBookIds" : "allowedCategories";
-    const result = await User.updateOne(
+    const student = await User.findOne(
       { _id: userId, organizationId: orgId, role: "user" },
-      { $addToSet: { [field]: targetValue } }
+      { allowedBookIds: 1 }
     );
-    if (!result.matchedCount) {
+    if (!student) {
       throw new ApiError(404, "STUDENT_NOT_FOUND", "This student was not found in your organization.");
     }
+
+    const alreadyGranted = (student.allowedBookIds ?? []).some((id) => String(id) === bookId);
+    const quota = ((org?.bookQuotas ?? {}) as Record<string, number>)[bookId] ?? null;
+    if (!alreadyGranted && quota != null) {
+      const granted = await countStudentsWithBook(orgId, bookId);
+      if (granted >= quota) {
+        throw new ApiError(
+          400,
+          "QUOTA_EXCEEDED",
+          "Your organization has used up its paid seats for this book — ask the platform admin to raise the limit."
+        );
+      }
+    }
+
+    await User.updateOne({ _id: userId }, { $addToSet: { allowedBookIds: bookId } });
     res.json({ ok: true });
   })
 );

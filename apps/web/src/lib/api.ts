@@ -703,7 +703,7 @@ export type Organization = {
   id: string;
   name: string;
   allowedCategories: string[];
-  allowedBooks: { id: string; title: string }[];
+  allowedBooks: { id: string; title: string; quota: number | null; granted: number }[];
   studentCount: number;
   adminCount: number;
   createdAt: string;
@@ -745,13 +745,21 @@ export function assignOrgAdmin(orgId: string, userId: string, token?: string) {
   });
 }
 
+export function setBookQuota(orgId: string, bookId: string, quota: number | null, token?: string) {
+  return request<{ ok: boolean }>(`/api/organizations/${orgId}/books/${bookId}/quota`, {
+    method: "POST",
+    body: { quota },
+    token
+  });
+}
+
 // --- Org admin self-service: manage the org's own students ---
 
 export type MyOrganization = {
   id: string;
   name: string;
   allowedCategories: string[];
-  allowedBooks: { id: string; title: string }[];
+  allowedBooks: { id: string; title: string; quota: number | null; granted: number }[];
 };
 
 export type OrgStudent = {
@@ -786,10 +794,10 @@ export function removeOrgStudent(studentId: string, token?: string) {
   return request<{ ok: boolean }>(`/api/org-admin/students/${studentId}/remove`, { method: "POST", token });
 }
 
-export function grantStudentAccess(studentId: string, targetType: "book" | "category", targetValue: string, token?: string) {
+export function grantStudentAccess(studentId: string, bookId: string, token?: string) {
   return request<{ ok: boolean }>(`/api/org-admin/students/${studentId}/grant`, {
     method: "POST",
-    body: { targetType, targetValue },
+    body: { targetType: "book", targetValue: bookId },
     token
   });
 }

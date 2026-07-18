@@ -9,7 +9,11 @@ const organizationSchema = new Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 200 },
     allowedBookIds: { type: [Schema.Types.ObjectId], ref: "Book", default: [] },
-    allowedCategories: { type: [String], default: [] }
+    allowedCategories: { type: [String], default: [] },
+    // Per-book seat limit: how many students may be granted each book,
+    // keyed by book id (what the org paid for per title). A book with no
+    // entry here has no cap.
+    bookQuotas: { type: Schema.Types.Mixed, default: {} }
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );
