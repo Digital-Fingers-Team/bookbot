@@ -5,7 +5,7 @@ import { FileText, Loader2, Search, Send, Sparkles, Trash2 } from "lucide-react"
 import { getBookConversation, saveBookConversation, streamQuestion } from "@/lib/api";
 import { useAuth } from "@/components/auth-provider";
 import type { Source } from "@/lib/types";
-import { useT } from "@/lib/i18n";
+import { AI_NAME, useT } from "@/lib/i18n";
 
 const RESPONSE_DEPTH = 3;
 
@@ -135,7 +135,7 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
       <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3 dark:border-white/10">
         <span className="flex items-center gap-2 text-sm font-semibold text-ink dark:text-white">
           <Sparkles className="h-4 w-4 text-moss dark:text-sea" />
-          {t("read.askTitle")}
+          Ask {AI_NAME}
         </span>
         {messages.length ? (
           <button

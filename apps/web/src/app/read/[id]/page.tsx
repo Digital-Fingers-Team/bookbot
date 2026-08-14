@@ -8,7 +8,7 @@ import { ApiClientError, getBook, getBookPdf, getBookSource, setFavorite, setPro
 import { BookAssistant } from "@/components/book-assistant";
 import { PdfReader } from "@/components/pdf-reader";
 import { TextReader } from "@/components/text-reader";
-import { useT } from "@/lib/i18n";
+import { AI_NAME, useT } from "@/lib/i18n";
 
 export default function ReadPage() {
   const params = useParams();
@@ -144,7 +144,7 @@ export default function ReadPage() {
       {/* Mobile tab switcher */}
       <div className="flex items-center gap-1 border-b border-line p-1.5 lg:hidden dark:border-white/10">
         <TabButton active={tab === "book"} onClick={() => setTab("book")} icon={BookOpenText} label={t("read.book")} />
-        <TabButton active={tab === "assistant"} onClick={() => setTab("assistant")} icon={MessageSquareText} label={t("read.assistant")} />
+        <TabButton active={tab === "assistant"} onClick={() => setTab("assistant")} icon={MessageSquareText} label={AI_NAME} />
       </div>
 
       <div className="min-h-0 flex-1 lg:grid lg:grid-cols-[minmax(0,1fr)_400px]">

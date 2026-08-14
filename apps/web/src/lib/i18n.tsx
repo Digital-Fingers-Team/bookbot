@@ -6,6 +6,7 @@ export type Lang = "ar" | "en";
 
 const STORAGE_KEY = "bookbot-lang";
 const DEFAULT_LANG: Lang = "ar";
+export const AI_NAME = "zaky";
 
 // All user-facing UI copy. Arabic is the default for ARADO; English is a switch.
 export const STRINGS = {
@@ -40,10 +41,10 @@ export const STRINGS = {
   "footer.poweredBy": { ar: "منصة معرفية مدعومة بالذكاء الاصطناعي", en: "AI-powered knowledge platform" },
 
   // Ask page
-  "ask.title": { ar: "اسأل كتبك", en: "Ask your books" },
+  "ask.title": { ar: "اسأل زكي", en: "Ask zaky" },
   "ask.subtitle": { ar: "إجابات من مكتبتك فقط", en: "Grounded only in your library" },
   "ask.newChat": { ar: "محادثة جديدة", en: "New chat" },
-  "ask.emptyTitle": { ar: "اسأل مكتبتك عن أي شيء", en: "Ask your library anything" },
+  "ask.emptyTitle": { ar: "اسأل زكي عن أي شيء", en: "Ask zaky anything" },
   "ask.emptyBody": {
     ar: "يبحث النظام في كتبك المرفوعة، ويعرض الأدلة المطابقة، ويجيب فقط مما يجده.",
     en: "The system searches your uploaded books, shows the matching evidence, and answers only from what it finds."

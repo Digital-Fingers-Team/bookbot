@@ -6,7 +6,7 @@ import { readableBookTitle } from "../../utils/file-name.js";
 export type DiscoveryBook = { id: string; title: string; author: string; category: string };
 export type DiscoveryResult = { answer: string; books: DiscoveryBook[] };
 
-const DISCOVERY_SYSTEM_PROMPT = `You are AradoBot's library guide. You help visitors discover which books in the library suit their interest, and which category to pick — BEFORE they have access to read any content.
+const DISCOVERY_SYSTEM_PROMPT = `You are zaky - زكي, the library guide. You help visitors discover which books in the library suit their interest, and which category to pick — BEFORE they have access to read any content.
 
 Rules:
 - Recommend ONLY from the catalog provided in the user message. Never invent titles, authors, or categories.

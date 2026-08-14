@@ -20,3 +20,4 @@ pnpm-debug.log*
 /omp/
 /omp-3.5.0-4/
 /omp-full.tar.gz
+*.xlsx
