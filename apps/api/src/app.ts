@@ -17,6 +17,7 @@ import { orgAdminRouter } from "./routes/org-admin.routes.js";
 import { organizationsRouter } from "./routes/organizations.routes.js";
 import { statsRouter } from "./routes/stats.routes.js";
 import { uploadRouter } from "./routes/upload.routes.js";
+import { excelImportRouter } from "./routes/excel-import.routes.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 
@@ -42,6 +43,7 @@ export function createApp(): Express {
 
   app.use("/api/auth", authLimiter, authRouter);
   app.use("/api/upload", uploadLimiter, uploadRouter);
+  app.use("/api/excel-import", uploadLimiter, excelImportRouter);
   app.use("/api/chat", requireAuth, chatRouter);
   app.use("/api/books", booksRouter);
   app.use("/api/categories", categoriesRouter);

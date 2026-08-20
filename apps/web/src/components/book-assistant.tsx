@@ -112,7 +112,8 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
           onToken: (delta) => patch(assistantId, (message) => ({ ...message, content: message.content + delta, status: "streaming" })),
           onDone: (done) => patch(assistantId, (message) => ({ ...message, content: message.content || done.answer, status: "done" })),
           onError: (error) => patch(assistantId, (message) => ({ ...message, status: "error", content: message.content || error.message }))
-        }
+        },
+        token
       );
     } finally {
       abortRef.current = null;

@@ -3,6 +3,9 @@ import { Schema, model, type InferSchemaType } from "mongoose";
 const bookSchema = new Schema(
   {
     title: { type: String, required: true, trim: true },
+    // Stable id from the Arado export; prevents importing the same catalogue
+    // row again when an administrator uploads an updated spreadsheet.
+    externalSourceId: { type: String, trim: true, index: true },
     originalFileName: { type: String, required: true, trim: true },
     originalPdfPath: { type: String, trim: true },
     // Format of the originally uploaded file. Defaults to "pdf" for backward

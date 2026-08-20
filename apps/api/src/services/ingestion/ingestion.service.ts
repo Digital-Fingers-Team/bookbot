@@ -40,12 +40,18 @@ export async function createProcessingBook(input: {
   originalFileName: string;
   price?: number;
   format: SourceFormat;
+  externalSourceId?: string;
+  title?: string;
+  author?: string;
+  description?: string;
+  category?: string;
 }): Promise<CreatedBook> {
-  const title = titleFromFileName(input.originalFileName);
+  const title = input.title?.trim() || titleFromFileName(input.originalFileName);
   const storedPdf = await storePdfSource(input);
 
   const book = await Book.create({
     title,
+    externalSourceId: input.externalSourceId?.trim() || undefined,
     originalFileName: input.originalFileName,
     originalPdfPath: storedPdf.originalPdfPath,
     sourceFormat: input.format,
@@ -56,6 +62,9 @@ export async function createProcessingBook(input: {
     embeddingVersion: embeddingVersion(),
     processingVersion: PROCESSING_VERSION,
     status: "processing",
+    author: input.author?.trim().slice(0, 120) ?? "",
+    description: input.description?.trim().slice(0, 600) ?? "",
+    category: input.category?.trim() ?? "",
     price: input.price && input.price > 0 ? input.price : 0,
     chunkCount: 0,
     pageCount: 0,

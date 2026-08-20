@@ -7,15 +7,17 @@ import {
   ArrowRight,
   CheckCircle2,
   FileText,
+  FileSpreadsheet,
   Layers,
   Loader2,
   Lock,
   ScanLine,
   Trash2,
-  UploadCloud
+  UploadCloud,
+  Check
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { ApiClientError, type UploadedBook, uploadPdfs } from "@/lib/api";
+import { ApiClientError, getCategories, importExcelRows, previewExcel, type ExcelImportRow, type UploadedBook, uploadPdfs } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
 const ACCEPTED_EXTENSIONS = [".pdf", ".epub", ".docx", ".txt"];
@@ -41,6 +43,11 @@ export default function UploadPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [results, setResults] = useState<UploadedBook[]>([]);
+  const [excelRows, setExcelRows] = useState<ExcelImportRow[]>([]);
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [excelLoading, setExcelLoading] = useState(false);
+  const [excelMessage, setExcelMessage] = useState("");
+  const [categories, setCategories] = useState<string[]>([]);
 
   function chooseFiles(nextFiles: FileList | File[]) {
     setError("");
@@ -126,6 +133,12 @@ export default function UploadPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-white">{t("up.title")}</h1>
         <p className="mx-auto mt-1.5 max-w-md text-sm leading-6 text-ink/70 dark:text-white/70">{t("up.subtitle")}</p>
       </header>
+
+      <ExcelImportPanel token={token} rows={excelRows} selected={selectedRows} categories={categories} loading={excelLoading} message={excelMessage}
+        onFile={async (file) => { setExcelLoading(true); setExcelMessage(""); try { const [result, categoryResult] = await Promise.all([previewExcel(file, token), getCategories(token)]); setExcelRows(result.rows.map((row) => ({ ...row, price: 0, category: "" }))); setCategories(categoryResult.categories); setSelectedRows(new Set()); setExcelMessage(`${result.total} books found. Select only the books to import.`); } catch (err) { setExcelMessage(err instanceof Error ? err.message : "The workbook could not be read."); } finally { setExcelLoading(false); } }}
+        onToggle={(rowNumber) => setSelectedRows((current) => { const next = new Set(current); next.has(rowNumber) ? next.delete(rowNumber) : next.add(rowNumber); return next; })}
+        onUpdate={(rowNumber, patch) => setExcelRows((current) => current.map((row) => row.rowNumber === rowNumber ? { ...row, ...patch } : row))}
+        onImport={async () => { setExcelLoading(true); setExcelMessage(""); try { const result = await importExcelRows(excelRows.filter((row) => selectedRows.has(row.rowNumber)), token); setExcelRows(excelRows.filter((row) => !selectedRows.has(row.rowNumber))); setSelectedRows(new Set()); setExcelMessage(`${result.books.length} books queued${result.errors.length ? `; ${result.errors.length} failed.` : "."}`); } catch (err) { setExcelMessage(err instanceof Error ? err.message : "Import failed."); } finally { setExcelLoading(false); } }} />
 
       <label
         onDragEnter={() => setIsDragging(true)}
@@ -277,6 +290,18 @@ export default function UploadPage() {
       </div>
     </div>
   );
+}
+
+function ExcelImportPanel({ token, rows, selected, categories, loading, message, onFile, onToggle, onUpdate, onImport }: {
+  token?: string; rows: ExcelImportRow[]; selected: Set<number>; categories: string[]; loading: boolean; message: string;
+  onFile: (file: File) => void; onToggle: (row: number) => void; onUpdate: (row: number, patch: Partial<ExcelImportRow>) => void; onImport: () => void;
+}) {
+  return <section className="rounded-2xl border border-line bg-white p-5 dark:border-white/10 dark:bg-[#0c0c0e]">
+    <div className="flex items-start gap-3"><FileSpreadsheet className="mt-1 h-5 w-5 text-moss dark:text-sea" /><div><h2 className="font-semibold text-ink dark:text-white">Import books from Excel</h2><p className="mt-1 text-xs text-ink/65 dark:text-white/65">Upload the list, choose specific books, then import only those PDFs.</p></div></div>
+    <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-medium dark:border-white/10"><FileSpreadsheet className="h-4 w-4" />{loading ? "Reading…" : "Choose .xlsx"}<input type="file" accept=".xlsx" className="sr-only" disabled={loading} onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} /></label>
+    {message ? <p className="mt-3 text-sm text-ink/70 dark:text-white/70">{message}</p> : null}
+    {rows.length ? <><div className="mt-4 flex flex-wrap items-center gap-2 text-xs"><button type="button" onClick={() => rows.forEach((row) => !selected.has(row.rowNumber) && onToggle(row.rowNumber))} className="rounded border border-line px-2 py-1 dark:border-white/10">Select all</button><button type="button" onClick={() => rows.forEach((row) => selected.has(row.rowNumber) && onToggle(row.rowNumber))} className="rounded border border-line px-2 py-1 dark:border-white/10">Deselect all</button><span className="text-ink/60 dark:text-white/60">{selected.size} selected</span></div><div className="mt-2 max-h-96 overflow-auto rounded-lg border border-line dark:border-white/10">{rows.map((row) => <div key={row.rowNumber} className="border-b border-line p-3 last:border-0 dark:border-white/10"><div className="flex items-start gap-3"><input type="checkbox" checked={selected.has(row.rowNumber)} onChange={() => onToggle(row.rowNumber)} /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-ink dark:text-white">{row.title}</span><span className="block text-xs text-ink/60 dark:text-white/60">{row.author || "Unknown author"} · row {row.rowNumber}</span></span>{selected.has(row.rowNumber) ? <Check className="h-4 w-4 shrink-0 text-moss dark:text-sea" /> : null}</div><div className="mt-2 grid grid-cols-1 gap-2 pl-6 sm:grid-cols-2"><input type="number" min="0" step="any" value={row.price || ""} onChange={(e) => onUpdate(row.rowNumber, { price: Number(e.target.value) || 0 })} placeholder="Price (optional)" className="h-9 rounded border border-line bg-transparent px-2 text-xs outline-none dark:border-white/10" /><select value={row.category || ""} onChange={(e) => onUpdate(row.rowNumber, { category: e.target.value })} className="h-9 rounded border border-line bg-transparent px-2 text-xs outline-none dark:border-white/10"><option value="">No category</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select></div></div>)}</div><button type="button" disabled={!selected.size || loading} onClick={onImport} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-moss px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{loading ? "Importing…" : `Import ${selected.size} selected`}</button></> : null}
+  </section>;
 }
 
 function InfoCard({

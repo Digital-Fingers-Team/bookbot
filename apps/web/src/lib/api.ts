@@ -257,6 +257,20 @@ export async function uploadPdfs(files: File[], token?: string, price?: number) 
   return response.json() as Promise<{ books: UploadedBook[] }>;
 }
 
+export type ExcelImportRow = {
+  rowNumber: number; sourceId: string; title: string; description: string; author: string;
+  language: string; year: number | null; isbn: string; city: string; pageCount: number | null;
+  keywords: string; viewerUrl: string; fileName: string; category?: string; price?: number;
+};
+export function previewExcel(file: File, token?: string) {
+  const form = new FormData(); form.append("file", file);
+  return fetch(`${API_URL}/api/excel-import/preview`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form })
+    .then(async (response) => { if (!response.ok) { const p = await response.json().catch(() => null); throw new ApiClientError(response.status, p?.error?.code ?? "INVALID_EXCEL", p?.error?.message ?? "The workbook could not be read."); } return response.json() as Promise<{ total: number; rows: ExcelImportRow[] }>; });
+}
+export function importExcelRows(rows: ExcelImportRow[], token?: string) {
+  return request<{ books: { bookId: string; title: string; rowNumber: number }[]; errors: { rowNumber: number; title: string; error: string }[] }>("/api/excel-import/import", { method: "POST", body: { rows }, token });
+}
+
 export type AccessRequest = {
   id: string;
   targetType: "book" | "category";

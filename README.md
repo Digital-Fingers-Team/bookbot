@@ -26,7 +26,27 @@ docker compose up -d mongo
 pnpm dev
 ```
 
-If you do not want Docker, install MongoDB locally on Windows or use MongoDB Atlas and put its connection string in `MONGODB_URI`.
+The included Docker setup uses MongoDB Atlas Local, which bundles the Search and Vector Search services required by AradoBot. After starting it, create the vector index once (see below). Alternatively, use MongoDB Atlas and put its connection string in `MONGODB_URI`.
+
+After MongoDB is running, create the chunk vector index. In `mongosh`, select the `aradobotd` database and run:
+
+```javascript
+db.chunks.createSearchIndex(
+  "chunk_embedding_vector_index",
+  "vectorSearch",
+  {
+    fields: [
+      { type: "vector", path: "embedding", numDimensions: 1536, similarity: "cosine" }
+    ]
+  }
+)
+```
+
+You can verify it with:
+
+```bash
+pnpm --filter @aradobot/api check:vector-index
+```
 
 ## Environment
 

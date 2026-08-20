@@ -1,12 +1,17 @@
 services:
   mongo:
-    image: mongo:7
+    # Atlas Local bundles mongod with mongot, which provides local
+    # MongoDB Search and Vector Search for development.
+    image: mongodb/mongodb-atlas-local:preview
+    hostname: mongo
     container_name: aradobotd-mongo
     restart: unless-stopped
     ports:
       - "27017:27017"
     volumes:
       - aradobotd-mongo-data:/data/db
+      - aradobotd-mongo-config:/data/configdb
+      - aradobotd-mongo-mongot:/data/mongot
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
@@ -15,3 +20,5 @@ services:
 
 volumes:
   aradobotd-mongo-data:
+  aradobotd-mongo-config:
+  aradobotd-mongo-mongot:

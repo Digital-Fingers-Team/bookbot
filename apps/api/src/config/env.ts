@@ -58,7 +58,9 @@ const schema = z.object({
   OCR_MAX_PAGES: z.coerce.number().int().positive().default(600),
   OCR_CONCURRENCY: z.coerce.number().int().positive().max(32).default(6),
   OCR_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(4096),
-  PROCESSING_CONCURRENCY: z.coerce.number().int().positive().max(8).default(2),
+  // Number of books processed in parallel. All imported books are queued
+  // immediately; this limit protects local CPU, MongoDB, and embedding APIs.
+  PROCESSING_CONCURRENCY: z.coerce.number().int().positive().max(8).default(8),
   PDF_STORAGE_DIR: z.string().default("storage/pdfs"),
   RECEIPTS_DIR: z.string().default("storage/receipts"),
   // --- Blob storage (uploaded PDFs + payment receipts) ---
