@@ -450,7 +450,7 @@ export function updateBook(
   );
 }
 
-export type DiscoveryBook = { id: string; title: string; author: string; category: string };
+export type DiscoveryBook = { id: string; title: string; author: string; category: string; description: string };
 
 /** Ask the library guide which books/categories suit the user (metadata only). */
 export function discoverBooks(question: string, token?: string) {

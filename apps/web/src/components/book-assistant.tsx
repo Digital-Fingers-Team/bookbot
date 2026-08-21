@@ -129,6 +129,9 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
     const assistantIndex = messages.findIndex((message) => message.id === messageId);
     const previous = assistantIndex > 0 ? messages[assistantIndex - 1] : undefined;
     if (previous?.role === "user") {
+      // Replace the "not found" response with the expanded answer instead of
+      // leaving both responses stacked in the conversation.
+      setMessages((current) => current.filter((message) => message.id !== messageId));
       void send(undefined, previous.content, true, false);
     }
   }
@@ -178,7 +181,7 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
               </div>
             ) : (
               <div key={message.id} className="space-y-2">
-                <div className="rounded-2xl rounded-tl-sm border border-line bg-paper p-3 dark:border-white/10 dark:bg-white/5">
+                <div className="py-1">
                   {message.status === "searching" ? (
                     <span className="inline-flex items-center gap-2 text-sm font-medium text-moss dark:text-sea">
                       <Search className="h-4 w-4 animate-pulse" />

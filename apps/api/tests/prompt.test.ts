@@ -16,7 +16,9 @@ describe("prompt builder", () => {
     ]);
 
     expect(STRICT_RAG_SYSTEM_PROMPT).toContain("ONLY the excerpts retrieved from the user's own library");
+    expect(STRICT_RAG_SYSTEM_PROMPT).toContain("name the relevant source book exactly as provided");
     expect(prompt).toContain("Use only retrieved chunks.");
+    expect(prompt).toContain("Source book: System Design");
     expect(prompt).not.toContain("database");
   });
 });

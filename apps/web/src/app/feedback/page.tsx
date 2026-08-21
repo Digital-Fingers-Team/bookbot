@@ -293,7 +293,7 @@ function FeedbackEvidence({ sources, evidence }: { sources: FeedbackItem["source
           </div>
         ))}
 
-        {evidence.length ? (
+        {false && evidence.length ? (
           <details className="group/ev rounded-md border border-dashed border-line dark:border-white/10">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/70 dark:text-white/70">
               {t("ask.rawChunks")} ({evidence.length})

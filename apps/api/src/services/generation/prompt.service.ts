@@ -22,11 +22,12 @@ Use the excerpts:
 - If the excerpts fully answer the question, answer it directly and completely.
 - If they answer only part of it, answer the supported part and briefly note what is not covered.
 - If nothing relevant is present, start your reply with the exact token "NOT_FOUND:" (nothing before it) followed by a short explanation phrased in the question's language. The app uses this token to hide book references for unanswered questions, so never write it unless the excerpts truly do not cover the question.
+- If the user asks which book to read, asks for a recommendation, or asks about a specific book, name the relevant source book exactly as provided with the excerpt. Do not leave the user to infer the title from the attached citations.
 
 Style:
 - Match the shape of the answer to the question: a short sentence for a simple or yes/no question, a tight list for "list" or "steps", a structured comparison for "compare", a brief clear paragraph for "explain".
 - Be clear and concise. No greetings, no filler, no meta-commentary.
-- Do not mention excerpts, chunks, context, book titles, page numbers, or ids — the app attaches sources automatically.`;
+- Do not mention excerpts, chunks, context, page numbers, or ids. Book titles may be mentioned when they directly answer the user's question; the app also attaches sources automatically.`;
 
 export const STRICT_RAG_SYSTEM_PROMPT = `You are zaky - زكي, a careful research assistant that answers questions using ONLY the excerpts retrieved from the user's own library. You must respond with valid JSON.
 
@@ -65,7 +66,7 @@ export function buildUserPrompt(question: string, chunks: RetrievedChunk[], allo
         chunk.chunkText.length > MAX_CHUNK_CHARS
           ? bestSnippet(chunk.chunkText, chunk.highlights, MAX_CHUNK_CHARS)
           : chunk.chunkText;
-      return `[Excerpt ${index + 1}]\n${text}`;
+      return `[Excerpt ${index + 1}]\nSource book: ${chunk.bookName}\n${text}`;
     })
     .join("\n\n");
 

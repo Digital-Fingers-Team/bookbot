@@ -1,11 +1,11 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { ArrowLeft, BookOpenText, CheckCircle2, Clock, Loader2, Lock, Sparkles } from "lucide-react";
+import { ArrowLeft, BookOpenText, CheckCircle2, ChevronDown, Clock, Loader2, Lock, Sparkles } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
+import { BookCover } from "@/components/book-cover";
 import { RequestAccessModal } from "@/components/request-access-modal";
 import {
-  bookCoverUrl,
   discoverBooks,
   getCategories,
   listAccessRequests,
@@ -229,30 +229,35 @@ function RequestStatusBadge({ status }: { status: AccessRequest["status"] }) {
 }
 
 function DiscoveryCard({ book, pending, onRequest }: { book: DiscoveryBook; pending: boolean; onRequest: () => void }) {
-  const [failed, setFailed] = useState(false);
+  const [descriptionOpen, setDescriptionOpen] = useState(false);
   const t = useT();
   return (
-    <div className="flex gap-3 rounded-xl border border-line bg-white p-3 dark:border-white/10 dark:bg-white/5">
-      <div className="h-20 w-14 shrink-0 overflow-hidden rounded-md bg-moss/10 dark:bg-sea/15">
-        {failed ? (
-          <span className="flex h-full w-full items-center justify-center text-moss dark:text-sea">
-            <BookOpenText className="h-5 w-5" />
-          </span>
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={bookCoverUrl(book.id)}
-            alt={book.title}
-            loading="lazy"
-            onError={() => setFailed(true)}
-            className="h-full w-full object-cover"
-          />
-        )}
+    <div className="flex overflow-hidden rounded-xl border border-line bg-white dark:border-white/10 dark:bg-white/5">
+      <div className="relative min-h-24 w-20 shrink-0 self-stretch overflow-hidden bg-moss/10 dark:bg-sea/15">
+        <BookCover
+          bookId={book.id}
+          ready
+          alt={book.title}
+          className="absolute inset-0 h-full w-full"
+          iconClassName="h-6 w-6"
+        />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col p-3">
         <p dir="auto" className="line-clamp-2 text-sm font-semibold text-ink dark:text-white">
           {book.title}
         </p>
+        {book.description ? (
+          <button
+            type="button"
+            dir="auto"
+            aria-expanded={descriptionOpen}
+            onClick={() => setDescriptionOpen((open) => !open)}
+            className="mt-1 flex items-start gap-1 text-start text-xs leading-5 text-ink/70 dark:text-white/70"
+          >
+            <span className={descriptionOpen ? "whitespace-pre-wrap" : "line-clamp-2"}>{book.description}</span>
+            <ChevronDown className={`mt-0.5 h-3.5 w-3.5 shrink-0 transition-transform ${descriptionOpen ? "rotate-180" : ""}`} />
+          </button>
+        ) : null}
         {book.category ? (
           <span className="mt-1 inline-block w-fit rounded-full bg-moss/10 px-2 py-0.5 text-[11px] font-medium text-moss dark:bg-sea/15 dark:text-sea">
             {book.category}

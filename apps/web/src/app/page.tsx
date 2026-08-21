@@ -840,10 +840,10 @@ function AssistantBubble({
       <div className="min-w-0 flex-1">
         <div className="flex flex-col gap-4 sm:flex-row-reverse sm:items-start">
           <div
-            className={`min-w-0 flex-1 rounded-2xl rounded-tl-sm border p-4 ${
+            className={`order-first min-w-0 flex-1 sm:order-last ${
               failed
-                ? "border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
-                : "border-line bg-paper dark:border-white/10 dark:bg-white/5"
+                ? "rounded-2xl rounded-tl-sm border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+                : "py-1"
             }`}
           >
             {searching ? (
@@ -882,7 +882,7 @@ function AssistantBubble({
           </div>
 
           {showEvidence ? (
-            <aside className="w-full animate-slide-in-left sm:sticky sm:top-3 sm:w-72 sm:shrink-0 sm:self-start">
+            <aside className="order-last w-full animate-slide-in-left sm:order-first sm:sticky sm:top-3 sm:w-80 sm:shrink-0 sm:self-start">
               <Evidence
                 sources={message.sources}
                 evidence={message.evidence}
@@ -1000,7 +1000,7 @@ function Evidence({
           );
         })}
 
-        {evidence.length ? (
+        {false && evidence.length ? (
           <details className="group/ev rounded-lg border border-dashed border-line dark:border-white/10">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ink/70 dark:text-white/70">
               {t("ask.rawChunks")} ({evidence.length})

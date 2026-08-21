@@ -3,7 +3,7 @@ import { Book } from "../../models/book.model.js";
 import { ApiError } from "../../utils/api-error.js";
 import { readableBookTitle } from "../../utils/file-name.js";
 
-export type DiscoveryBook = { id: string; title: string; author: string; category: string };
+export type DiscoveryBook = { id: string; title: string; author: string; category: string; description: string };
 export type DiscoveryResult = { answer: string; books: DiscoveryBook[] };
 
 const DISCOVERY_SYSTEM_PROMPT = `You are zaky - زكي, the library guide. You help visitors discover which books in the library suit their interest, and which category to pick — BEFORE they have access to read any content.
@@ -71,7 +71,7 @@ export async function discoverBooks(question: string, language: "ar" | "en" = "a
       .map((id) => byId.get(id))
       .filter((entry): entry is CatalogEntry => Boolean(entry))
       .slice(0, 8)
-      .map(({ id, title, author, category }) => ({ id, title, author, category }));
+      .map(({ id, title, author, category, description }) => ({ id, title, author, category, description }));
 
     return { answer: parsed.answer, books };
   } finally {
