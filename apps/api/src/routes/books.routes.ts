@@ -502,6 +502,36 @@ booksRouter.patch(
   })
 );
 
+booksRouter.post(
+  "/:id/cancel",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    requireBookId(req.params.id);
+
+    const book = await Book.findOneAndUpdate(
+      { _id: req.params.id, status: "processing" },
+      { $set: { status: "cancelled", error: "Processing was cancelled." } },
+      { new: true }
+    );
+    if (!book) {
+      const existing = await Book.findById(req.params.id, { status: 1 });
+      if (!existing) {
+        throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
+      }
+      throw new ApiError(409, "BOOK_NOT_PROCESSING", "This book is no longer being processed.");
+    }
+
+    // Remove any partial searchable data immediately. The worker also checks
+    // the status between stages and cleans up if it was already in-flight.
+    await Promise.all([
+      Chunk.deleteMany({ bookId: book._id }),
+      BookPage.deleteMany({ bookId: book._id })
+    ]);
+
+    res.json({ cancelled: true });
+  })
+);
+
 booksRouter.delete(
   "/:id",
   requireAdmin,

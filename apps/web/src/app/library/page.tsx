@@ -24,7 +24,7 @@ import { useAuth } from "@/components/auth-provider";
 import { BookCover } from "@/components/book-cover";
 import { RequestAccessModal } from "@/components/request-access-modal";
 import { MyRequestsPanel } from "@/components/my-requests-panel";
-import { ApiClientError, addCategory, deleteBook, getCategories, getStats, listBooks, setFavorite, updateBook } from "@/lib/api";
+import { ApiClientError, addCategory, cancelBook, deleteBook, getCategories, getStats, listBooks, setFavorite, updateBook } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
 import { useLang, useT, type StringKey } from "@/lib/i18n";
 
@@ -134,7 +134,21 @@ export default function LibraryPage() {
     return () => clearInterval(interval);
   }, [token, hasProcessing]);
 
-  function removeBook(book: Book) {
+  async function removeBook(book: Book) {
+    if (book.status === "processing") {
+      if (!window.confirm(t("lib.cancelProcessingPrompt"))) return;
+      setDeletingId(book.id);
+      setError("");
+      try {
+        await cancelBook(book.id, token);
+        await refresh();
+      } catch (err) {
+        setError(err instanceof ApiClientError ? err.message : t("lib.cancelError"));
+      } finally {
+        setDeletingId("");
+      }
+      return;
+    }
     setConfirmDeleteBook(book);
   }
 
@@ -699,10 +713,10 @@ function BookCard({
             }}
             disabled={deleting}
             className="absolute end-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-white/90 text-ink/70 opacity-0 backdrop-blur transition hover:border-red-300 hover:text-red-600 focus:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-[#0c0c0e]/80 dark:text-white/70 dark:hover:border-red-500/40 dark:hover:text-red-300"
-            aria-label={`Delete ${book.title}`}
-            title={`Delete ${book.title}`}
+            aria-label={book.status === "processing" ? t("lib.cancelProcessing") : `Delete ${book.title}`}
+            title={book.status === "processing" ? t("lib.cancelProcessing") : `Delete ${book.title}`}
           >
-            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : book.status === "processing" ? <X className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
           </button>
         ) : null}
         <BookCover
@@ -905,10 +919,10 @@ function BookRow({
           }}
           disabled={deleting}
           className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink/70 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:text-white/70 dark:hover:bg-red-500/10 dark:hover:text-red-300"
-          aria-label={`Delete ${book.title}`}
-          title={`Delete ${book.title}`}
+          aria-label={book.status === "processing" ? t("lib.cancelProcessing") : `Delete ${book.title}`}
+          title={book.status === "processing" ? t("lib.cancelProcessing") : `Delete ${book.title}`}
         >
-          {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : book.status === "processing" ? <X className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
         </button>
       ) : null}
     </div>
@@ -1334,6 +1348,14 @@ function MetaControl({
 
 function StatusBadge({ book, compact = false }: { book: Book; compact?: boolean }) {
   const t = useT();
+  if (book.status === "cancelled") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink/60 dark:border-white/10 dark:bg-white/5 dark:text-white/60">
+        <X className="h-3.5 w-3.5 shrink-0" />
+        {compact ? t("lib.cancelledShort") : t("lib.cancelled")}
+      </span>
+    );
+  }
   if (book.status === "failed") {
     return (
       <span

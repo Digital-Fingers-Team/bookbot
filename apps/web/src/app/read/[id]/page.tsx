@@ -6,8 +6,7 @@ import { AlertCircle, ArrowRight, BookOpenText, Heart, Loader2, MessageSquareTex
 import { useAuth } from "@/components/auth-provider";
 import { ApiClientError, getBook, getBookPdf, getBookSource, setFavorite, setProgress, type MyBook } from "@/lib/api";
 import { BookAssistant } from "@/components/book-assistant";
-import { PdfReader } from "@/components/pdf-reader";
-import { TextReader } from "@/components/text-reader";
+import { FlipbookReader } from "@/components/flipbook-reader";
 import { AI_NAME, useT } from "@/lib/i18n";
 
 export default function ReadPage() {
@@ -162,24 +161,15 @@ export default function ReadPage() {
                   {error}
                 </div>
               </div>
-            ) : book && book.sourceFormat === "pdf" ? (
-              <PdfReader
-                bookId={id}
-                url={url}
-                canDownload={Boolean(book.canDownload)}
-                title={book.title}
-                page={page}
-                totalPages={book.pageCount}
-                onPageChange={jumpTo}
-              />
             ) : book ? (
-              <TextReader
+              <FlipbookReader
                 bookId={id}
                 sourceUrl={url}
                 canDownload={Boolean(book.canDownload)}
                 title={book.title}
                 page={page}
                 totalPages={book.pageCount}
+                kind={book.sourceFormat === "pdf" ? "pdf" : "text"}
                 onPageChange={jumpTo}
               />
             ) : null}

@@ -422,6 +422,13 @@ export function deleteBook(id: string, token?: string) {
   });
 }
 
+export function cancelBook(id: string, token?: string) {
+  return request<{ cancelled: true }>(`/api/books/${id}/cancel`, {
+    method: "POST",
+    token
+  });
+}
+
 export function getCategories(token?: string) {
   return request<{ categories: string[] }>("/api/categories", { token });
 }

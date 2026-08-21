@@ -21,7 +21,7 @@ const bookSchema = new Schema(
     pageCount: { type: Number, required: true, default: 0 },
     status: {
       type: String,
-      enum: ["processing", "ready", "failed"],
+      enum: ["processing", "ready", "failed", "cancelled"],
       required: true,
       default: "processing",
       index: true

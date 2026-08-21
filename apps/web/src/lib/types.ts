@@ -25,7 +25,7 @@ export type AuthSession = {
   user: User;
 };
 
-export type BookStatus = "processing" | "ready" | "failed";
+export type BookStatus = "processing" | "ready" | "failed" | "cancelled";
 export type SourceFormat = "pdf" | "epub" | "docx" | "txt";
 
 export type Book = {

@@ -27,12 +27,20 @@ export function TextReader({ bookId, sourceUrl, canDownload, title, page, totalP
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const previousPageRef = useRef(page);
+  const [turnDirection, setTurnDirection] = useState<"next" | "prev">("next");
+  const [dragProgress, setDragProgress] = useState(0);
+  const dragRef = useRef<{ pointerId: number; startX: number; edge: "next" | "prev" } | null>(null);
   // Cache of fetched page text so flipping back/forward and prefetched
   // neighbours are instant. Cleared when the book changes.
   const pageCacheRef = useRef<Map<number, string>>(new Map());
 
   useEffect(() => {
     setPageInput(String(page));
+    if (page !== previousPageRef.current) {
+      setTurnDirection(page > previousPageRef.current ? "next" : "prev");
+      previousPageRef.current = page;
+    }
   }, [page]);
 
   useEffect(() => {
@@ -94,6 +102,32 @@ export function TextReader({ bookId, sourceUrl, canDownload, title, page, totalP
     },
     [onPageChange, pageCount]
   );
+
+  function startPageDrag(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    const edge = event.clientX < event.currentTarget.getBoundingClientRect().left + 96 ? "prev" :
+      event.clientX > event.currentTarget.getBoundingClientRect().right - 96 ? "next" : null;
+    if (!edge || (edge === "prev" && page <= 1) || (edge === "next" && page >= pageCount)) return;
+    dragRef.current = { pointerId: event.pointerId, startX: event.clientX, edge };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function movePageDrag(event: React.PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const delta = event.clientX - drag.startX;
+    const progress = drag.edge === "next" ? Math.max(0, Math.min(1, -delta / 260)) : Math.max(0, Math.min(1, delta / 260));
+    setDragProgress(progress);
+  }
+
+  function endPageDrag(event: React.PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const turned = dragProgress > 0.2;
+    dragRef.current = null;
+    setDragProgress(0);
+    if (turned) jumpTo(drag.edge === "next" ? page + 1 : page - 1);
+  }
 
   // Keyboard navigation: ←/→ flip pages (ignored while typing in the page box).
   useEffect(() => {
@@ -187,7 +221,32 @@ export function TextReader({ bookId, sourceUrl, canDownload, title, page, totalP
         </div>
       </div>
 
-      <div className="relative min-h-0 flex-1 overflow-auto p-4 sm:p-6">
+      <div
+        className="relative min-h-0 flex-1 overflow-auto p-4 sm:p-6"
+        style={{ touchAction: "pan-y" }}
+        onPointerDown={startPageDrag}
+        onPointerMove={movePageDrag}
+        onPointerUp={endPageDrag}
+        onPointerCancel={endPageDrag}
+      >
+        <button
+          type="button"
+          disabled={page <= 1}
+          onClick={() => jumpTo(page - 1)}
+          className="absolute start-2 top-1/2 z-10 hidden h-12 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-ink/60 shadow-md ring-1 ring-black/10 transition hover:text-moss disabled:opacity-0 sm:flex dark:bg-[#0c0c0e]/80 dark:text-white/60 dark:ring-white/10 dark:hover:text-sea"
+          aria-label={t("read.goToPage")}
+        >
+          <ChevronLeft className="h-5 w-5 rtl:rotate-180" />
+        </button>
+        <button
+          type="button"
+          disabled={page >= pageCount}
+          onClick={() => jumpTo(page + 1)}
+          className="absolute end-2 top-1/2 z-10 hidden h-12 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-ink/60 shadow-md ring-1 ring-black/10 transition hover:text-moss disabled:opacity-0 sm:flex dark:bg-[#0c0c0e]/80 dark:text-white/60 dark:ring-white/10 dark:hover:text-sea"
+          aria-label={t("read.goToPage")}
+        >
+          <ChevronRight className="h-5 w-5 rtl:rotate-180" />
+        </button>
         {error ? (
           <div className="flex h-full items-center justify-center p-6 text-center">
             <div className="max-w-md rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
@@ -197,8 +256,10 @@ export function TextReader({ bookId, sourceUrl, canDownload, title, page, totalP
           </div>
         ) : (
           <article
+            key={page}
             dir="auto"
-            className="mx-auto max-w-2xl whitespace-pre-wrap break-words rounded-xl bg-white p-6 text-[15px] leading-8 text-ink shadow-xl ring-1 ring-black/10 dark:bg-[#0c0c0e] dark:text-white dark:ring-white/10"
+            className={`book-page-turn-${turnDirection} mx-auto max-w-2xl whitespace-pre-wrap break-words rounded-xl bg-white p-6 text-[15px] leading-8 text-ink shadow-xl ring-1 ring-black/10 dark:bg-[#0c0c0e] dark:text-white dark:ring-white/10`}
+            style={dragProgress ? { transform: `perspective(1600px) rotateY(${turnDirection === "next" ? -dragProgress * 70 : dragProgress * 70}deg)` } : undefined}
           >
             {text}
           </article>

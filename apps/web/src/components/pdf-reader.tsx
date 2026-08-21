@@ -48,12 +48,20 @@ export function PdfReader({ bookId, url, canDownload, title, page, totalPages, o
   const [fitMode, setFitMode] = useState<FitMode>("width");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const previousPageRef = useRef(page);
+  const [turnDirection, setTurnDirection] = useState<"next" | "prev">("next");
+  const [dragProgress, setDragProgress] = useState(0);
+  const dragRef = useRef<{ pointerId: number; startX: number; edge: "next" | "prev" } | null>(null);
   // Cache of rendered page images (object URLs) so flipping back/forward and
   // prefetched neighbours are instant. Revoked when the book changes/unmounts.
   const pageCacheRef = useRef<Map<number, string>>(new Map());
 
   useEffect(() => {
     setPageInput(String(page));
+    if (page !== previousPageRef.current) {
+      setTurnDirection(page > previousPageRef.current ? "next" : "prev");
+      previousPageRef.current = page;
+    }
   }, [page]);
 
   // Drop the page cache when switching books.
@@ -121,6 +129,32 @@ export function PdfReader({ bookId, url, canDownload, title, page, totalPages, o
     },
     [onPageChange, pageCount]
   );
+
+  function startPageDrag(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const edge = event.clientX < bounds.left + 96 ? "prev" : event.clientX > bounds.right - 96 ? "next" : null;
+    if (!edge || (edge === "prev" && page <= 1) || (edge === "next" && page >= pageCount)) return;
+    dragRef.current = { pointerId: event.pointerId, startX: event.clientX, edge };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function movePageDrag(event: React.PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const delta = event.clientX - drag.startX;
+    const progress = drag.edge === "next" ? Math.max(0, Math.min(1, -delta / 260)) : Math.max(0, Math.min(1, delta / 260));
+    setDragProgress(progress);
+  }
+
+  function endPageDrag(event: React.PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const turned = dragProgress > 0.2;
+    dragRef.current = null;
+    setDragProgress(0);
+    if (turned) jumpTo(drag.edge === "next" ? page + 1 : page - 1);
+  }
 
   // Keyboard navigation: ←/→ flip pages (ignored while typing in the page box).
   useEffect(() => {
@@ -252,7 +286,32 @@ export function PdfReader({ bookId, url, canDownload, title, page, totalPages, o
         </div>
       </div>
 
-      <div className="relative min-h-0 flex-1 overflow-auto p-4 sm:p-6">
+      <div
+        className="relative min-h-0 flex-1 overflow-auto p-4 sm:p-6"
+        style={{ touchAction: "pan-y" }}
+        onPointerDown={startPageDrag}
+        onPointerMove={movePageDrag}
+        onPointerUp={endPageDrag}
+        onPointerCancel={endPageDrag}
+      >
+        <button
+          type="button"
+          disabled={page <= 1}
+          onClick={() => jumpTo(page - 1)}
+          className="absolute start-2 top-1/2 z-10 hidden h-12 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-ink/60 shadow-md ring-1 ring-black/10 transition hover:text-moss disabled:opacity-0 sm:flex dark:bg-[#0c0c0e]/80 dark:text-white/60 dark:ring-white/10 dark:hover:text-sea"
+          aria-label={t("read.goToPage")}
+        >
+          <ChevronLeft className="h-5 w-5 rtl:rotate-180" />
+        </button>
+        <button
+          type="button"
+          disabled={page >= pageCount}
+          onClick={() => jumpTo(page + 1)}
+          className="absolute end-2 top-1/2 z-10 hidden h-12 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-ink/60 shadow-md ring-1 ring-black/10 transition hover:text-moss disabled:opacity-0 sm:flex dark:bg-[#0c0c0e]/80 dark:text-white/60 dark:ring-white/10 dark:hover:text-sea"
+          aria-label={t("read.goToPage")}
+        >
+          <ChevronRight className="h-5 w-5 rtl:rotate-180" />
+        </button>
         {error ? (
           <div className="flex h-full items-center justify-center p-6 text-center">
             <div className="max-w-md rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
@@ -265,19 +324,22 @@ export function PdfReader({ bookId, url, canDownload, title, page, totalPages, o
             // Fit the whole page within the visible area (both dimensions).
             <div className="flex h-full w-full items-start justify-center">
               <img
+                key={page}
                 src={imageUrl}
                 alt={`${title} - ${t("ask.page")} ${page}`}
-                className="max-h-full w-auto max-w-full object-contain bg-white shadow-xl ring-1 ring-black/10 dark:ring-white/10"
+                className={`book-page-turn-${turnDirection} max-h-full w-auto max-w-full object-contain bg-white shadow-xl ring-1 ring-black/10 dark:ring-white/10`}
+                style={dragProgress ? { transform: `perspective(1600px) rotateY(${turnDirection === "next" ? -dragProgress * 70 : dragProgress * 70}deg)` } : undefined}
               />
             </div>
           ) : (
             // Fit the column width; zoom past 100% scrolls horizontally.
             <div className="min-h-full w-full">
               <img
+                key={page}
                 src={imageUrl}
                 alt={`${title} - ${t("ask.page")} ${page}`}
-                className="mx-auto block max-w-none bg-white shadow-xl ring-1 ring-black/10 dark:ring-white/10"
-                style={{ width: `${zoom}%`, transformOrigin: "center top" }}
+                className={`book-page-turn-${turnDirection} mx-auto block max-w-none bg-white shadow-xl ring-1 ring-black/10 dark:ring-white/10`}
+                style={{ width: `${zoom}%`, transformOrigin: "center top", ...(dragProgress ? { transform: `perspective(1600px) rotateY(${turnDirection === "next" ? -dragProgress * 70 : dragProgress * 70}deg)` } : {}) }}
               />
             </div>
           )

@@ -23,6 +23,13 @@ import type { SourceFormat } from "../../utils/source-format.js";
 const MAX_EMBEDDING_CHARS = 50000;
 const PROGRESS_INTERVAL_MS = 1500;
 
+class ProcessingCancelledError extends Error {
+  constructor() {
+    super("Processing was cancelled.");
+    this.name = "ProcessingCancelledError";
+  }
+}
+
 export type CreatedBook = {
   bookId: string;
   title: string;
@@ -101,6 +108,7 @@ export async function processBook(bookId: string): Promise<void> {
   const format = (book.sourceFormat as SourceFormat) ?? "pdf";
 
   try {
+    await throwIfCancelled(bookId);
     const buffer = await storage.get(book.originalPdfPath);
 
     let lastProgressAt = 0;
@@ -116,6 +124,7 @@ export async function processBook(bookId: string): Promise<void> {
     };
 
     const { pages, pageCount } = await extractDocument(buffer, format, onProgress);
+    await throwIfCancelled(bookId);
     const chunks = chunkPages(pages.map((entry) => entry.page));
 
     if (!chunks.length) {
@@ -145,6 +154,7 @@ export async function processBook(bookId: string): Promise<void> {
     }));
 
     const embeddingResults = await embedChunks(cleanedChunks.map((chunk) => chunk.chunkText));
+    await throwIfCancelled(bookId);
 
     await Chunk.deleteMany({ bookId: book._id });
     await Chunk.insertMany(
@@ -165,23 +175,47 @@ export async function processBook(bookId: string): Promise<void> {
       { ordered: false }
     );
 
-    book.status = "ready";
-    book.pageCount = pageCount;
-    book.processedPages = pageCount;
-    book.chunkCount = cleanedChunks.length;
-    book.readyAt = new Date();
-    book.error = undefined;
-    await book.save();
+    await throwIfCancelled(bookId);
+
+    const completedBook = await Book.findOneAndUpdate(
+      { _id: book._id, status: "processing" },
+      {
+        $set: {
+          status: "ready",
+          pageCount,
+          processedPages: pageCount,
+          chunkCount: cleanedChunks.length,
+          readyAt: new Date()
+        },
+        $unset: { error: 1 }
+      },
+      { new: true }
+    );
+    if (!completedBook) {
+      throw new ProcessingCancelledError();
+    }
 
     // Mirror the finished book into OMP (Arado). Best-effort: never blocks or
     // fails ingestion, and records its own status on the book.
-    await pushBookToOmp(book);
+    await pushBookToOmp(completedBook);
 
     await recordUsage("success", { pageCount, chunkCount: cleanedChunks.length, startedAt });
   } catch (error) {
+    if (error instanceof ProcessingCancelledError) {
+      await Chunk.deleteMany({ bookId }).catch(() => undefined);
+      await BookPage.deleteMany({ bookId }).catch(() => undefined);
+      return;
+    }
     console.error(`[ingestion] processing failed for ${bookId}:`, error);
     await markFailed(book, error instanceof Error ? error.message : "Processing failed.");
     await recordUsage("failure", { startedAt });
+  }
+}
+
+async function throwIfCancelled(bookId: string) {
+  const current = await Book.findById(bookId, { status: 1 }).lean();
+  if (!current || current.status === "cancelled") {
+    throw new ProcessingCancelledError();
   }
 }
 
