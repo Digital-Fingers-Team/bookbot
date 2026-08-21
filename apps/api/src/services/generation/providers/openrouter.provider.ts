@@ -4,8 +4,7 @@ import { ApiError } from "../../../utils/api-error.js";
 import { parseAnswerOnlyJson } from "../answer-parser.service.js";
 import {
   buildUserPrompt,
-  STREAMING_RAG_SYSTEM_PROMPT,
-  STRICT_RAG_SYSTEM_PROMPT
+  getSystemPrompt
 } from "../prompt.service.js";
 import type { LLMProvider } from "../llm-provider.service.js";
 
@@ -60,9 +59,9 @@ export class OpenRouterProvider implements LLMProvider {
           max_tokens: 900,
           response_format: { type: "json_object" },
           messages: [
-            { role: "system", content: STRICT_RAG_SYSTEM_PROMPT },
+            { role: "system", content: getSystemPrompt(false, input.allowOutsideBook) },
             ...toHistoryMessages(input.history),
-            { role: "user", content: buildUserPrompt(input.question, input.chunks) }
+            { role: "user", content: buildUserPrompt(input.question, input.chunks, input.allowOutsideBook) }
           ]
         })
       });
@@ -126,9 +125,9 @@ export class OpenRouterProvider implements LLMProvider {
           max_tokens: 900,
           stream: true,
           messages: [
-            { role: "system", content: STREAMING_RAG_SYSTEM_PROMPT },
+            { role: "system", content: getSystemPrompt(true, input.allowOutsideBook) },
             ...toHistoryMessages(input.history),
-            { role: "user", content: buildUserPrompt(input.question, input.chunks) }
+            { role: "user", content: buildUserPrompt(input.question, input.chunks, input.allowOutsideBook) }
           ]
         })
       });

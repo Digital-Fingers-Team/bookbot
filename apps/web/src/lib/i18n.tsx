@@ -50,6 +50,7 @@ export const STRINGS = {
     en: "The system searches your uploaded books, shows the matching evidence, and answers only from what it finds."
   },
   "ask.searching": { ar: "جارٍ البحث في كتبك", en: "Searching your books" },
+  "ask.expandOutsideBook": { ar: "وسّع الإجابة خارج الكتاب", en: "Expand beyond this book" },
   "ask.evidence": { ar: "الأدلة", en: "Evidence" },
   "ask.rawChunks": { ar: "المقاطع المسترجَعة", en: "Raw retrieved chunks" },
   "ask.page": { ar: "صفحة", en: "Page" },

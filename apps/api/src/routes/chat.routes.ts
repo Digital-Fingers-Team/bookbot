@@ -37,6 +37,7 @@ const chatSchema = z.object({
   // Scope retrieval to a single book ("ask within this book").
   bookId: z.string().trim().min(1).max(64).optional(),
   // Recent turns so follow-up questions can resolve context.
+  allowOutsideBook: z.boolean().optional(),
   history: z
     .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().trim().max(8000) }))
     .max(20)
@@ -89,7 +90,7 @@ chatRouter.post(
     const books = buildEvidenceBooks(chunks);
     const sources = buildStructuredSources(books);
 
-    if (!chunks.length) {
+    if (!chunks.length && !parsed.data.allowOutsideBook) {
       await UsageEvent.create({
         type: "chat",
         status: "success",
@@ -124,7 +125,8 @@ chatRouter.post(
           question: parsed.data.question,
           chunks,
           model: parsed.data.model,
-          history: parsed.data.history
+          history: parsed.data.history,
+          allowOutsideBook: parsed.data.allowOutsideBook
         });
     const generationUsage = generation.usage ?? {};
     const { answer: cleanAnswer, notFound } = extractNotFound(generation.answer);
@@ -204,9 +206,9 @@ chatRouter.post("/stream", async (req, res) => {
       usage: { retrievedChunks: chunks.length, vectorCandidateCount: retrieval.vectorCandidateCount }
     });
 
-    if (!chunks.length) {
+    if (!chunks.length && !parsed.data.allowOutsideBook) {
       send("token", { delta: NOT_FOUND_ANSWER });
-      send("done", { answer: NOT_FOUND_ANSWER, usage: { model, retrievedChunks: 0 } });
+      send("done", { answer: NOT_FOUND_ANSWER, notFound: true, usage: { model, retrievedChunks: 0 } });
       await UsageEvent.create({
         type: "chat",
         status: "success",
@@ -268,7 +270,8 @@ chatRouter.post("/stream", async (req, res) => {
         question: parsed.data.question,
         chunks,
         model: parsed.data.model,
-        history: parsed.data.history
+        history: parsed.data.history,
+        allowOutsideBook: parsed.data.allowOutsideBook
       })) {
         if (aborted) {
           break;
@@ -286,7 +289,8 @@ chatRouter.post("/stream", async (req, res) => {
         question: parsed.data.question,
         chunks,
         model: parsed.data.model,
-        history: parsed.data.history
+        history: parsed.data.history,
+        allowOutsideBook: parsed.data.allowOutsideBook
       });
       pendingBuffer = generated.answer;
       checkPrefix(true);
@@ -294,6 +298,7 @@ chatRouter.post("/stream", async (req, res) => {
 
     send("done", {
       answer,
+      notFound,
       usage: { model, retrievedChunks: chunks.length, vectorCandidateCount: retrieval.vectorCandidateCount }
     });
 

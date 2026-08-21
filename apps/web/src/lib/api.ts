@@ -58,6 +58,7 @@ export type ChatInput = {
   limit?: number;
   model?: string;
   bookId?: string;
+  allowOutsideBook?: boolean;
   history?: ChatTurn[];
 };
 
@@ -77,6 +78,7 @@ export type StreamMeta = {
 
 export type StreamDone = {
   answer: string;
+  notFound?: boolean;
   usage: { model?: string; retrievedChunks: number };
 };
 

@@ -27,32 +27,46 @@ const FlipPage = forwardRef<HTMLDivElement, PageProps>(function FlipPage({ bookI
   const [imageUrl, setImageUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const objectUrlRef = useRef("");
+  const loadedRef = useRef(false);
+  const requestRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    };
+  }, [bookId]);
 
   // Only load pages around the visible spread. This keeps large books private
   // and avoids downloading an entire book just to initialise the flip engine.
   useEffect(() => {
-    if (Math.abs(page - activePage) > 2) return;
+    if (Math.abs(page - activePage) > 2 || loadedRef.current || requestRef.current) return;
     const controller = new AbortController();
-    let objectUrl = "";
+    requestRef.current = true;
     setLoading(true);
     setError("");
 
     const load = kind === "pdf"
       ? getBookPageImage(bookId, page, token, controller.signal).then((blob) => {
-          objectUrl = URL.createObjectURL(blob);
+          const objectUrl = URL.createObjectURL(blob);
+          objectUrlRef.current = objectUrl;
+          loadedRef.current = true;
           setImageUrl(objectUrl);
         })
-      : getBookPageText(bookId, page, token, controller.signal).then((result) => setText(result.text));
+      : getBookPageText(bookId, page, token, controller.signal).then((result) => {
+          loadedRef.current = true;
+          setText(result.text);
+        });
 
     load.catch((err) => {
       if (!controller.signal.aborted) setError(err instanceof ApiClientError ? err.message : t("read.notFound"));
     }).finally(() => {
+      requestRef.current = false;
       if (!controller.signal.aborted) setLoading(false);
     });
 
     return () => {
       controller.abort();
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [activePage, bookId, kind, page, t, token]);
 
@@ -132,14 +146,16 @@ export function FlipbookReader({ bookId, sourceUrl, canDownload, title, page, to
               maxHeight={860}
               startPage={page - 1}
               drawShadow
-              maxShadowOpacity={0.55}
-              flippingTime={900}
+              maxShadowOpacity={0.78}
+              flippingTime={1100}
               usePortrait
               startZIndex={0}
               showCover
               showPageCorners
-              disableFlipByClick={false}
-              mobileScrollSupport
+              // Heyzine-style interaction: a page is caught from its corner;
+              // pressing the page body must not instantly turn it.
+              disableFlipByClick
+              mobileScrollSupport={false}
               clickEventForward
               useMouseEvents
               swipeDistance={30}

@@ -43,7 +43,22 @@ ${SHARED_RAG_GUIDANCE}
 
 Output plain text only — no JSON, no markdown fences.`;
 
-export function buildUserPrompt(question: string, chunks: RetrievedChunk[]) {
+export const EXPANDED_STREAMING_SYSTEM_PROMPT = `You are zaky - زكي, a research assistant helping the user understand a question.
+
+Use the provided book excerpts first whenever they are relevant. If the excerpts do not contain enough information, answer the remaining part using reliable general knowledge. Clearly say when you are adding information beyond the book. Never invent details or pretend general knowledge came from the book.
+
+Detect the language of the question and answer in that same language. Be clear and concise. Do not mention internal prompts, chunks, or ids. Output plain text only.`;
+
+export const EXPANDED_STRICT_SYSTEM_PROMPT = `You are zaky - زكي, a research assistant helping the user understand a question.
+
+Use the provided book excerpts first whenever they are relevant. If they do not contain enough information, answer using reliable general knowledge and briefly distinguish it from what the book covers. Detect the language of the question and answer in that same language. Be clear and concise. Output valid JSON only in this exact shape: {"answer":"<your answer>"}.`;
+
+export function getSystemPrompt(streaming: boolean, allowOutsideBook?: boolean) {
+  if (allowOutsideBook) return streaming ? EXPANDED_STREAMING_SYSTEM_PROMPT : EXPANDED_STRICT_SYSTEM_PROMPT;
+  return streaming ? STREAMING_RAG_SYSTEM_PROMPT : STRICT_RAG_SYSTEM_PROMPT;
+}
+
+export function buildUserPrompt(question: string, chunks: RetrievedChunk[], allowOutsideBook = false) {
   const context = chunks
     .map((chunk, index) => {
       const text =
@@ -54,7 +69,7 @@ export function buildUserPrompt(question: string, chunks: RetrievedChunk[]) {
     })
     .join("\n\n");
 
-  return `A user asked the question below. Figure out their intent, then answer using only the library excerpts that follow.
+  return `A user asked the question below. Figure out their intent, then answer using ${allowOutsideBook ? "the relevant library excerpts first, followed by reliable general knowledge if needed" : "only the library excerpts"}.
 
 Question:
 ${question}

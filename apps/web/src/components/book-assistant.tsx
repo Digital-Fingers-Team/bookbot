@@ -15,6 +15,7 @@ type Msg = {
   content: string;
   sources: Source[];
   status: "searching" | "streaming" | "done" | "error";
+  notFound?: boolean;
 };
 
 export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJumpToPage: (page: number) => void }) {
@@ -84,9 +85,9 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
     setMessages((prev) => prev.map((message) => (message.id === id ? update(message) : message)));
   }
 
-  async function send(event?: FormEvent) {
+  async function send(event?: FormEvent, questionOverride?: string, allowOutsideBook = false, appendUser = true) {
     event?.preventDefault();
-    const question = input.trim();
+    const question = (questionOverride ?? input).trim();
     if (!question || busy) {
       return;
     }
@@ -94,10 +95,10 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
     const assistantId = crypto.randomUUID();
     setMessages((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), role: "user", content: question, sources: [], status: "done" },
-      { id: assistantId, role: "assistant", content: "", sources: [], status: "searching" }
+      ...(appendUser ? [{ id: crypto.randomUUID(), role: "user" as const, content: question, sources: [], status: "done" as const }] : []),
+      { id: assistantId, role: "assistant", content: "", sources: [], status: "searching", notFound: false }
     ]);
-    setInput("");
+    if (!questionOverride) setInput("");
     setBusy(true);
 
     const controller = new AbortController();
@@ -105,12 +106,12 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
 
     try {
       await streamQuestion(
-        { question, limit: RESPONSE_DEPTH, bookId },
+        { question, limit: RESPONSE_DEPTH, bookId, allowOutsideBook },
         {
           signal: controller.signal,
           onMeta: (meta) => patch(assistantId, (message) => ({ ...message, sources: meta.sources ?? [], status: "streaming" })),
           onToken: (delta) => patch(assistantId, (message) => ({ ...message, content: message.content + delta, status: "streaming" })),
-          onDone: (done) => patch(assistantId, (message) => ({ ...message, content: message.content || done.answer, status: "done" })),
+          onDone: (done) => patch(assistantId, (message) => ({ ...message, content: message.content || done.answer, status: "done", notFound: Boolean(done.notFound) })),
           onError: (error) => patch(assistantId, (message) => ({ ...message, status: "error", content: message.content || error.message }))
         },
         token
@@ -121,6 +122,14 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
       patch(assistantId, (message) =>
         message.status === "searching" || message.status === "streaming" ? { ...message, status: "done" } : message
       );
+    }
+  }
+
+  function askOutsideBook(messageId: string) {
+    const assistantIndex = messages.findIndex((message) => message.id === messageId);
+    const previous = assistantIndex > 0 ? messages[assistantIndex - 1] : undefined;
+    if (previous?.role === "user") {
+      void send(undefined, previous.content, true, false);
     }
   }
 
@@ -181,6 +190,16 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
                     </p>
                   )}
                 </div>
+                {message.status === "done" && message.notFound && !busy ? (
+                  <button
+                    type="button"
+                    onClick={() => askOutsideBook(message.id)}
+                    className="inline-flex items-center gap-2 rounded-full border border-moss/30 bg-moss/5 px-3 py-1.5 text-xs font-semibold text-moss transition hover:bg-moss/10 dark:border-sea/30 dark:bg-sea/10 dark:text-sea dark:hover:bg-sea/15"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {t("ask.expandOutsideBook")}
+                  </button>
+                ) : null}
                 {message.sources.length ? (
                   <div className="flex flex-wrap gap-1.5">
                     {message.sources.map((source, index) => (

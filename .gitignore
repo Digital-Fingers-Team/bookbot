@@ -6,6 +6,10 @@ coverage
 .env
 .env.local
 .env.*.local
+*.key
+*.pem
+*.xlsx
+*.bat
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -21,3 +25,4 @@ pnpm-debug.log*
 /omp-3.5.0-4/
 /omp-full.tar.gz
 *.xlsx
+*.bat

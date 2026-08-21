@@ -63,6 +63,7 @@ export type GenerateAnswerInput = {
   chunks: RetrievedChunk[];
   model?: string;
   history?: ChatTurn[];
+  allowOutsideBook?: boolean;
 };
 
 export type GenerateAnswerResult = {
