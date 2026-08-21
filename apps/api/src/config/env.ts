@@ -60,7 +60,9 @@ const schema = z.object({
   OCR_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(4096),
   // Number of books processed in parallel. All imported books are queued
   // immediately; this limit protects local CPU, MongoDB, and embedding APIs.
-  PROCESSING_CONCURRENCY: z.coerce.number().int().positive().max(8).default(8),
+  // Keep a generous upper bound for larger production servers while still
+  // rejecting accidental or unusably large values from the environment.
+  PROCESSING_CONCURRENCY: z.coerce.number().int().positive().max(64).default(8),
   PDF_STORAGE_DIR: z.string().default("storage/pdfs"),
   RECEIPTS_DIR: z.string().default("storage/receipts"),
   // --- Blob storage (uploaded PDFs + payment receipts) ---

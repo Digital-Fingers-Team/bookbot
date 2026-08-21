@@ -27,7 +27,15 @@ export function createApp(): Express {
   app.use(helmet());
   app.use(
     cors({
-      origin: env.CLIENT_ORIGIN,
+      origin: (origin, callback) => {
+        // Browsers commonly use 127.0.0.1 when the app was opened from a
+        // local development link, while the configured origin uses localhost.
+        // Treat the two loopback names as equivalent in development only.
+        const localOrigin = /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/i;
+        const allowed = !origin || origin === env.CLIENT_ORIGIN ||
+          (env.NODE_ENV !== "production" && localOrigin.test(origin) && localOrigin.test(env.CLIENT_ORIGIN));
+        callback(allowed ? null : new Error("CORS origin is not allowed"), allowed ? true : false);
+      },
       credentials: true
     })
   );

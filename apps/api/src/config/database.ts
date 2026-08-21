@@ -17,10 +17,18 @@ export async function connectDatabase() {
     // sync them explicitly via ensureIndexes() instead.
     autoIndex: env.NODE_ENV !== "production",
     serverSelectionTimeoutMS: 5_000,
-    retryWrites: true
+    retryWrites: true,
+    // The local Docker image advertises its container hostname (`mongo`),
+    // which is not resolvable from the host. Keep topology discovery enabled
+    // for Atlas, but connect directly when using the host-published endpoint.
+    directConnection: isLocalMongoUri(env.MONGODB_URI)
   });
 
   logger.info("MongoDB connected");
+}
+
+function isLocalMongoUri(uri: string) {
+  return /^mongodb(?:\+srv)?:\/\/(?:127\.0\.0\.1|localhost)(?::|\/)/i.test(uri);
 }
 
 /**

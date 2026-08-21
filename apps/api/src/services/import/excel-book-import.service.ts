@@ -66,17 +66,52 @@ export async function parseBooksExcel(buffer: Buffer): Promise<ExcelBookRow[]> {
 
 export async function resolvePdfUrl(viewerUrl: string): Promise<string> {
   const parsed = new URL(viewerUrl);
-  if (parsed.hostname !== "designrr.page") throw new Error("The spreadsheet contains an unsupported viewer host.");
+  if (!isDesignrrHost(parsed.hostname) && !isTrustedPdfHost(parsed.hostname)) {
+    throw new Error("The spreadsheet contains an unsupported viewer host.");
+  }
+  // Some exports contain the generated PDF URL directly. Avoid fetching the
+  // viewer page in that case (and keep query strings such as signed S3 params).
+  if (isPdfUrl(parsed)) return parsed.toString();
+
   const response = await fetch(parsed, { signal: AbortSignal.timeout(20_000) });
   if (!response.ok) throw new Error(`The book viewer returned HTTP ${response.status}.`);
-  const html = await response.text();
-  const match = html.match(/btnDownloadPdf:\s*\{[\s\S]*?url:\s*["']([^"']+\.pdf)["']/i);
-  if (!match?.[1]) throw new Error("No downloadable PDF was found in the book viewer.");
-  const pdfUrl = new URL(match[1], parsed).toString();
-  if (new URL(pdfUrl).hostname !== "designrr.s3.amazonaws.com") {
+  const html = decodeEscapedUrlText(await response.text());
+  // Designrr has used a few equivalent shapes for this value over time. Do
+  // not require `url` to be inside btnDownloadPdf or `.pdf` to be last.
+  const candidates = [
+    ...html.matchAll(/(?:btnDownloadPdf|downloadPdf|pdfUrl|downloadUrl)[\s\S]{0,500}?url\s*:\s*["']([^"']+)["']/gi),
+    ...html.matchAll(/["'](https?:\/\/[^"']+\.pdf(?:\?[^"']*)?)["']/gi)
+  ];
+  const candidate = candidates.map((match) => match[1]).find((url) => {
+    if (!url) return false;
+    try { return isTrustedPdfHost(new URL(url, parsed).hostname) && isPdfUrl(new URL(url, parsed)); } catch { return false; }
+  });
+  if (!candidate) throw new Error("No downloadable PDF was found in the book viewer.");
+  const pdfUrl = new URL(candidate, parsed).toString();
+  if (!isTrustedPdfHost(new URL(pdfUrl).hostname)) {
     throw new Error("The resolved PDF host is not trusted.");
   }
   return pdfUrl;
+}
+
+function isDesignrrHost(hostname: string): boolean {
+  return hostname === "designrr.page" || hostname.endsWith(".designrr.page");
+}
+
+function isTrustedPdfHost(hostname: string): boolean {
+  return hostname === "designrr.s3.amazonaws.com" || hostname === "s3.amazonaws.com";
+}
+
+function isPdfUrl(url: URL): boolean {
+  return /\.pdf(?:$|[?#])/i.test(url.pathname + url.search + url.hash);
+}
+
+function decodeEscapedUrlText(value: string): string {
+  return value
+    .replace(/\\\//g, "/")
+    .replace(/\\u0026/gi, "&")
+    .replace(/&amp;/gi, "&")
+    .replace(/\\u003d/gi, "=");
 }
 
 function parseSharedStrings(xml: string): string[] {
