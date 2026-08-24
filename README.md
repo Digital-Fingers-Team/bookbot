@@ -53,6 +53,9 @@ pnpm --filter @aradobot/api check:vector-index
 - `MONGODB_URI` - MongoDB connection string.
 - `OPENROUTER_API_KEY` - OpenRouter API key.
 - `OPENROUTER_MODEL` - Default model ID.
+- `LLM_PROVIDER` - `openrouter` (default) or `local`.
+- `LOCAL_LLM_BASE_URL` / `LOCAL_LLM_MODEL` - OpenAI-compatible local server settings (for example Ollama at `http://127.0.0.1:11434/v1`).
+- `EMBEDDING_PROVIDER` - `openrouter` (default) or `local`. Local embeddings require a matching MongoDB vector index and re-embedding existing chunks.
 - `AUTH_JWT_SECRET` - Secret used to sign AradoBot login sessions.
 - `DEFAULT_ADMIN_EMAIL` - Seeded admin email, defaults to `admin@example.com`.
 - `DEFAULT_ADMIN_PASSWORD` - Seeded admin password, defaults to `admin123`.
@@ -88,6 +91,8 @@ OCR settings (all optional, sensible defaults):
 Processing is parallel at three levels: multiple books at once (`PROCESSING_CONCURRENCY`), concurrent per-page text extraction within a book, and concurrent OCR bounded globally by `OCR_CONCURRENCY`. The global OCR limit means adding more books never overwhelms the provider or CPU.
 
 OCR uses the same `OPENROUTER_API_KEY`; large scanned/broken books cost per page and take a few minutes.
+
+To use a local chat model, uncomment the local settings in `.env.example`, set `LLM_PROVIDER=local`, and run an OpenAI-compatible server such as Ollama. Set `OCR_PROVIDER=local` too if ingestion must be fully offline. Chat and embeddings are configured separately.
 
 ## RAG Boundary
 

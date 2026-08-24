@@ -9,7 +9,7 @@ import {
   PROCESSING_VERSION,
   embeddingVersion
 } from "../../config/rag.js";
-import { env } from "../../config/env.js";
+import { getEmbeddingSettings } from "../../config/embedding.js";
 import { embedTexts } from "../embeddings/openrouter-embedding.service.js";
 import { titleFromFileName } from "../../utils/file-name.js";
 import { cleanExtractedText, normalizeText } from "../../utils/text.js";
@@ -166,8 +166,8 @@ export async function processBook(bookId: string): Promise<void> {
         chunkText: chunk.chunkText,
         normalizedText: normalizeText(chunk.chunkText),
         embedding: embeddingResults[index],
-        embeddingModel: env.OPENROUTER_EMBEDDING_MODEL,
-        embeddingDimensions: env.OPENROUTER_EMBEDDING_DIMENSIONS,
+        embeddingModel: getEmbeddingSettings().model,
+        embeddingDimensions: getEmbeddingSettings().dimensions,
         chunkingVersion: CHUNKING_VERSION,
         embeddingVersion: embeddingVersion(),
         processingVersion: PROCESSING_VERSION

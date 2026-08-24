@@ -1,4 +1,4 @@
-import { env } from "../../config/env.js";
+import { getLLMSettings } from "../../config/llm.js";
 import { Book } from "../../models/book.model.js";
 import { ApiError } from "../../utils/api-error.js";
 import { readableBookTitle } from "../../utils/file-name.js";
@@ -35,21 +35,27 @@ export async function discoverBooks(question: string, language: "ar" | "en" = "a
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
+  const settings = getLLMSettings();
+  if (settings.requiresApiKey && !settings.apiKey) {
+    throw new ApiError(503, "LLM_NOT_CONFIGURED", `${settings.name} is not configured yet.`);
+  }
   try {
-    const response = await fetch(`${env.OPENROUTER_BASE_URL}/chat/completions`, {
+    const responseFormat = settings.jsonMode ? { response_format: { type: "json_object" } } : {};
+    const response = await fetch(`${settings.baseUrl}/chat/completions`, {
       method: "POST",
       signal: controller.signal,
       headers: {
-        Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
+        ...(settings.apiKey ? { Authorization: `Bearer ${settings.apiKey}` } : {}),
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://aradobot.local",
-        "X-Title": "AradoBot Discovery"
+        ...(settings.name === "OpenRouter"
+          ? { "HTTP-Referer": "https://aradobot.local", "X-Title": "AradoBot Discovery" }
+          : {})
       },
       body: JSON.stringify({
-        model: env.OPENROUTER_MODEL,
+        model: settings.model,
         temperature: 0.3,
         max_tokens: 700,
-        response_format: { type: "json_object" },
+        ...responseFormat,
         messages: [
           { role: "system", content: DISCOVERY_SYSTEM_PROMPT },
           { role: "user", content: userPrompt }

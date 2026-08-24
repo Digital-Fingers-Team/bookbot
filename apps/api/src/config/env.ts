@@ -33,11 +33,33 @@ const schema = z.object({
     .default("false")
     .transform((value) => value === "true" || value === "1"),
   VECTOR_NUM_CANDIDATES_MULTIPLIER: z.coerce.number().int().positive().default(10),
+  // Generation provider. Keep `openrouter` for the current cloud setup, or
+  // use `local` with an OpenAI-compatible server such as Ollama, LM Studio,
+  // or vLLM.
+  LLM_PROVIDER: z.enum(["openrouter", "local"]).default("openrouter"),
   OPENROUTER_API_KEY: z.string().optional(),
   // Base URL for the chat + embedding API. Point this at a regional or
   // self-hosted OpenAI-compatible endpoint for data residency / sovereignty.
   OPENROUTER_BASE_URL: z.string().url().default("https://openrouter.ai/api/v1"),
   OPENROUTER_MODEL: z.string().default("openai/gpt-4o-mini"),
+  // Local LLM settings. Example for Ollama: BASE_URL=http://127.0.0.1:11434/v1,
+  // MODEL=qwen2.5:7b, API_KEY can stay empty. Set JSON_MODE=false if your
+  // local server rejects the OpenAI response_format option.
+  LOCAL_LLM_BASE_URL: z.string().url().default("http://127.0.0.1:11434/v1"),
+  LOCAL_LLM_API_KEY: z.string().optional(),
+  LOCAL_LLM_MODEL: z.string().default("qwen2.5:7b"),
+  LOCAL_LLM_JSON_MODE: z
+    .string()
+    .default("true")
+    .transform((value) => value !== "false" && value !== "0"),
+  // Embeddings are configured separately from chat. Set EMBEDDING_PROVIDER
+  // to `local` only after creating a MongoDB vector index matching the local
+  // model's dimensions and re-embedding existing chunks.
+  EMBEDDING_PROVIDER: z.enum(["openrouter", "local"]).default("openrouter"),
+  LOCAL_EMBEDDING_BASE_URL: z.string().url().default("http://127.0.0.1:11434/v1"),
+  LOCAL_EMBEDDING_API_KEY: z.string().optional(),
+  LOCAL_EMBEDDING_MODEL: z.string().default("nomic-embed-text"),
+  LOCAL_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(768),
   OCR_ENABLED: z
     .string()
     .default("true")

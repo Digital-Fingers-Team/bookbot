@@ -1,4 +1,4 @@
-import { env } from "../../config/env.js";
+import { getEmbeddingSettings } from "../../config/embedding.js";
 import { ApiError } from "../../utils/api-error.js";
 
 type OpenRouterEmbeddingResponse = {
@@ -37,19 +37,21 @@ function delay(ms: number) {
 /** POST to the embeddings endpoint, retrying transient network failures (e.g. a
  * dropped connection mid-way through a long multi-batch ingestion job). */
 async function fetchEmbeddings(texts: string[]): Promise<Response> {
+  const settings = getEmbeddingSettings();
   for (let attempt = 1; attempt <= EMBEDDING_MAX_ATTEMPTS; attempt++) {
     try {
-      return await fetch(`${env.OPENROUTER_BASE_URL}/embeddings`, {
+      return await fetch(`${settings.baseUrl}/embeddings`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
+          ...(settings.apiKey ? { Authorization: `Bearer ${settings.apiKey}` } : {}),
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://aradobot.local",
-          "X-Title": "AradoBot"
+          ...(settings.provider === "openrouter"
+            ? { "HTTP-Referer": "https://aradobot.local", "X-Title": "AradoBot" }
+            : {})
         },
         body: JSON.stringify({
           input: texts,
-          model: env.OPENROUTER_EMBEDDING_MODEL,
+          model: settings.model,
           encoding_format: "float"
         })
       });
@@ -70,16 +72,17 @@ async function fetchEmbeddings(texts: string[]): Promise<Response> {
 export async function embedTexts(
   texts: string[]
 ): Promise<EmbeddingBatchResult> {
+  const settings = getEmbeddingSettings();
   if (!texts.length) {
     return {
       embeddings: [],
-      model: env.OPENROUTER_EMBEDDING_MODEL,
-      dimensions: env.OPENROUTER_EMBEDDING_DIMENSIONS,
+      model: settings.model,
+      dimensions: settings.dimensions,
       usage: {}
     };
   }
 
-  if (!env.OPENROUTER_API_KEY) {
+  if (settings.provider === "openrouter" && !settings.apiKey) {
     throw new ApiError(
       503,
       "OPENROUTER_NOT_CONFIGURED",
@@ -135,7 +138,7 @@ export async function embedTexts(
     embeddings.some(
       (embedding) =>
         embedding.length !==
-        env.OPENROUTER_EMBEDDING_DIMENSIONS
+        settings.dimensions
     )
   ) {
     console.error(
@@ -144,7 +147,7 @@ export async function embedTexts(
         requestedTexts: texts.length,
         receivedEmbeddings: embeddings.length,
         expectedDimensions:
-          env.OPENROUTER_EMBEDDING_DIMENSIONS,
+          settings.dimensions,
         actualDimensions:
           embeddings[0]?.length,
         model: payload.model,
@@ -164,9 +167,9 @@ export async function embedTexts(
     embeddings,
     model:
       payload.model ??
-      env.OPENROUTER_EMBEDDING_MODEL,
+      settings.model,
     dimensions:
-      env.OPENROUTER_EMBEDDING_DIMENSIONS,
+      settings.dimensions,
     usage: {
       promptTokens:
         payload.usage?.prompt_tokens,

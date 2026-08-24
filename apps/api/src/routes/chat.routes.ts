@@ -1,6 +1,7 @@
 import { Router, type Router as ExpressRouter } from "express";
 import { z } from "zod";
 import { env } from "../config/env.js";
+import { getConfiguredLLMModel } from "../config/llm.js";
 import { UsageEvent } from "../models/usage-event.model.js";
 import { createLLMProvider } from "../services/generation/llm-provider.service.js";
 import { buildEvidenceBooks, buildStructuredSources } from "../services/retrieval/evidence.service.js";
@@ -32,7 +33,7 @@ const chatSchema = z.object({
   limit: z.number().int().min(1).max(75).optional(),
   knownChunkIds: z.array(z.string().trim().min(1)).max(200).optional(),
   previousAnswer: z.string().trim().max(8000).optional(),
-  provider: z.enum(["openrouter"]).optional(),
+  provider: z.enum(["openrouter", "local"]).optional(),
   model: z.string().trim().min(3).max(120).optional(),
   // Scope retrieval to a single book ("ask within this book").
   bookId: z.string().trim().min(1).max(64).optional(),
@@ -188,7 +189,7 @@ chatRouter.post("/stream", async (req, res) => {
     aborted = true;
   });
 
-  const model = parsed.data.model ?? env.OPENROUTER_MODEL;
+  const model = parsed.data.model ?? getConfiguredLLMModel(parsed.data.provider);
 
   try {
     const topK = parsed.data.topK ?? parsed.data.limit ?? 15;

@@ -1,5 +1,6 @@
 import { Types, isValidObjectId, type PipelineStage } from "mongoose";
 import { env } from "../../config/env.js";
+import { getEmbeddingSettings } from "../../config/embedding.js";
 import { embeddingVersion } from "../../config/rag.js";
 import { Chunk } from "../../models/chunk.model.js";
 import type { RetrievedChunk } from "../../types/rag.js";
@@ -169,7 +170,7 @@ async function runVectorPipeline(vectorStage: Record<string, unknown>): Promise<
     { $vectorSearch: vectorStage } as unknown as PipelineStage,
     {
       $match: {
-        embeddingModel: env.OPENROUTER_EMBEDDING_MODEL,
+        embeddingModel: getEmbeddingSettings().model,
         embeddingVersion: embeddingVersion()
       }
     },

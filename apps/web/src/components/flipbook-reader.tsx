@@ -40,7 +40,9 @@ const FlipPage = forwardRef<HTMLDivElement, PageProps>(function FlipPage({ bookI
   // Only load pages around the visible spread. This keeps large books private
   // and avoids downloading an entire book just to initialise the flip engine.
   useEffect(() => {
-    if (Math.abs(page - activePage) > 2 || loadedRef.current || requestRef.current) return;
+    // Load a wider window so a quick corner flip does not reveal an empty
+    // white page while the next image is still being fetched.
+    if (Math.abs(page - activePage) > 4 || loadedRef.current || requestRef.current) return;
     const controller = new AbortController();
     requestRef.current = true;
     setLoading(true);
@@ -71,7 +73,7 @@ const FlipPage = forwardRef<HTMLDivElement, PageProps>(function FlipPage({ bookI
   }, [activePage, bookId, kind, page, t, token]);
 
   return (
-    <div ref={ref} className="flipbook-page" dir="auto">
+    <div ref={ref} className="flipbook-page" data-density="soft" dir="auto">
       <div className="flipbook-page-inner">
         {error ? (
           <div className="flex h-full items-center justify-center p-6 text-center text-xs text-red-600 dark:text-red-300">
@@ -97,7 +99,41 @@ export function FlipbookReader({ bookId, sourceUrl, canDownload, title, page, to
   const [pageInput, setPageInput] = useState(String(page));
   const [activePage, setActivePage] = useState(page - 1);
   const [error, setError] = useState("");
+  const [bookSize, setBookSize] = useState({ width: 420, height: 620 });
+  const [isPortrait, setIsPortrait] = useState(true);
   const bookRef = useRef<any>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+
+  // react-pageflip's stretch mode starts from its base dimensions and can
+  // leave a large reader viewport with a noticeably undersized page. Keep the
+  // page proportional, but let it use the available reading area.
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const updateSize = () => {
+      // Leave a little breathing room around the page so the reader does not
+      // feel over-zoomed on large screens.
+      const readingScale = 0.88;
+      const availableWidth = Math.max(280, (viewport.clientWidth - 8) * readingScale);
+      const availableHeight = Math.max(400, (viewport.clientHeight - 8) * readingScale);
+      const aspect = 420 / 620;
+      // Heyzine uses an open two-page spread on desktop and a single page on
+      // narrow screens. The pageflip library expects width/height for one
+      // sheet, so reserve half of the available width for each page here.
+      const portrait = availableWidth < 860;
+      const pageWidth = portrait ? availableWidth : availableWidth / 2 - 12;
+      const width = Math.floor(Math.min(620, pageWidth, availableHeight * aspect));
+      const height = Math.floor(Math.min(860, availableHeight, width / aspect));
+      setIsPortrait((current) => current === portrait ? current : portrait);
+      setBookSize((current) => current.width === width && current.height === height ? current : { width, height });
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => setPageInput(String(page)), [page]);
   useEffect(() => {
@@ -132,23 +168,27 @@ export function FlipbookReader({ bookId, sourceUrl, canDownload, title, page, to
           {canDownload && sourceUrl ? <><a href={`${kind === "pdf" ? `${sourceUrl}#page=${page}` : sourceUrl}`} target="_blank" rel="noreferrer" className="reader-control" aria-label="Open"><ExternalLink className="h-4 w-4" /></a><a href={sourceUrl} download={title} className="reader-control" aria-label="Download"><Download className="h-4 w-4" /></a></> : <button type="button" disabled className="reader-control cursor-not-allowed opacity-30" aria-label={t("read.downloadDisabled")}><Lock className="h-4 w-4" /></button>}
         </div>
       </div>
-      <div className="relative min-h-0 flex-1 overflow-auto p-4 sm:p-6">
+      <div ref={viewportRef} className="flipbook-viewport relative min-h-0 flex-1 overflow-auto p-4 sm:p-6">
         {error ? <div className="flex h-full items-center justify-center text-sm text-red-600">{error}</div> : (
-          <div className="flipbook-shell">
+          <div className={`flipbook-shell ${isPortrait ? "flipbook-shell-portrait" : "flipbook-shell-landscape"}`} aria-label={title}>
             <HTMLFlipBook
               ref={bookRef}
-              width={420}
-              height={620}
-              size="stretch"
+              key={`${bookId}-${isPortrait ? "portrait" : "spread"}`}
+              width={bookSize.width}
+              height={bookSize.height}
+              size="fixed"
               minWidth={280}
               maxWidth={620}
               minHeight={400}
               maxHeight={860}
               startPage={page - 1}
+              // Keep the library's dynamic shadow: it is what gives the
+              // turning sheet its depth. A restrained opacity avoids the
+              // oversized gray wedge seen with the default setting.
               drawShadow
-              maxShadowOpacity={0.78}
-              flippingTime={1100}
-              usePortrait
+              maxShadowOpacity={0.1}
+              flippingTime={620}
+              usePortrait={isPortrait}
               startZIndex={0}
               showCover
               showPageCorners
