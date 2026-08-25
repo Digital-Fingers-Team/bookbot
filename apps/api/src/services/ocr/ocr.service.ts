@@ -14,6 +14,11 @@ const FALLBACK_CODES = new Set(["OCR_OUT_OF_CREDITS", "OPENROUTER_NOT_CONFIGURED
 const ocrLimit = createLimiter(env.OCR_CONCURRENCY);
 
 let warnedFallback = false;
+// Once OpenRouter explicitly says the account cannot accept another OCR
+// request, do not spend one network round-trip per remaining page just to get
+// the same answer. Local OCR remains available and is already bounded by the
+// machine's CPU count in local-ocr.service.ts.
+let cloudUnavailable = false;
 
 /**
  * True when OCR can run at all. Local OCR needs no API key, so OCR is available
@@ -57,6 +62,10 @@ async function dispatch(image: Buffer, mimeType: string): Promise<string> {
     return localOcr(image);
   }
 
+  if (cloudUnavailable) {
+    return localOcr(image);
+  }
+
   try {
     const visionText = await visionOcr(image, mimeType);
 
@@ -74,6 +83,7 @@ async function dispatch(image: Buffer, mimeType: string): Promise<string> {
     return visionText;
   } catch (error) {
     if (error instanceof ApiError && FALLBACK_CODES.has(error.code)) {
+      cloudUnavailable = true;
       if (!warnedFallback) {
         console.warn(`[ocr] cloud OCR unavailable (${error.code}); falling back to local tesseract`);
         warnedFallback = true;

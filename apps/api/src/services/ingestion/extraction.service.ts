@@ -4,7 +4,7 @@ import type { PageText } from "./chunker.service.js";
 import type { OpenedDocument, PageExtractor } from "./extractors/extractor.js";
 
 import { env } from "../../config/env.js";
-import { mapWithConcurrency } from "../../utils/concurrency.js";
+import { createLimiter, mapWithConcurrency } from "../../utils/concurrency.js";
 import { evaluateTextQuality } from "./text-quality.service.js";
 import { isOcrAvailable } from "../ocr/ocr.service.js";
 import type { SourceFormat } from "../../utils/source-format.js";
@@ -18,9 +18,12 @@ import { TxtExtractor } from "./extractors/txt.extractor.js";
 
 export type { SourceFormat } from "../../utils/source-format.js";
 
-// The text pass is light (CPU + a shared pdfjs worker), so a modest pool is
-// plenty and avoids starving the rest of the process.
-const TEXT_CONCURRENCY = Math.max(2, Math.min(8, os.cpus().length || 4));
+// The text pass is light, but it is still CPU work. Keep one global budget so
+// several books do not each create their own two-page pool and oversubscribe a
+// small VM. This gives a two-vCPU Oracle instance both cores without making it
+// fight itself when multiple books are queued.
+const TEXT_CONCURRENCY = Math.max(1, Math.min(8, os.cpus().length || 1));
+const textLimit = createLimiter(TEXT_CONCURRENCY);
 
 export type ExtractionPage = {
   page: PageText;
@@ -74,28 +77,30 @@ export async function extractBook(
     // Pass 1 — cheap text extraction, pick the best candidate per page. Pages
     // are independent, so they run concurrently.
     await mapWithConcurrency(pageNumbers, TEXT_CONCURRENCY, async (pageNumber) => {
-      const candidates: Candidate[] = [];
+      await textLimit(async () => {
+        const candidates: Candidate[] = [];
 
-      if (pdf && pageNumber <= pdf.pageCount) {
-        const text = await extractSafely(pdf, pageNumber);
-        if (text !== undefined) {
-          candidates.push(scoreCandidate(text, pdfExtractor.name));
+        if (pdf && pageNumber <= pdf.pageCount) {
+          const text = await extractSafely(pdf, pageNumber);
+          if (text !== undefined) {
+            candidates.push(scoreCandidate(text, pdfExtractor.name));
+          }
         }
-      }
 
-      if (fallback && pageNumber <= fallback.pageCount) {
-        const text = await extractSafely(fallback, pageNumber);
-        if (text !== undefined) {
-          candidates.push(scoreCandidate(text, fallbackExtractor.name));
+        if (fallback && pageNumber <= fallback.pageCount) {
+          const text = await extractSafely(fallback, pageNumber);
+          if (text !== undefined) {
+            candidates.push(scoreCandidate(text, fallbackExtractor.name));
+          }
         }
-      }
 
-      const best = pickBest(candidates);
-      selected[pageNumber - 1] = toExtractionPage(pageNumber, best);
+        const best = pickBest(candidates);
+        selected[pageNumber - 1] = toExtractionPage(pageNumber, best);
 
-      if (best.score < env.OCR_MIN_TEXT_SCORE) {
-        ocrTargets.push(pageNumber);
-      }
+        if (best.score < env.OCR_MIN_TEXT_SCORE) {
+          ocrTargets.push(pageNumber);
+        }
+      });
     });
 
     ocrTargets.sort((a, b) => a - b);
@@ -177,12 +182,14 @@ async function extractNative(
     let done = 0;
 
     await mapWithConcurrency(pageNumbers, TEXT_CONCURRENCY, async (pageNumber) => {
-      const text = await extractSafely(doc, pageNumber);
-      if (text !== undefined) {
-        pages[pageNumber - 1] = toExtractionPage(pageNumber, scoreCandidate(text, extractor.name));
-      }
-      done += 1;
-      onProgress?.(done, pageCount);
+      await textLimit(async () => {
+        const text = await extractSafely(doc, pageNumber);
+        if (text !== undefined) {
+          pages[pageNumber - 1] = toExtractionPage(pageNumber, scoreCandidate(text, extractor.name));
+        }
+        done += 1;
+        onProgress?.(done, pageCount);
+      });
     });
 
     const extracted = pages.filter(
