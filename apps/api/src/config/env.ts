@@ -38,7 +38,7 @@ const schema = z.object({
     .string()
     .default("false")
     .transform((value) => value === "true" || value === "1"),
-  VECTOR_NUM_CANDIDATES_MULTIPLIER: z.coerce.number().int().positive().default(10),
+  VECTOR_NUM_CANDIDATES_MULTIPLIER: z.coerce.number().int().positive().default(20),
   // Generation provider. Keep `openrouter` for the current cloud setup, or
   // use `local` with an OpenAI-compatible server such as Ollama, LM Studio,
   // or vLLM.
