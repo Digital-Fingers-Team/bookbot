@@ -50,7 +50,7 @@ export async function parseBooksExcel(buffer: Buffer): Promise<ExcelBookRow[]> {
     return {
       rowNumber: Number.isInteger(sourceRowNumber) && sourceRowNumber > 0 ? sourceRowNumber : index + 1,
       sourceId: value(values, 1),
-      title: value(values, 3),
+      title: stripHtml(value(values, 3)),
       description: stripHtml(value(values, 6) || value(values, 5)),
       author: nullText(value(values, 31)),
       language: value(values, 12),
@@ -62,7 +62,7 @@ export async function parseBooksExcel(buffer: Buffer): Promise<ExcelBookRow[]> {
       viewerUrl: value(values, 19) || value(values, 7),
       fileName: value(values, 20)
     };
-  }).filter((row) => row.sourceId && row.title && row.viewerUrl);
+  }).filter((row) => isValidSourceId(row.sourceId) && row.title && row.viewerUrl);
 }
 
 export async function resolvePdfUrl(viewerUrl: string): Promise<string> {
@@ -151,6 +151,7 @@ function columnNumber(ref: string): number {
   return [...letters].reduce((n, letter) => n * 26 + letter.charCodeAt(0) - 64, 0);
 }
 function value(values: Map<number, string>, column: number): string { return values.get(column)?.trim() ?? ""; }
+function isValidSourceId(value: string): boolean { return /^\d+$/.test(value); }
 function nullText(value: string): string { return value === "NULL" ? "" : value; }
 function stripHtml(value: string): string {
   return value.replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ").replace(/&quot;/gi, '"').replace(/\s+/g, " ").trim();

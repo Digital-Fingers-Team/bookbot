@@ -13,5 +13,8 @@ describe("Excel book import", () => {
     expect(JSON.stringify(rows)).not.toContain("[object Object]");
     expect(rows.every((row) => Number.isInteger(row.rowNumber) && row.rowNumber > 0)).toBe(true);
     expect(new Set(rows.map((row) => row.rowNumber)).size).toBe(rows.length);
+    expect(rows.every((row) => /^\d+$/.test(row.sourceId))).toBe(true);
+    expect(rows.some((row) => row.title.includes("LanguageMenu"))).toBe(false);
+    expect(rows.some((row) => row.rowNumber === 1177 || row.rowNumber === 1178)).toBe(false);
   });
 });
