@@ -88,8 +88,7 @@ export function BookAssistant({ bookId, currentPage, onJumpToPage }: { bookId: s
     setMessages((prev) => prev.map((message) => (message.id === id ? update(message) : message)));
   }
 
-  async function send(event?: FormEvent, questionOverride?: string, allowOutsideBook = false, appendUser = true) {
-    event?.preventDefault();
+  async function send(questionOverride?: string, allowOutsideBook = false, appendUser = true) {
     const question = (questionOverride ?? input).trim();
     if (!question || busy) {
       return;
@@ -139,14 +138,19 @@ export function BookAssistant({ bookId, currentPage, onJumpToPage }: { bookId: s
       // Replace the "not found" response with the expanded answer instead of
       // leaving both responses stacked in the conversation.
       setMessages((current) => current.filter((message) => message.id !== messageId));
-      void send(undefined, previous.content, true, false);
+      void send(previous.content, true, false);
     }
+  }
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void send();
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
-      send();
+      void send();
     }
   }
 
@@ -243,7 +247,7 @@ export function BookAssistant({ bookId, currentPage, onJumpToPage }: { bookId: s
         )}
       </div>
 
-      <form onSubmit={send} className="border-t border-line p-3 dark:border-white/10">
+      <form onSubmit={onSubmit} className="border-t border-line p-3 dark:border-white/10">
         <div className="flex items-end gap-2 rounded-xl border border-line bg-paper p-1.5 transition focus-within:border-moss focus-within:ring-2 focus-within:ring-moss/15 dark:border-white/10 dark:bg-white/5">
           <textarea
             value={input}

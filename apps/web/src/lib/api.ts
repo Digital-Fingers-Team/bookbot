@@ -134,12 +134,21 @@ export async function streamQuestion(input: ChatInput, handlers: StreamHandlers,
 
       buffer += decoder.decode(value, { stream: true });
 
-      let boundary = buffer.indexOf("\n\n");
-      while (boundary >= 0) {
-        dispatchSseEvent(buffer.slice(0, boundary), handlers);
-        buffer = buffer.slice(boundary + 2);
-        boundary = buffer.indexOf("\n\n");
+      let boundaryMatch = buffer.match(/\r?\n\r?\n/);
+      while (boundaryMatch?.index !== undefined) {
+        dispatchSseEvent(buffer.slice(0, boundaryMatch.index), handlers);
+        buffer = buffer.slice(boundaryMatch.index + boundaryMatch[0].length);
+        boundaryMatch = buffer.match(/\r?\n\r?\n/);
       }
+    }
+
+    // Some proxies close an SSE response immediately after the final event
+    // without preserving its trailing blank line. Do not lose that event —
+    // otherwise the assistant can remain empty even though the request
+    // completed successfully.
+    buffer += decoder.decode();
+    if (buffer.trim()) {
+      dispatchSseEvent(buffer, handlers);
     }
   } catch (error) {
     if ((error as Error)?.name !== "AbortError") {
