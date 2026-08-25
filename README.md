@@ -1,36 +1,99 @@
 # AradoBot
 
-Production-ready AI book knowledge SaaS architecture for PDF ingestion, deterministic hybrid retrieval, and strict RAG generation through OpenRouter.
+AI-powered book discovery and reading for the Arab Administrative Development Organization (ARADO). AradoBot turns uploaded books into a searchable knowledge library, then answers questions with cited evidence from the user’s permitted books.
 
-## Apps
+[![CI](https://github.com/Digital-Fingers-Team/bookbot/actions/workflows/ci.yml/badge.svg)](https://github.com/Digital-Fingers-Team/bookbot/actions/workflows/ci.yml)
+[![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-10-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
 
-- `apps/api` - Express, MongoDB, Mongoose, pdf-parse, Fuse.js, OpenRouter.
-- `apps/web` - Next.js, React, Tailwind CSS.
+## What it does
 
-## Quick Start
+- Ingests PDF, EPUB, DOCX, and TXT books in the background.
+- Extracts, cleans, chunks, and embeds book content for retrieval.
+- Uses deterministic hybrid retrieval with vector search and lexical reranking.
+- Generates answers from retrieved passages only, with page-aware evidence and citations.
+- Detects low-quality PDF text layers and falls back to cloud vision OCR or local Tesseract OCR.
+- Provides Arabic-first, right-to-left UI with English support and theme switching.
+- Supports book discovery, reading progress, favorites, quizzes, conversations, and summary audio.
+- Includes admin tools for uploads, users, organizations, access requests, feedback, and analytics.
+- Integrates with Open Monograph Press (OMP) for catalog discovery, author accounts, SSO links, and submission workflows.
 
-This repo is pinned to `pnpm@10.34.3` and supports Node.js 20.20.0 or newer. Railpack is configured for Node 20 so managed builders do not try to run pnpm 11 on Node 20.
+## How it works
 
-```bash
+`mermaid
+flowchart LR
+    A[Book upload] --> B[Background processing]
+    B --> C[Text extraction and OCR]
+    C --> D[Cleaning and chunking]
+    D --> E[Embeddings in MongoDB]
+    Q[User question] --> F[Access-scoped retrieval]
+    E --> F
+    F --> G[LLM receives question and top chunks]
+    G --> H[Answer with evidence and citations]
+`
+
+The generation boundary is intentionally narrow: the model receives the question and retrieved chunks, never the full database or unretrieved book content.
+
+## Repository layout
+
+`text
+.
+├── apps/
+│   ├── api/             Express API, ingestion pipeline, retrieval, auth, and integrations
+│   └── web/             Next.js application and user interface
+├── scripts/             Monorepo development and production process runners
+├── docker-compose.yml   MongoDB Atlas Local for development
+├── .env.example         Environment variable template
+└── .github/workflows/   Continuous integration
+`
+
+## Requirements
+
+- Node.js `20.20.0` or newer
+- pnpm `10.34.3` (the repository is pinned to this version)
+- MongoDB with Search and Vector Search support
+- OpenRouter API key, unless you configure a compatible local LLM and embedding provider
+- Docker Desktop is recommended for local MongoDB development
+
+## Quick start
+
+### 1. Install dependencies
+
+`bash
 pnpm install
+`
+
+### 2. Create your environment file
+
+macOS/Linux:
+
+`bash
 cp .env.example .env
-pnpm dev
-```
+`
 
-Run MongoDB locally or update `MONGODB_URI`. The API defaults to port `4000`; the web app defaults to port `3000`.
+PowerShell:
 
-If the API says MongoDB is not reachable, start a database first:
+`powershell
+Copy-Item .env.example .env
+`
 
-```bash
+At minimum, review `MONGODB_URI`, `AUTH_JWT_SECRET`, `OPENROUTER_API_KEY`, `CLIENT_ORIGIN`, and `NEXT_PUBLIC_API_URL`. Change the seeded admin password before using a shared or production environment.
+
+### 3. Start MongoDB
+
+The included Compose file runs MongoDB Atlas Local, including the services needed for vector search:
+
+`bash
 docker compose up -d mongo
-pnpm dev
-```
+`
 
-The included Docker setup uses MongoDB Atlas Local, which bundles the Search and Vector Search services required by AradoBot. After starting it, create the vector index once (see below). Alternatively, use MongoDB Atlas and put its connection string in `MONGODB_URI`.
+You can use MongoDB Atlas instead by setting `MONGODB_URI` to your Atlas connection string.
 
-After MongoDB is running, create the chunk vector index. In `mongosh`, select the `aradobotd` database and run:
+### 4. Create the vector index
 
-```javascript
+Connect with `mongosh`, select the `aradobotd` database, and create the index once:
+
+`javascript
 db.chunks.createSearchIndex(
   "chunk_embedding_vector_index",
   "vectorSearch",
@@ -40,60 +103,121 @@ db.chunks.createSearchIndex(
     ]
   }
 )
-```
+`
 
-You can verify it with:
+Verify the index from the repository root:
 
-```bash
+`bash
 pnpm --filter @aradobot/api check:vector-index
-```
+`
 
-## Environment
+The example index uses OpenRouter’s default 1,536-dimensional embeddings. If you switch to a local embedding model, create an index with the model’s dimensions and re-embed existing chunks.
 
-- `MONGODB_URI` - MongoDB connection string.
-- `OPENROUTER_API_KEY` - OpenRouter API key.
-- `OPENROUTER_MODEL` - Default model ID.
-- `LLM_PROVIDER` - `openrouter` (default) or `local`.
-- `LOCAL_LLM_BASE_URL` / `LOCAL_LLM_MODEL` - OpenAI-compatible local server settings (for example Ollama at `http://127.0.0.1:11434/v1`).
-- `EMBEDDING_PROVIDER` - `openrouter` (default) or `local`. Local embeddings require a matching MongoDB vector index and re-embedding existing chunks.
-- `AUTH_JWT_SECRET` - Secret used to sign AradoBot login sessions.
-- `DEFAULT_ADMIN_EMAIL` - Seeded admin email, defaults to `admin@example.com`.
-- `DEFAULT_ADMIN_PASSWORD` - Seeded admin password, defaults to `admin123`.
-- `ADMIN_API_KEY` - Optional API-only fallback key for upload/delete/stats automation.
-- `CLIENT_ORIGIN` - CORS origin for the frontend.
-- `NEXT_PUBLIC_API_URL` - Browser-facing API URL.
+### 5. Run the applications
 
-## Ingestion & OCR
+`bash
+pnpm dev
+`
 
-Uploads are processed in the background: the API stores the PDF, creates the book as `processing`, and returns immediately while extraction runs (the Library shows live progress and marks the book `ready` or `failed`).
+The web application is available at [http://localhost:3000](http://localhost:3000), and the API is available at [http://localhost:4000](http://localhost:4000). The API health endpoint is [http://localhost:4000/health](http://localhost:4000/health).
 
-Each page is read with fast text extractors (pdfjs + pdf-parse) and scored. Many Arabic books ship with broken embedded-font encodings — the page renders fine on screen but every text extractor returns garbage (scrambled letters, kashida decoded as repeated `ك`). When a page's text-quality score is below `OCR_MIN_TEXT_SCORE`, the page is rendered to an image and transcribed by OCR, which reads the pixels instead of the corrupt character codes.
+## Configuration
 
-Two OCR engines are supported via `OCR_PROVIDER`:
+The complete, commented configuration is in [.env.example](.env.example). The main settings are grouped below.
 
-- `auto` (default) - uses the OpenRouter vision model (best Arabic quality), and **automatically falls back to local OCR when the account has no key or runs out of credits**.
-- `openrouter` - cloud vision model only.
-- `local` - offline [tesseract.js](https://github.com/naptha/tesseract.js) only. Free, no API key, runs on CPU; rougher quality but far better than a broken text layer. Language models are downloaded once and cached in `.tesseract-cache`.
+| Area | Variables | Purpose |
+| --- | --- | --- |
+| Runtime | `NODE_ENV`, `PORT`, `LOG_LEVEL`, `SENTRY_DSN` | API runtime, logging, and optional error tracking |
+| Database | `MONGODB_URI` | MongoDB connection string |
+| Web/API | `CLIENT_ORIGIN`, `PUBLIC_API_URL`, `NEXT_PUBLIC_API_URL` | CORS, public API callbacks, and browser API access |
+| Authentication | `AUTH_JWT_SECRET`, `DEFAULT_ADMIN_EMAIL`, `DEFAULT_ADMIN_PASSWORD`, `ADMIN_API_KEY` | Sessions, initial admin account, and optional automation access |
+| AI generation | `LLM_PROVIDER`, `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `LOCAL_LLM_*` | Cloud or OpenAI-compatible local chat model |
+| Embeddings | `EMBEDDING_PROVIDER`, `OPENROUTER_EMBEDDING_MODEL`, `LOCAL_EMBEDDING_*` | Vector representation used by retrieval |
+| OCR | `OCR_ENABLED`, `OCR_PROVIDER`, `OCR_LOCAL_LANGS`, `OCR_VISION_MODEL` | OCR fallback for scanned or malformed PDFs |
+| Storage | `STORAGE_DRIVER`, `STORAGE_LOCAL_DIR`, `PDF_STORAGE_DIR`, `S3_*` | Local disk, MongoDB GridFS, or S3-compatible object storage |
+| Limits | `UPLOAD_MAX_MB`, `UPLOAD_MAX_FILES`, `OCR_MAX_PAGES`, `OCR_CONCURRENCY`, `PROCESSING_CONCURRENCY` | Upload, OCR, and processing safeguards |
+| OMP | `OMP_BASE_URL`, `OMP_CONTEXT_PATH`, `OMP_API_TOKEN`, `OMP_USER_SECRET`, `OMP_SSO_SECRET` | Optional Open Monograph Press integration |
 
-OCR settings (all optional, sensible defaults):
+### AI providers
 
-- `OCR_ENABLED` - turn the OCR fallback on/off (default `true`).
-- `OCR_PROVIDER` - `auto` | `openrouter` | `local` (default `auto`).
-- `OCR_LOCAL_LANGS` - tesseract languages for local OCR (default `ara+eng`).
-- `OCR_VISION_MODEL` - OpenRouter vision model, default `google/gemini-2.5-flash`.
-- `OCR_MIN_TEXT_SCORE` - pages scoring below this are sent to OCR (default `65`).
-- `OCR_RENDER_SCALE` - page raster scale; higher is sharper but slower (default `2`).
-- `OCR_MAX_PAGES` - cap on OCR pages per book (default `600`).
-- `OCR_CONCURRENCY` - global cap on OCR pages in flight at once across all books (default `6`). Raise it for faster cloud OCR; for local OCR it is also bounded by CPU cores.
-- `PROCESSING_CONCURRENCY` - how many books are processed at the same time (default `2`).
-- `OCR_MAX_OUTPUT_TOKENS` - max tokens per OCR response (default `4096`).
+By default, chat and embeddings use OpenRouter. To run chat locally, configure an OpenAI-compatible server such as Ollama, LM Studio, or vLLM:
 
-Processing is parallel at three levels: multiple books at once (`PROCESSING_CONCURRENCY`), concurrent per-page text extraction within a book, and concurrent OCR bounded globally by `OCR_CONCURRENCY`. The global OCR limit means adding more books never overwhelms the provider or CPU.
+`dotenv
+LLM_PROVIDER=local
+LOCAL_LLM_BASE_URL=http://127.0.0.1:11434/v1
+LOCAL_LLM_MODEL=qwen2.5:7b
+`
 
-OCR uses the same `OPENROUTER_API_KEY`; large scanned/broken books cost per page and take a few minutes.
+Chat generation and embeddings are configured independently. Keep `EMBEDDING_PROVIDER=openrouter` unless you have created a matching local vector index and re-embedded the library.
 
-To use a local chat model, uncomment the local settings in `.env.example`, set `LLM_PROVIDER=local`, and run an OpenAI-compatible server such as Ollama. Set `OCR_PROVIDER=local` too if ingestion must be fully offline. Chat and embeddings are configured separately.
+### OCR
 
-## RAG Boundary
+`OCR_PROVIDER=auto` uses the configured OpenRouter vision model and falls back to local Tesseract when the cloud provider is unavailable or out of credits. Use `OCR_PROVIDER=local` for an offline setup. Local OCR downloads and caches the `ara+eng` language data in `.tesseract-cache`.
 
-The generation layer only receives the user question and the top retrieved chunks. It never receives the full database or unretrieved book content.
+OCR is triggered when extracted text falls below the configured quality threshold. Pages that remain below the final quality floor are excluded from chunking and retrieval rather than exposing likely-garbled evidence.
+
+## Development commands
+
+Run these commands from the repository root:
+
+| Command | Description |
+| --- | --- |
+| `pnpm dev` | Start the API and web applications in watch mode |
+| `pnpm build` | Build both applications for production |
+| `pnpm start` | Start both production builds |
+| `pnpm typecheck` | Type-check the API and web applications |
+| `pnpm test` | Run API and web test suites |
+| `pnpm --filter @aradobot/api test` | Run API tests only |
+| `pnpm --filter @aradobot/web test` | Run web tests only |
+| `pnpm --filter @aradobot/api check:vector-index` | Check MongoDB vector index configuration |
+| `pnpm --filter @aradobot/api reclean:chunks` | Reclean stored chunks after text-normalization changes |
+| `pnpm --filter @aradobot/api backfill:ready-at` | Backfill readiness timestamps for existing books |
+| `pnpm --filter @aradobot/api migrate:storage` | Migrate local blobs to GridFS |
+
+## Production notes
+
+- Set `NODE_ENV=production` and use long, unique values for `AUTH_JWT_SECRET`, `OMP_USER_SECRET`, and `OMP_SSO_SECRET`.
+- Never use the example admin credentials or placeholder API keys in production.
+- Set `CLIENT_ORIGIN` and `NEXT_PUBLIC_API_URL` to the deployed origins. `PUBLIC_API_URL` must be publicly reachable over HTTPS when Heyzine PDF conversion is enabled.
+- Prefer `STORAGE_DRIVER=gridfs` or `STORAGE_DRIVER=s3` on deployments with ephemeral disks.
+- Configure MongoDB Vector Search with the same embedding dimensions and similarity metric used by the active embedding provider.
+- Keep upload and OCR concurrency within the capacity of the API host, MongoDB instance, and model provider.
+- If enabled, configure OMP’s SSO shared secret to match `OMP_SSO_SECRET`.
+
+The included [Railpack configuration](railpack.json) targets Node.js 20. The CI workflow runs dependency installation, type-checking, API tests, and a production build on pushes and pull requests to `main`.
+
+## API surface
+
+The API is mounted under `/api` and includes:
+
+- `/api/auth` — registration, login, and session operations
+- `/api/books` and `/api/categories` — catalog, reading, progress, and metadata
+- `/api/upload` and `/api/excel-import` — admin ingestion workflows
+- `/api/chat` and `/api/conversations` — book questions and saved conversations
+- `/api/access-requests` — reader access requests and decisions
+- `/api/organizations` and `/api/org-admin` — organization and student access management
+- `/api/feedback`, `/api/notifications`, and `/api/stats` — operations and analytics
+- `/api/omp` — Open Monograph Press integration
+
+All protected routes enforce authentication and access scope in the API layer. Upload, feedback administration, user management, and organization administration have additional role checks.
+
+## Testing
+
+The test suite covers ingestion, text quality, OCR-related behavior, chunking, embeddings, vector retrieval, reranking, citations, access scoping, provider selection, API routes, and key web interactions.
+
+Run the complete validation set before opening a pull request:
+
+`bash
+pnpm typecheck
+pnpm test
+pnpm build
+`
+
+## Contributing
+
+1. Create a focused branch from `main`.
+2. Keep changes scoped and add or update tests for behavioral changes.
+3. Run type-checking, tests, and the production build locally.
+4. Open a pull request with a concise description of the user-facing and operational impact.
+
+Please do not commit `.env` files, credentials, private books, generated storage, or other sensitive data.
