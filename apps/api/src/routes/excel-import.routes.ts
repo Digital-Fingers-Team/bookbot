@@ -15,7 +15,14 @@ import { attachSummaryAudio, isSummaryAudio } from "../services/storage/summary-
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024, files: 1 } });
 const audioUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: env.UPLOAD_MAX_MB * 1024 * 1024, files: 100 },
+  // The selected rows are sent as one multipart text field. A workbook with
+  // long descriptions can legitimately produce several megabytes of JSON,
+  // which is larger than busboy's 1 MB default field limit.
+  limits: {
+    fileSize: env.UPLOAD_MAX_MB * 1024 * 1024,
+    files: 100,
+    fieldSize: 16 * 1024 * 1024
+  },
   fileFilter: (_req, file, cb) => {
     if (!isSummaryAudio(file.originalname, file.mimetype)) {
       cb(new ApiError(400, "INVALID_AUDIO_TYPE", "Please upload an MP3, M4A, WAV, OGG, WEBM, AAC, or FLAC audio file."));
