@@ -30,6 +30,7 @@ const ACCEPTED_MIME_TYPES = [
 ];
 const ACCEPTED_INPUT_ATTR = [...ACCEPTED_EXTENSIONS, ...ACCEPTED_MIME_TYPES].join(",");
 const AUDIO_INPUT_ATTR = ".mp3,.m4a,.wav,.ogg,.webm,.aac,.flac,audio/*";
+const EXCEL_IMPORT_BATCH_SIZE = 100;
 
 function isAcceptedFile(file: File) {
   const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
@@ -153,6 +154,43 @@ export default function UploadPage() {
 
   const totalBytes = files.reduce((total, file) => total + file.size, 0);
 
+  async function importSelectedExcelRows() {
+    setExcelLoading(true);
+    setExcelMessage("");
+    const selected = excelRows.filter((row) => selectedRows.has(row.rowNumber));
+    const batches = chunkRows(selected, EXCEL_IMPORT_BATCH_SIZE);
+    let queuedCount = 0;
+    let failedCount = 0;
+    let firstError = "";
+
+    try {
+      for (let index = 0; index < batches.length; index += 1) {
+        const batch = batches[index];
+        if (!batch) break;
+        setExcelMessage(`Importing batch ${index + 1} of ${batches.length}…`);
+        const result = await importExcelRows(batch, token, summaryAudioByRow);
+        queuedCount += result.books.length;
+        failedCount += result.errors.length;
+        firstError ||= result.errors[0]?.error ?? "";
+
+        // Remove each completed batch immediately. If a later batch fails,
+        // already-queued books do not get submitted a second time on retry.
+        const completedNumbers = new Set(batch.map((row) => row.rowNumber));
+        setExcelRows((current) => current.filter((row) => !completedNumbers.has(row.rowNumber)));
+        setSelectedRows((current) => new Set([...current].filter((rowNumber) => !completedNumbers.has(rowNumber))));
+        setSummaryAudioByRow((current) => Object.fromEntries(
+          Object.entries(current).filter(([rowNumber]) => !completedNumbers.has(Number(rowNumber)))
+        ));
+      }
+
+      setExcelMessage(`${queuedCount} books queued${failedCount ? `; ${failedCount} failed${firstError ? ` — ${firstError}` : ""}.` : "."}`);
+    } catch (err) {
+      setExcelMessage(err instanceof Error ? err.message : "Import failed. Completed batches were kept.");
+    } finally {
+      setExcelLoading(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-2xl space-y-7">
       <header className="text-center">
@@ -178,12 +216,12 @@ export default function UploadPage() {
       />
 
       <ExcelImportPanel token={token} rows={excelRows} selected={selectedRows} categories={categories} loading={excelLoading} message={excelMessage}
-        onFile={async (file) => { setExcelLoading(true); setExcelMessage(""); try { const [result, categoryResult] = await Promise.all([previewExcel(file, token), getCategories(token)]); setExcelRows(result.rows.map((row) => ({ ...row, price: 0, category: "" }))); setCategories(categoryResult.categories); setSelectedRows(new Set()); setSummaryAudioByRow({}); setExcelMessage(`${result.total} books found. Select only the books to import.`); } catch (err) { setExcelMessage(err instanceof Error ? err.message : "The workbook could not be read."); } finally { setExcelLoading(false); } }}
+        onFile={async (file) => { setExcelLoading(true); setExcelMessage(""); try { const [result, categoryResult] = await Promise.all([previewExcel(file, token), getCategories(token)]); setExcelRows(result.rows.map((row) => ({ ...row, price: 0, category: "" }))); setCategories(categoryResult.categories); setSelectedRows(new Set()); setSummaryAudioByRow({}); setExcelMessage(`${result.total} books found. Select books to import; large selections are processed in batches.`); } catch (err) { setExcelMessage(err instanceof Error ? err.message : "The workbook could not be read."); } finally { setExcelLoading(false); } }}
         onToggle={(rowNumber) => setSelectedRows((current) => { const next = new Set(current); next.has(rowNumber) ? next.delete(rowNumber) : next.add(rowNumber); return next; })}
         onUpdate={(rowNumber, patch) => setExcelRows((current) => current.map((row) => row.rowNumber === rowNumber ? { ...row, ...patch } : row))}
         onAudio={(rowNumber, audio) => { if (audio && !isAcceptedAudio(audio)) { setExcelMessage(`"${audio.name}" is not a supported audio file.`); return; } setExcelMessage(""); setSummaryAudioByRow((current) => { const next = { ...current }; if (audio) next[rowNumber] = audio; else delete next[rowNumber]; return next; }); }}
         audioByRow={summaryAudioByRow}
-        onImport={async () => { setExcelLoading(true); setExcelMessage(""); try { const selected = excelRows.filter((row) => selectedRows.has(row.rowNumber)); const result = await importExcelRows(selected, token, summaryAudioByRow); const selectedNumbers = new Set(selected.map((row) => row.rowNumber)); setExcelRows(excelRows.filter((row) => !selectedNumbers.has(row.rowNumber))); setSelectedRows(new Set()); setSummaryAudioByRow((current) => Object.fromEntries(Object.entries(current).filter(([rowNumber]) => !selectedNumbers.has(Number(rowNumber))))); const firstError = result.errors[0]?.error; setExcelMessage(`${result.books.length} books queued${result.errors.length ? `; ${result.errors.length} failed${firstError ? ` — ${firstError}` : ""}.` : "."}`); } catch (err) { setExcelMessage(err instanceof Error ? err.message : "Import failed."); } finally { setExcelLoading(false); } }} />
+        onImport={importSelectedExcelRows} />
 
       <label
         onDragEnter={() => setIsDragging(true)}
@@ -351,6 +389,14 @@ export default function UploadPage() {
       </div>
     </div>
   );
+}
+
+function chunkRows<T>(rows: T[], size: number): T[][] {
+  const batches: T[][] = [];
+  for (let index = 0; index < rows.length; index += size) {
+    batches.push(rows.slice(index, index + size));
+  }
+  return batches;
 }
 
 function isAcceptedAudio(file: File) {
