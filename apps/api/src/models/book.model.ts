@@ -8,6 +8,8 @@ const bookSchema = new Schema(
     externalSourceId: { type: String, trim: true, index: true },
     originalFileName: { type: String, required: true, trim: true },
     originalPdfPath: { type: String, trim: true },
+    heyzineId: { type: String, trim: true },
+    heyzineUrl: { type: String, trim: true },
     // Format of the originally uploaded file. Defaults to "pdf" for backward
     // compatibility with documents created before EPUB/DOCX/TXT support existed.
     sourceFormat: { type: String, enum: ["pdf", "epub", "docx", "txt"], required: true, default: "pdf" },

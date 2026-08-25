@@ -17,7 +17,6 @@
     "next": "^16.2.9",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-pageflip": "^2.0.3",
     "swiper": "^14.0.1"
   },
   "devDependencies": {

@@ -463,9 +463,13 @@ export function discoverBooks(question: string, token?: string) {
 
 export type MyBook = Book & { favorite: boolean; lastPage: number; lastOpenedAt: string | null };
 
-export function getBook(id: string, token?: string) {
-  return request<MyBook>(`/api/books/${id}`, { token });
-}
+  export function getBook(id: string, token?: string) {
+    return request<MyBook>(`/api/books/${id}`, { token });
+  }
+
+  export function getBookHeyzine(id: string, token?: string) {
+    return request<{ url: string }>(`/api/books/${id}/heyzine`, { token });
+  }
 
 export function getMyBooks(token?: string) {
   return request<{ favorites: MyBook[]; continueReading: MyBook[]; owned: MyBook[] }>("/api/books/my", { token });

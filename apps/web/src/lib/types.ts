@@ -57,6 +57,7 @@ export type Book = {
   // response). Missing/false hides the reader's Download/Open-in-tab buttons.
   canDownload?: boolean;
   firstPageText: string;
+  heyzineUrl?: string | null;
 };
 
 export type Source = {

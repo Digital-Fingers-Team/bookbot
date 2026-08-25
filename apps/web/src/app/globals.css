@@ -219,29 +219,6 @@ body {
   color: #4f9a5f;
 }
 
-/* Flipbook reader page turns. The content stays selectable while the page
-   itself gets a short, physical turn when the reader advances. */
-@keyframes book-page-next {
-  0% { opacity: 0.25; transform: perspective(1600px) rotateY(-82deg) translateX(3rem); transform-origin: left center; box-shadow: -1.5rem 0 2rem -1.5rem rgba(0,0,0,.5); }
-  55% { opacity: 1; box-shadow: -0.65rem 0 1rem -0.8rem rgba(0,0,0,.35); }
-  100% { opacity: 1; transform: perspective(1600px) rotateY(0) translateX(0); transform-origin: left center; box-shadow: 0 1.25rem 2rem -1rem rgba(0,0,0,.18); }
-}
-
-@keyframes book-page-prev {
-  0% { opacity: 0.25; transform: perspective(1600px) rotateY(82deg) translateX(-3rem); transform-origin: right center; box-shadow: 1.5rem 0 2rem -1.5rem rgba(0,0,0,.5); }
-  55% { opacity: 1; box-shadow: 0.65rem 0 1rem -0.8rem rgba(0,0,0,.35); }
-  100% { opacity: 1; transform: perspective(1600px) rotateY(0) translateX(0); transform-origin: right center; box-shadow: 0 1.25rem 2rem -1rem rgba(0,0,0,.18); }
-}
-
-.book-page-turn-next,
-.book-page-turn-prev {
-  backface-visibility: hidden;
-  transform-style: preserve-3d;
-  will-change: transform, opacity, box-shadow;
-}
-.book-page-turn-next { animation: book-page-next 620ms cubic-bezier(0.22, 1, 0.36, 1) both; }
-.book-page-turn-prev { animation: book-page-prev 620ms cubic-bezier(0.22, 1, 0.36, 1) both; }
-
 .reader-control {
   display: inline-flex;
   height: 2rem;
@@ -335,9 +312,3 @@ body {
   box-shadow: 0 0 1.1rem rgb(0 0 0 / .6);
 }
 .dark .flipbook-page-number { color: rgb(255 255 255 / .35); }
-
-@media (prefers-reduced-motion: reduce) {
-  .book-page-turn-next,
-  .book-page-turn-prev { animation: none; }
-  .flipbook [class*="stf__"] { transition-duration: 0s !important; animation-duration: 0s !important; }
-}

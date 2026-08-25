@@ -16,6 +16,12 @@ const schema = z.object({
   SENTRY_DSN: z.string().optional(),
   MONGODB_URI: z.string().min(1).default("mongodb://127.0.0.1:27017/aradobotd"),
   CLIENT_ORIGIN: z.string().default("http://localhost:3000"),
+  // Public API origin used by Heyzine to fetch a short-lived, signed PDF URL.
+  // In production this must be reachable from the public internet over HTTPS.
+  PUBLIC_API_URL: z.string().url().default("http://localhost:4000"),
+  HEYZINE_CLIENT_ID: z.string().optional(),
+  // Only needed for Heyzine management endpoints; conversion uses the client id.
+  HEYZINE_API_KEY: z.string().optional(),
   ADMIN_API_KEY: z.string().optional(),
   AUTH_JWT_SECRET: z.string().min(16).default("change-me-aradobot-auth-secret"),
   DEFAULT_ADMIN_EMAIL: z.string().email().default("admin@example.com"),

@@ -1,4 +1,6 @@
 import { Router, type Router as ExpressRouter } from "express";
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { env } from "../config/env.js";
 import { storage } from "../services/storage/storage.service.js";
 import { requireAdmin, requireAuth } from "../middleware/auth.middleware.js";
 import { requireBookAccess, requireDownloadAccess } from "../middleware/access.middleware.js";
@@ -155,7 +157,9 @@ const BOOK_CARD_FIELDS = {
   author: 1,
   description: 1,
   featured: 1,
-  price: 1
+  price: 1,
+  heyzineId: 1,
+  heyzineUrl: 1
 } as const;
 
 type BookStateLean = { favorite?: boolean; lastPage?: number; lastOpenedAt?: Date | null } | null | undefined;
@@ -183,6 +187,7 @@ function bookCard(book: Record<string, unknown>, firstPageText: string, state: B
     description: (book.description as string) ?? "",
     featured: Boolean(book.featured),
     price: (book.price as number) ?? 0,
+    heyzineUrl: (book.heyzineUrl as string | undefined) ?? null,
     firstPageText,
     favorite: state?.favorite ?? false,
     lastPage: state?.lastPage ?? 1,
@@ -532,6 +537,62 @@ booksRouter.post(
   })
 );
 
+/** Return the Heyzine reader URL, creating it on first use for PDF books. */
+booksRouter.get(
+  "/:id/heyzine",
+  requireAuth,
+  requireBookAccess,
+  asyncHandler(async (req, res) => {
+    const bookId = requireBookId(routeId(req.params.id));
+    const book = await Book.findById(bookId, { title: 1, sourceFormat: 1, heyzineUrl: 1, heyzineId: 1, status: 1 }).lean();
+    if (!book) throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
+    if (book.sourceFormat !== "pdf") throw new ApiError(400, "HEYZINE_PDF_REQUIRED", "Heyzine integration currently supports PDF books only.");
+    if (book.heyzineUrl) {
+      res.json({ url: book.heyzineUrl });
+      return;
+    }
+    if (!env.HEYZINE_CLIENT_ID) {
+      throw new ApiError(503, "HEYZINE_NOT_CONFIGURED", "Heyzine is not configured. Set HEYZINE_CLIENT_ID on the API server.");
+    }
+
+    const pdfUrl = `${env.PUBLIC_API_URL}/api/books/${bookId}/heyzine-source?token=${createHeyzineSourceToken(String(bookId))}`;
+    const response = await fetch("https://heyzine.com/api1/rest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pdf: pdfUrl,
+        client_id: env.HEYZINE_CLIENT_ID,
+        title: book.title,
+        prev_next: true,
+        show_info: false
+      })
+    });
+    const payload = await response.json().catch(() => null) as { id?: string; url?: string; state?: string; msg?: string } | null;
+    if (!response.ok || !payload?.url) {
+      throw new ApiError(502, "HEYZINE_CONVERSION_FAILED", payload?.msg || "Heyzine could not convert this PDF.");
+    }
+
+    await Book.updateOne({ _id: bookId }, { $set: { heyzineId: payload.id, heyzineUrl: payload.url } });
+    res.json({ url: payload.url });
+  })
+);
+
+/** Short-lived public source URL used only by Heyzine during conversion. */
+booksRouter.get(
+  "/:id/heyzine-source",
+  asyncHandler(async (req, res) => {
+    const bookId = requireBookId(routeId(req.params.id));
+    if (!verifyHeyzineSourceToken(bookId, typeof req.query.token === "string" ? req.query.token : "")) {
+      throw new ApiError(401, "INVALID_HEYZINE_SOURCE_TOKEN", "This source URL is invalid or expired.");
+    }
+    const book = await findBookPdf(bookId);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "inline");
+    res.setHeader("Cache-Control", "no-store");
+    res.send(book.buffer);
+  })
+);
+
 booksRouter.delete(
   "/:id",
   requireAdmin,
@@ -560,6 +621,30 @@ function contentDisposition(fileName: string, format: SourceFormat = "pdf") {
 
 function routeId(value: unknown) {
   return typeof value === "string" ? value : "";
+}
+
+function heyzineSigningSecret() {
+  return env.HEYZINE_API_KEY || env.AUTH_JWT_SECRET;
+}
+
+function createHeyzineSourceToken(bookId: string) {
+  const payload = `${bookId}.${Math.floor(Date.now() / 1000) + 10 * 60}`;
+  const signature = createHmac("sha256", heyzineSigningSecret()).update(payload).digest("base64url");
+  return `${Buffer.from(payload).toString("base64url")}.${signature}`;
+}
+
+function verifyHeyzineSourceToken(bookId: string, token: string) {
+  try {
+    const [encodedPayload, signature] = token.split(".");
+    if (!encodedPayload || !signature) return false;
+    const payload = Buffer.from(encodedPayload, "base64url").toString("utf8");
+    const [tokenBookId, expiresAt] = payload.split(".");
+    const expected = createHmac("sha256", heyzineSigningSecret()).update(payload).digest("base64url");
+    return tokenBookId === bookId && Number(expiresAt) >= Math.floor(Date.now() / 1000) &&
+      signature.length === expected.length && timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  } catch {
+    return false;
+  }
 }
 
 async function loadBookSourceBuffer(book: { originalPdfPath?: string | null; originalFileName: string }) {
