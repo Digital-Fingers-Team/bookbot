@@ -8,6 +8,7 @@ import type { Source } from "@/lib/types";
 import { parseQuiz } from "@/lib/quiz";
 import { QuizView } from "@/components/quiz-view";
 import { AI_NAME, useT } from "@/lib/i18n";
+import { createClientId } from "@/lib/client-id";
 
 const RESPONSE_DEPTH = 3;
 
@@ -41,7 +42,7 @@ export function BookAssistant({ bookId, currentPage, onJumpToPage }: { bookId: s
       .then((result) =>
         setMessages(
           result.messages.map((message) => ({
-            id: crypto.randomUUID(),
+            id: createClientId(),
             role: message.role,
             content: message.content,
             sources: (message.sources ?? []).map((source) => ({
@@ -94,14 +95,14 @@ export function BookAssistant({ bookId, currentPage, onJumpToPage }: { bookId: s
       return;
     }
 
-    const assistantId = crypto.randomUUID();
+    const assistantId = createClientId();
     const history = messages
       .filter((message) => message.content.trim())
       .slice(-10)
       .map((message) => ({ role: message.role, content: message.content }));
     setMessages((prev) => [
       ...prev,
-      ...(appendUser ? [{ id: crypto.randomUUID(), role: "user" as const, content: question, sources: [], status: "done" as const }] : []),
+      ...(appendUser ? [{ id: createClientId(), role: "user" as const, content: question, sources: [], status: "done" as const }] : []),
       { id: assistantId, role: "assistant", content: "", sources: [], status: "searching", notFound: false }
     ]);
     if (!questionOverride) setInput("");

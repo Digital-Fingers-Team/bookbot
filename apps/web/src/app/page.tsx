@@ -51,6 +51,7 @@ import { Landing } from "@/components/landing";
 import { DiscoveryExperience } from "@/components/discovery-experience";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useLang, useT } from "@/lib/i18n";
+import { createClientId } from "@/lib/client-id";
 
 type ChatMessage = {
   id: string;
@@ -214,7 +215,7 @@ function ChatExperience() {
       const conversation = await getConversation(id, token);
       setMessages(
         conversation.messages.map((message) => ({
-          id: crypto.randomUUID(),
+          id: createClientId(),
           role: message.role,
           content: message.content,
           sources: (message.sources ?? []).map((source) => ({
@@ -307,10 +308,10 @@ function ChatExperience() {
       .slice(-6)
       .map((message) => ({ role: message.role, content: message.content }));
 
-    const assistantId = crypto.randomUUID();
+    const assistantId = createClientId();
     setMessages((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), role: "user", content: question, sources: [], evidence: [], status: "done" },
+      { id: createClientId(), role: "user", content: question, sources: [], evidence: [], status: "done" },
       { id: assistantId, role: "assistant", content: "", sources: [], evidence: [], status: "searching" }
     ]);
     setInput("");
