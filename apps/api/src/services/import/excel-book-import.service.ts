@@ -35,6 +35,7 @@ export async function parseBooksExcel(buffer: Buffer): Promise<ExcelBookRow[]> {
   const sheet = parser.parse(sheetXml) as { worksheet?: { sheetData?: { row?: Record<string, any>[] } } };
   const rows = sheet.worksheet?.sheetData?.row ?? [];
   return rows.map((row, index) => {
+    const sourceRowNumber = Number(row["@_r"]);
     const values = new Map<number, string>();
     const cells = Array.isArray(row.c) ? row.c : row.c ? [row.c] : [];
     for (const cell of cells) {
@@ -47,7 +48,7 @@ export async function parseBooksExcel(buffer: Buffer): Promise<ExcelBookRow[]> {
       }
     }
     return {
-      rowNumber: index + 1,
+      rowNumber: Number.isInteger(sourceRowNumber) && sourceRowNumber > 0 ? sourceRowNumber : index + 1,
       sourceId: value(values, 1),
       title: value(values, 3),
       description: stripHtml(value(values, 6) || value(values, 5)),

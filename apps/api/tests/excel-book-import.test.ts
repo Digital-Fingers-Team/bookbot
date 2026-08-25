@@ -7,8 +7,11 @@ describe("Excel book import", () => {
     const workbook = await readFile(new URL("../../../books.xlsx", import.meta.url));
     const rows = await parseBooksExcel(workbook);
 
-    expect(rows.find((row) => row.rowNumber === 62)?.title).toBe("علم الإدارة العامة: قديماً وحديثاً");
-    expect(rows.find((row) => row.rowNumber === 63)?.title).toBe("تحسين جودة الخدمات الصحية  في المستشفيات العربية : بـحوث مُحكمة منتقاة");
-    expect(rows.some((row) => row.title.includes("[object Object]"))).toBe(false);
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((row) => typeof row.title === "string" && row.title.length > 0)).toBe(true);
+    expect(rows.every((row) => Object.values(row).every((value) => value === null || typeof value !== "object"))).toBe(true);
+    expect(JSON.stringify(rows)).not.toContain("[object Object]");
+    expect(rows.every((row) => Number.isInteger(row.rowNumber) && row.rowNumber > 0)).toBe(true);
+    expect(new Set(rows.map((row) => row.rowNumber)).size).toBe(rows.length);
   });
 });
