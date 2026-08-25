@@ -40,10 +40,10 @@ export async function parseBooksExcel(buffer: Buffer): Promise<ExcelBookRow[]> {
     for (const cell of cells) {
       const ref = String(cell["@_r"] ?? "");
       const col = columnNumber(ref);
-      const raw = cell.v;
+      const raw = cell["@_t"] === "inlineStr" ? cell.is : cell.v;
       if (col && raw !== undefined) {
-        const value = String(raw);
-        values.set(col, cell["@_t"] === "s" ? shared[Number(value)] ?? "" : value);
+        const rawText = textValue(raw);
+        values.set(col, cell["@_t"] === "s" ? shared[Number(rawText)] ?? "" : rawText);
       }
     }
     return {
@@ -118,9 +118,31 @@ function parseSharedStrings(xml: string): string[] {
   const parsed = parser.parse(xml) as { sst?: { si?: any[] } };
   const items = parsed.sst?.si ?? [];
   return items.map((item) => {
-    const parts = Array.isArray(item.t) ? item.t : item.t ? [item.t] : [];
-    return parts.map((part: unknown) => typeof part === "string" ? part : String(part ?? "")).join("");
+    return textValue(item.t ?? item.r ?? "");
   });
+}
+
+/**
+ * fast-xml-parser represents text nodes with attributes (for example
+ * `xml:space="preserve"`) as objects instead of strings. It can also return
+ * rich-text runs as an array of objects. Never stringify those objects
+ * directly, or the UI will receive the literal value "[object Object]".
+ */
+function textValue(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) return value.map(textValue).join("");
+  if (typeof value !== "object") return "";
+
+  const object = value as Record<string, unknown>;
+  if ("#text" in object) return textValue(object["#text"]);
+  if ("t" in object) return textValue(object.t);
+  if ("r" in object) return textValue(object.r);
+  if ("is" in object) return textValue(object.is);
+  return Object.entries(object)
+    .filter(([key]) => !key.startsWith("@_") && key !== "rPr")
+    .map(([, nested]) => textValue(nested))
+    .join("");
 }
 
 function columnNumber(ref: string): number {
