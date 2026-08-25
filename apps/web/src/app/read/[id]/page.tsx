@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { AlertCircle, ArrowRight, BookOpenText, Heart, Loader2, MessageSquareText } from "lucide-react";
+import { AlertCircle, ArrowRight, BookOpenText, Heart, Loader2, MessageSquareText, Music2 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { ApiClientError, getBook, getBookPdf, getBookSource, setFavorite, setProgress, type MyBook } from "@/lib/api";
+import { ApiClientError, getBook, getBookPdf, getBookSource, getBookSummaryAudio, setFavorite, setProgress, type MyBook } from "@/lib/api";
 import { BookAssistant } from "@/components/book-assistant";
 import { FlipbookReader } from "@/components/flipbook-reader";
 import { AI_NAME, useT } from "@/lib/i18n";
@@ -21,6 +21,7 @@ export default function ReadPage() {
   // rights (see canDownload below) — page-by-page viewing never needs it, so a
   // user without download rights still reads normally, just without a raw file.
   const [url, setUrl] = useState("");
+  const [summaryAudioUrl, setSummaryAudioUrl] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -38,6 +39,7 @@ export default function ReadPage() {
 
     let cancelled = false;
     let createdUrl = "";
+    let createdAudioUrl = "";
 
     (async () => {
       setLoading(true);
@@ -46,6 +48,7 @@ export default function ReadPage() {
         const detail = await getBook(id, token);
         if (cancelled) return;
         setBook(detail);
+        setSummaryAudioUrl("");
         setFav(detail.favorite);
         setPage(detail.lastPage || 1);
         void setProgress(id, detail.lastPage || 1, token).catch(() => undefined);
@@ -58,6 +61,13 @@ export default function ReadPage() {
             return;
           }
           setUrl(createdUrl);
+        }
+        if (detail.summaryAudio) {
+          void getBookSummaryAudio(id, token).then((blob) => {
+            if (cancelled) return;
+            createdAudioUrl = URL.createObjectURL(blob);
+            setSummaryAudioUrl(createdAudioUrl);
+          }).catch(() => undefined);
         }
       } catch (err) {
         if (!cancelled) {
@@ -72,6 +82,9 @@ export default function ReadPage() {
       cancelled = true;
       if (createdUrl) {
         URL.revokeObjectURL(createdUrl);
+      }
+      if (createdAudioUrl) {
+        URL.revokeObjectURL(createdAudioUrl);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -139,6 +152,14 @@ export default function ReadPage() {
           <Heart className={`h-4 w-4 ${favorite ? "fill-current" : ""}`} />
         </button>
       </header>
+
+      {summaryAudioUrl ? (
+        <div className="flex items-center gap-3 border-b border-line bg-moss/[0.04] px-4 py-2.5 dark:border-white/10 dark:bg-sea/[0.05]">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-moss/10 text-moss dark:bg-sea/15 dark:text-sea"><Music2 className="h-4 w-4" /></span>
+          <div className="min-w-0 flex-1"><p className="text-xs font-semibold text-ink dark:text-white">Book summary</p><p className="text-[11px] text-ink/65 dark:text-white/65">Listen while you read</p></div>
+          <audio controls preload="metadata" src={summaryAudioUrl} className="h-9 w-full max-w-md" />
+        </div>
+      ) : null}
 
       {/* Mobile tab switcher */}
       <div className="flex items-center gap-1 border-b border-line p-1.5 lg:hidden dark:border-white/10">

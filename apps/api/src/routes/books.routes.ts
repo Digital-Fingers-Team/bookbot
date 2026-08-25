@@ -1,4 +1,5 @@
 import { Router, type Router as ExpressRouter } from "express";
+import multer from "multer";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { env } from "../config/env.js";
 import { storage } from "../services/storage/storage.service.js";
@@ -19,6 +20,19 @@ import { deleteStoredPdf } from "../services/ingestion/pdf-storage.service.js";
 import { PdfJsRenderer } from "../services/ingestion/renderers/pdfjs.renderer.js";
 import { renderPlaceholderCover } from "../services/ingestion/placeholder-cover.service.js";
 import { SOURCE_CONTENT_TYPES, type SourceFormat } from "../utils/source-format.js";
+import { attachSummaryAudio, isSummaryAudio, removeSummaryAudio, summaryAudioMeta } from "../services/storage/summary-audio.service.js";
+
+const summaryAudioUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: env.UPLOAD_MAX_MB * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    if (!isSummaryAudio(file.originalname, file.mimetype)) {
+      cb(new ApiError(400, "INVALID_AUDIO_TYPE", "Please upload an MP3, M4A, WAV, OGG, WEBM, AAC, or FLAC audio file."));
+      return;
+    }
+    cb(null, true);
+  }
+});
 
 export const booksRouter: ExpressRouter = Router();
 
@@ -31,7 +45,7 @@ booksRouter.get(
     const scope = await resolveAccessScope(req.user!);
     const books = await Book.find(
       {},
-      { title: 1, originalFileName: 1, sourceFormat: 1, createdAt: 1, readyAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, categories: 1, author: 1, featured: 1, description: 1, price: 1 }
+      { title: 1, originalFileName: 1, sourceFormat: 1, createdAt: 1, readyAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, categories: 1, author: 1, featured: 1, description: 1, price: 1, summaryAudioFileName: 1, summaryAudioMimeType: 1, summaryAudioSize: 1, summaryAudioUploadedAt: 1 }
     )
       .sort({ createdAt: -1 })
       .lean();
@@ -70,6 +84,7 @@ booksRouter.get(
           featured: Boolean(book.featured),
           description: book.description ?? "",
           price: book.price ?? 0,
+          summaryAudio: summaryAudioMeta(book),
           accessible: canAccessBook(scope, String(book._id)),
           firstPageText
         };
@@ -159,7 +174,11 @@ const BOOK_CARD_FIELDS = {
   featured: 1,
   price: 1,
   heyzineId: 1,
-  heyzineUrl: 1
+  heyzineUrl: 1,
+  summaryAudioFileName: 1,
+  summaryAudioMimeType: 1,
+  summaryAudioSize: 1,
+  summaryAudioUploadedAt: 1
 } as const;
 
 type BookStateLean = { favorite?: boolean; lastPage?: number; lastOpenedAt?: Date | null } | null | undefined;
@@ -188,6 +207,12 @@ function bookCard(book: Record<string, unknown>, firstPageText: string, state: B
     featured: Boolean(book.featured),
     price: (book.price as number) ?? 0,
     heyzineUrl: (book.heyzineUrl as string | undefined) ?? null,
+    summaryAudio: summaryAudioMeta(book as {
+      summaryAudioFileName?: string;
+      summaryAudioMimeType?: string;
+      summaryAudioSize?: number;
+      summaryAudioUploadedAt?: Date;
+    }),
     firstPageText,
     favorite: state?.favorite ?? false,
     lastPage: state?.lastPage ?? 1,
@@ -537,6 +562,64 @@ booksRouter.post(
   })
 );
 
+// Narrated summaries are protected by the same book access rules as reading.
+// The client fetches this authenticated blob and plays it from an object URL.
+booksRouter.get(
+  "/:id/summary-audio",
+  requireAuth,
+  requireBookAccess,
+  asyncHandler(async (req, res) => {
+    const id = requireBookId(routeId(req.params.id));
+    const book = await Book.findById(id, { summaryAudioPath: 1, summaryAudioMimeType: 1, summaryAudioFileName: 1 }).lean();
+    if (!book?.summaryAudioPath || !book.summaryAudioMimeType) {
+      throw new ApiError(404, "SUMMARY_AUDIO_NOT_FOUND", "This book does not have a summary audio yet.");
+    }
+    let buffer: Buffer;
+    try {
+      buffer = await storage.get(book.summaryAudioPath);
+    } catch {
+      throw new ApiError(404, "FILE_NOT_AVAILABLE", "The summary audio could not be found.");
+    }
+    res.setHeader("Content-Type", book.summaryAudioMimeType);
+    res.setHeader("Content-Length", String(buffer.length));
+    res.setHeader("Content-Disposition", contentDisposition(book.summaryAudioFileName ?? "summary-audio", "audio"));
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    res.send(buffer);
+  })
+);
+
+booksRouter.put(
+  "/:id/summary-audio",
+  requireAdmin,
+  summaryAudioUpload.single("audio"),
+  asyncHandler(async (req, res) => {
+    const id = requireBookId(routeId(req.params.id));
+    const file = req.file;
+    if (!file) {
+      throw new ApiError(400, "MISSING_AUDIO", "Please choose a summary audio file.");
+    }
+    const book = await Book.exists({ _id: id });
+    if (!book) throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
+    const audio = await attachSummaryAudio(id, {
+      buffer: file.buffer,
+      originalFileName: normalizeUploadedFileName(file.originalname),
+      mimeType: file.mimetype
+    });
+    res.json({ summaryAudio: audio });
+  })
+);
+
+booksRouter.delete(
+  "/:id/summary-audio",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const id = requireBookId(routeId(req.params.id));
+    const removed = await removeSummaryAudio(id);
+    if (!removed) throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
+    res.json({ removed: true });
+  })
+);
+
 /** Return the Heyzine reader URL, creating it on first use for PDF books. */
 booksRouter.get(
   "/:id/heyzine",
@@ -608,13 +691,14 @@ booksRouter.delete(
     await BookState.deleteMany({ bookId: book._id });
     await BookPage.deleteMany({ bookId: book._id });
     await deleteStoredPdf(book.originalPdfPath ?? undefined);
+    if (book.summaryAudioPath) await storage.delete(book.summaryAudioPath);
     await book.deleteOne();
 
     res.json({ deleted: true });
   })
 );
 
-function contentDisposition(fileName: string, format: SourceFormat = "pdf") {
+function contentDisposition(fileName: string, format: SourceFormat | string = "pdf") {
   const fallback = fileName.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_") || `book.${format}`;
   return `inline; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 }

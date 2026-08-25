@@ -11,6 +11,7 @@ import {
   List as ListIcon,
   Loader2,
   Lock,
+  Music2,
   Plus,
   RefreshCw,
   Search,
@@ -24,7 +25,7 @@ import { useAuth } from "@/components/auth-provider";
 import { BookCover } from "@/components/book-cover";
 import { RequestAccessModal } from "@/components/request-access-modal";
 import { MyRequestsPanel } from "@/components/my-requests-panel";
-import { ApiClientError, addCategory, cancelBook, deleteBook, getCategories, getStats, listBooks, setFavorite, updateBook } from "@/lib/api";
+import { ApiClientError, addCategory, cancelBook, deleteBook, deleteSummaryAudio, getCategories, getStats, listBooks, setFavorite, updateBook, uploadSummaryAudio } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
 import { useLang, useT, type StringKey } from "@/lib/i18n";
 
@@ -76,6 +77,7 @@ export default function LibraryPage() {
   const [editField, setEditField] = useState<{ book: Book; field: "author" | "price" | "description" } | null>(null);
   const [confirmDeleteBook, setConfirmDeleteBook] = useState<Book | null>(null);
   const [payBook, setPayBook] = useState<Book | null>(null);
+  const [audioBook, setAudioBook] = useState<Book | null>(null);
   const [requestsKey, setRequestsKey] = useState(0);
 
   const refresh = useCallback(async () => {
@@ -259,6 +261,26 @@ export default function LibraryPage() {
       return;
     }
     router.push(`/read/${book.id}`);
+  }
+
+  function manageSummaryAudio(book: Book) {
+    setAudioBook(book);
+  }
+
+  async function saveSummaryAudio(file: File) {
+    const current = audioBook;
+    if (!current) return;
+    const result = await uploadSummaryAudio(current.id, file, token);
+    setBooks((prev) => prev.map((item) => item.id === current.id ? { ...item, summaryAudio: result.summaryAudio } : item));
+    setAudioBook(null);
+  }
+
+  async function removeSummaryAudioFromBook() {
+    const current = audioBook;
+    if (!current || !window.confirm("Remove this summary audio from the book?")) return;
+    await deleteSummaryAudio(current.id, token);
+    setBooks((prev) => prev.map((item) => item.id === current.id ? { ...item, summaryAudio: null } : item));
+    setAudioBook(null);
   }
 
   function isBookOpenable(book: Book) {
@@ -539,6 +561,7 @@ export default function LibraryPage() {
                   onSetAuthor={() => setAuthor(book)}
                   onSetDescription={() => setDescription(book)}
                   onSetPrice={() => setPrice(book)}
+                  onManageAudio={() => manageSummaryAudio(book)}
                   onToggleFavorite={() => toggleFavorite(book)}
                   onToggleFeatured={() => toggleFeatured(book)}
                 />
@@ -558,6 +581,7 @@ export default function LibraryPage() {
                   onSetAuthor={() => setAuthor(book)}
                   onSetDescription={() => setDescription(book)}
                   onSetPrice={() => setPrice(book)}
+                  onManageAudio={() => manageSummaryAudio(book)}
                   onToggleFavorite={() => toggleFavorite(book)}
                   onToggleFeatured={() => toggleFeatured(book)}
                 />
@@ -613,6 +637,15 @@ export default function LibraryPage() {
           }}
         />
       ) : null}
+
+      {audioBook ? (
+        <SummaryAudioModal
+          book={audioBook}
+          onClose={() => setAudioBook(null)}
+          onSave={saveSummaryAudio}
+          onRemove={audioBook.summaryAudio ? removeSummaryAudioFromBook : undefined}
+        />
+      ) : null}
     </div>
   );
 }
@@ -655,6 +688,7 @@ function BookCard({
   onSetAuthor,
   onSetDescription,
   onSetPrice,
+  onManageAudio,
   onToggleFavorite,
   onToggleFeatured
 }: {
@@ -667,6 +701,7 @@ function BookCard({
   onSetAuthor: () => void;
   onSetDescription: () => void;
   onSetPrice: () => void;
+  onManageAudio: () => void;
   onToggleFavorite: () => void;
   onToggleFeatured: () => void;
 }) {
@@ -755,6 +790,7 @@ function BookCard({
             onEdit={onSetCategory}
           />
           {isAdmin ? <FeaturedToggle featured={Boolean(book.featured)} onToggle={onToggleFeatured} /> : null}
+          {(book.summaryAudio && !locked) || isAdmin ? <SummaryAudioControl audio={book.summaryAudio} isAdmin={isAdmin} onManage={onManageAudio} /> : null}
         </div>
 
         {book.description ? (
@@ -829,6 +865,7 @@ function BookRow({
   onSetAuthor,
   onSetDescription,
   onSetPrice,
+  onManageAudio,
   onToggleFavorite,
   onToggleFeatured
 }: {
@@ -841,6 +878,7 @@ function BookRow({
   onSetAuthor: () => void;
   onSetDescription: () => void;
   onSetPrice: () => void;
+  onManageAudio: () => void;
   onToggleFavorite: () => void;
   onToggleFeatured: () => void;
 }) {
@@ -898,6 +936,7 @@ function BookRow({
           onEdit={onSetCategory}
         />
         {isAdmin ? <StatusBadge book={book} compact /> : null}
+        {(book.summaryAudio && !locked) || isAdmin ? <SummaryAudioControl audio={book.summaryAudio} isAdmin={isAdmin} onManage={onManageAudio} compact /> : null}
       </div>
       <div className="hidden shrink-0 sm:block">
         <PriceTag price={book.price} isAdmin={isAdmin} onEdit={onSetPrice} />
@@ -986,6 +1025,38 @@ function FavoriteButton({ favorite, onToggle }: { favorite: boolean; onToggle: (
       }`}
     >
       <Heart className={`h-4 w-4 ${favorite ? "fill-current" : ""}`} />
+    </button>
+  );
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function SummaryAudioControl({
+  audio,
+  isAdmin,
+  onManage,
+  compact = false
+}: {
+  audio: Book["summaryAudio"];
+  isAdmin: boolean;
+  onManage: () => void;
+  compact?: boolean;
+}) {
+  if (!isAdmin) {
+    return <span className="inline-flex items-center gap-1 rounded-full border border-moss/20 bg-moss/[0.06] px-2.5 py-1 text-xs font-medium text-moss dark:border-sea/25 dark:bg-sea/10 dark:text-sea" title="Summary audio available"><Music2 className="h-3 w-3" />{compact ? "Audio" : "Summary audio"}</span>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={(event) => { event.stopPropagation(); onManage(); }}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition ${audio ? "border-moss/20 bg-moss/[0.06] text-moss dark:border-sea/25 dark:bg-sea/10 dark:text-sea" : "border-dashed border-line text-ink/70 hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/70 dark:hover:text-sea"}`}
+      title={audio ? "Replace or remove summary audio" : "Add summary audio"}
+    >
+      <Music2 className="h-3 w-3" />
+      {compact ? (audio ? "Audio" : "Add audio") : (audio ? "Summary audio" : "Add audio")}
     </button>
   );
 }
@@ -1196,6 +1267,86 @@ function ConfirmDeleteModal({ book, onClose, onConfirm }: { book: Book; onClose:
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SummaryAudioModal({
+  book,
+  onClose,
+  onSave,
+  onRemove
+}: {
+  book: Book;
+  onClose: () => void;
+  onSave: (file: File) => Promise<void>;
+  onRemove?: () => Promise<void>;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!file) return;
+    setBusy(true);
+    setError("");
+    try {
+      await onSave(file);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The summary audio could not be uploaded.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    if (!onRemove) return;
+    setBusy(true);
+    setError("");
+    try {
+      await onRemove();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The summary audio could not be removed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm" onClick={onClose}>
+      <form onSubmit={submit} onClick={(event) => event.stopPropagation()} className="w-full max-w-md space-y-5 rounded-2xl border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-[#0c0c0e]">
+        <div className="flex items-start gap-3">
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-moss/10 text-moss dark:bg-sea/15 dark:text-sea"><Music2 className="h-5 w-5" /></span>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-semibold text-ink dark:text-white">Summary audio</h3>
+            <p dir="auto" className="mt-1 truncate text-xs text-ink/70 dark:text-white/70">{book.title}</p>
+          </div>
+          <button type="button" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-ink/70 hover:bg-ink/5 dark:text-white/70 dark:hover:bg-white/10" aria-label="Close"><X className="h-4 w-4" /></button>
+        </div>
+
+        <div className="rounded-xl border border-line bg-paper/60 p-3.5 dark:border-white/10 dark:bg-white/[0.03]">
+          {book.summaryAudio ? (
+            <div className="flex items-center gap-3">
+              <Music2 className="h-4 w-4 shrink-0 text-moss dark:text-sea" />
+              <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-ink dark:text-white">{book.summaryAudio.fileName}</p><p className="mt-0.5 text-xs text-ink/60 dark:text-white/60">{formatBytes(book.summaryAudio.size)} · Ready for readers</p></div>
+            </div>
+          ) : <p className="text-sm text-ink/70 dark:text-white/70">No summary audio has been added yet.</p>}
+        </div>
+
+        <label className="block cursor-pointer rounded-xl border-2 border-dashed border-line p-4 text-center transition hover:border-moss/40 dark:border-white/10 dark:hover:border-sea/40">
+          <Music2 className="mx-auto h-5 w-5 text-moss dark:text-sea" />
+          <span className="mt-2 block text-sm font-medium text-ink dark:text-white">{file ? file.name : book.summaryAudio ? "Choose replacement audio" : "Choose an audio file"}</span>
+          <span className="mt-1 block text-xs text-ink/60 dark:text-white/60">MP3, M4A, WAV, OGG, WEBM, AAC, or FLAC</span>
+          <input type="file" accept=".mp3,.m4a,.wav,.ogg,.webm,.aac,.flac,audio/*" className="sr-only" disabled={busy} onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+        </label>
+        {error ? <p className="text-sm text-red-600 dark:text-red-300">{error}</p> : null}
+
+        <div className="flex items-center justify-between gap-2">
+          {onRemove ? <button type="button" onClick={remove} disabled={busy} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-500/10"><Trash2 className="h-4 w-4" />Remove</button> : <span />}
+          <div className="flex items-center gap-2"><button type="button" onClick={onClose} className="inline-flex h-9 items-center rounded-lg border border-line px-3.5 text-sm font-medium text-ink/70 dark:border-white/10 dark:text-white/70">Cancel</button><button type="submit" disabled={!file || busy} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-moss px-3.5 text-sm font-medium text-white hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Music2 className="h-4 w-4" />}{book.summaryAudio ? "Replace audio" : "Add audio"}</button></div>
+        </div>
+      </form>
     </div>
   );
 }

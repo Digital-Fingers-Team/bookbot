@@ -7,6 +7,7 @@ import {
   ArrowRight,
   CheckCircle2,
   FileText,
+  Music2,
   FileSpreadsheet,
   Layers,
   Loader2,
@@ -28,6 +29,7 @@ const ACCEPTED_MIME_TYPES = [
   "text/plain"
 ];
 const ACCEPTED_INPUT_ATTR = [...ACCEPTED_EXTENSIONS, ...ACCEPTED_MIME_TYPES].join(",");
+const AUDIO_INPUT_ATTR = ".mp3,.m4a,.wav,.ogg,.webm,.aac,.flac,audio/*";
 
 function isAcceptedFile(file: File) {
   const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
@@ -38,6 +40,7 @@ export default function UploadPage() {
   const { token, user, isAdmin, loading: authLoading } = useAuth();
   const t = useT();
   const [files, setFiles] = useState<File[]>([]);
+  const [summaryAudioByFile, setSummaryAudioByFile] = useState<Record<string, File>>({});
   const [price, setPrice] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -79,7 +82,28 @@ export default function UploadPage() {
   }
 
   function removeFile(file: File) {
-    setFiles((current) => current.filter((item) => fileKey(item) !== fileKey(file)));
+    const key = fileKey(file);
+    setFiles((current) => current.filter((item) => fileKey(item) !== key));
+    setSummaryAudioByFile((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+  }
+
+  function chooseSummaryAudio(book: File, audio: File | undefined) {
+    if (audio && !isAcceptedAudio(audio)) {
+      setError(`"${audio.name}" is not a supported audio file.`);
+      return;
+    }
+    setError("");
+    const key = fileKey(book);
+    setSummaryAudioByFile((current) => {
+      const next = { ...current };
+      if (audio) next[key] = audio;
+      else delete next[key];
+      return next;
+    });
   }
 
   async function submit() {
@@ -93,9 +117,10 @@ export default function UploadPage() {
 
     try {
       const numericPrice = Number(price);
-      const uploaded = await uploadPdfs(files, token, Number.isFinite(numericPrice) ? numericPrice : 0);
+      const uploaded = await uploadPdfs(files, token, Number.isFinite(numericPrice) ? numericPrice : 0, files.map((file) => summaryAudioByFile[fileKey(file)]));
       setResults(uploaded.books);
       setFiles([]);
+      setSummaryAudioByFile({});
       setPrice("");
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : t("up.uploadFailed"));
@@ -133,6 +158,23 @@ export default function UploadPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-white">{t("up.title")}</h1>
         <p className="mx-auto mt-1.5 max-w-md text-sm leading-6 text-ink/70 dark:text-white/70">{t("up.subtitle")}</p>
       </header>
+
+      {/* Keep the primary book picker first in document order; the visible picker
+          below uses the same handler and remains the main interaction surface. */}
+      <input
+        type="file"
+        accept={ACCEPTED_INPUT_ATTR}
+        multiple
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(event: ChangeEvent<HTMLInputElement>) => {
+          if (event.target.files) {
+            chooseFiles(event.target.files);
+            event.target.value = "";
+          }
+        }}
+      />
 
       <ExcelImportPanel token={token} rows={excelRows} selected={selectedRows} categories={categories} loading={excelLoading} message={excelMessage}
         onFile={async (file) => { setExcelLoading(true); setExcelMessage(""); try { const [result, categoryResult] = await Promise.all([previewExcel(file, token), getCategories(token)]); setExcelRows(result.rows.map((row) => ({ ...row, price: 0, category: "" }))); setCategories(categoryResult.categories); setSelectedRows(new Set()); setExcelMessage(`${result.total} books found. Select only the books to import.`); } catch (err) { setExcelMessage(err instanceof Error ? err.message : "The workbook could not be read."); } finally { setExcelLoading(false); } }}
@@ -190,6 +232,7 @@ export default function UploadPage() {
               <p className="mt-0.5 text-xs text-ink/70 dark:text-white/70">
                 {formatBytes(totalBytes)} · {t("up.separateBooks")}
               </p>
+              <p className="mt-1 text-xs text-moss/80 dark:text-sea/80">Summary audio is optional and can also be added later from Library.</p>
             </div>
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-2">
@@ -222,12 +265,27 @@ export default function UploadPage() {
 
           <ul className="divide-y divide-line dark:divide-white/10">
             {files.map((file) => (
-              <li key={fileKey(file)} className="flex items-center gap-3 px-4 py-3">
+              <li key={fileKey(file)} className="flex flex-wrap items-center gap-3 px-4 py-3">
                 <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-paper text-moss dark:bg-white/5 dark:text-sea">
                   <FileText className="h-4 w-4" />
                 </span>
                 <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink dark:text-white">{file.name}</span>
                 <span className="shrink-0 text-xs text-ink/70 dark:text-white/70">{formatBytes(file.size)}</span>
+                <label className="inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-line px-2.5 py-1.5 text-xs font-medium text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/70 dark:hover:text-sea">
+                  <Music2 className="h-3.5 w-3.5 shrink-0" />
+                  <span className="max-w-36 truncate">{summaryAudioByFile[fileKey(file)]?.name ?? "Add summary audio"}</span>
+                  <input
+                    type="file"
+                    accept={AUDIO_INPUT_ATTR}
+                    className="sr-only"
+                    disabled={loading}
+                    onChange={(event) => {
+                      chooseSummaryAudio(file, event.target.files?.[0]);
+                      event.target.value = "";
+                    }}
+                  />
+                </label>
+                {summaryAudioByFile[fileKey(file)] ? <span className="text-[11px] text-moss dark:text-sea">Attached</span> : null}
                 <button
                   type="button"
                   onClick={() => removeFile(file)}
@@ -290,6 +348,10 @@ export default function UploadPage() {
       </div>
     </div>
   );
+}
+
+function isAcceptedAudio(file: File) {
+  return file.type.startsWith("audio/") || /\.(mp3|m4a|wav|ogg|webm|aac|flac)$/i.test(file.name);
 }
 
 function ExcelImportPanel({ token, rows, selected, categories, loading, message, onFile, onToggle, onUpdate, onImport }: {

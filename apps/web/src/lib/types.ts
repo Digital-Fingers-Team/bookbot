@@ -58,6 +58,12 @@ export type Book = {
   canDownload?: boolean;
   firstPageText: string;
   heyzineUrl?: string | null;
+  summaryAudio?: {
+    fileName: string;
+    mimeType: string;
+    size: number;
+    uploadedAt: string | null;
+  } | null;
 };
 
 export type Source = {

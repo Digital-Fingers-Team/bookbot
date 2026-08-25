@@ -8,6 +8,13 @@ const bookSchema = new Schema(
     externalSourceId: { type: String, trim: true, index: true },
     originalFileName: { type: String, required: true, trim: true },
     originalPdfPath: { type: String, trim: true },
+    // Optional admin-provided narrated summary. The blob itself lives in the
+    // configured storage provider; these fields are only its book-level metadata.
+    summaryAudioPath: { type: String, trim: true },
+    summaryAudioFileName: { type: String, trim: true },
+    summaryAudioMimeType: { type: String, trim: true },
+    summaryAudioSize: { type: Number, min: 0 },
+    summaryAudioUploadedAt: { type: Date },
     heyzineId: { type: String, trim: true },
     heyzineUrl: { type: String, trim: true },
     // Format of the originally uploaded file. Defaults to "pdf" for backward

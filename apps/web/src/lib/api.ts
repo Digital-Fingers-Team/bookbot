@@ -227,10 +227,19 @@ export type UploadedBook = {
   status: "processing" | "ready" | "failed";
 };
 
-export async function uploadPdfs(files: File[], token?: string, price?: number) {
+export async function uploadPdfs(files: File[], token?: string, price?: number, summaryAudios: Array<File | undefined> = []) {
   const formData = new FormData();
   for (const file of files) {
     formData.append("files", file);
+  }
+  const summaryAudioIndexes: number[] = [];
+  summaryAudios.forEach((audio, index) => {
+    if (!audio) return;
+    formData.append("summaryAudios", audio);
+    summaryAudioIndexes.push(index);
+  });
+  if (summaryAudioIndexes.length) {
+    formData.append("summaryAudioIndexes", JSON.stringify(summaryAudioIndexes));
   }
   if (price && price > 0) {
     formData.append("price", String(price));
@@ -450,6 +459,27 @@ export function updateBook(
   );
 }
 
+export async function uploadSummaryAudio(id: string, audio: File, token?: string) {
+  const formData = new FormData();
+  formData.append("audio", audio);
+  const headers = new Headers();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const response = await fetch(`${API_URL}/api/books/${id}/summary-audio`, {
+    method: "PUT",
+    headers,
+    body: formData
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as ApiErrorResponse | null;
+    throw new ApiClientError(response.status, payload?.error.code ?? "AUDIO_UPLOAD_FAILED", payload?.error.message ?? "The summary audio could not be uploaded.");
+  }
+  return response.json() as Promise<{ summaryAudio: NonNullable<Book["summaryAudio"]> }>;
+}
+
+export function deleteSummaryAudio(id: string, token?: string) {
+  return request<{ removed: true }>(`/api/books/${id}/summary-audio`, { method: "DELETE", token });
+}
+
 export type DiscoveryBook = { id: string; title: string; author: string; category: string; description: string };
 
 /** Ask the library guide which books/categories suit the user (metadata only). */
@@ -481,6 +511,17 @@ export function setFavorite(id: string, favorite: boolean, token?: string) {
 
 export function setProgress(id: string, lastPage: number, token?: string) {
   return request<{ ok: true }>(`/api/books/${id}/progress`, { method: "PUT", body: { lastPage }, token });
+}
+
+export async function getBookSummaryAudio(id: string, token?: string) {
+  const headers = new Headers();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const response = await fetch(`${API_URL}/api/books/${id}/summary-audio`, { headers, cache: "no-store" });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as ApiErrorResponse | null;
+    throw new ApiClientError(response.status, payload?.error.code ?? "AUDIO_FAILED", payload?.error.message ?? "The summary audio could not be loaded.");
+  }
+  return response.blob();
 }
 
 export async function getBookPdf(id: string, token?: string) {
