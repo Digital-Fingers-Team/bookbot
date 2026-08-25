@@ -18,6 +18,7 @@ import { organizationsRouter } from "./routes/organizations.routes.js";
 import { statsRouter } from "./routes/stats.routes.js";
 import { uploadRouter } from "./routes/upload.routes.js";
 import { excelImportRouter } from "./routes/excel-import.routes.js";
+import { notificationsRouter } from "./routes/notifications.routes.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 
@@ -61,6 +62,7 @@ export function createApp(): Express {
   app.use("/api/org-admin", orgAdminRouter);
   app.use("/api/conversations", conversationsRouter);
   app.use("/api/feedback", feedbackRouter);
+  app.use("/api/notifications", notificationsRouter);
   app.use("/api/stats", statsRouter);
   app.use("/api/omp", ompRouter);
 

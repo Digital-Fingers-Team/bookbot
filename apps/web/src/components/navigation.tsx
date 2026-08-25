@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  Bell,
   BookMarked,
   GraduationCap,
   Inbox,
@@ -27,7 +28,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { LanguageToggle } from "./language-toggle";
 import { SiteFooter } from "./site-footer";
 import { useAuth } from "./auth-provider";
-import { unresolvedFeedbackCount, unseenRequestCount } from "@/lib/api";
+import { unreadNotificationCount, unresolvedFeedbackCount, unseenRequestCount } from "@/lib/api";
 import { useT, type StringKey } from "@/lib/i18n";
 
 type NavItem = { href: string; key: StringKey; icon: typeof Library };
@@ -40,6 +41,7 @@ const baseNavItems: NavItem[] = [
 
 const adminNavItems: NavItem[] = [
   { href: "/upload", key: "nav.upload", icon: UploadCloud },
+  { href: "/notifications", key: "nav.notifications", icon: Bell },
   { href: "/requests", key: "nav.requests", icon: Inbox },
   { href: "/feedback", key: "nav.feedback", icon: ThumbsDown },
   { href: "/users", key: "nav.users", icon: UsersRound },
@@ -185,6 +187,24 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
     };
   }, [isAdmin, token, pathname]);
 
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  useEffect(() => {
+    if (!isAdmin || !token) return;
+    let active = true;
+    const poll = () =>
+      unreadNotificationCount(token)
+        .then((r) => {
+          if (active) setUnreadNotifications(r.count);
+        })
+        .catch(() => undefined);
+    poll();
+    const interval = setInterval(poll, 30000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [isAdmin, token, pathname]);
+
   // Admins: show a count on "Feedback" for disliked answers still needing review.
   const [unresolvedFeedback, setUnresolvedFeedback] = useState(0);
   useEffect(() => {
@@ -225,6 +245,7 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
       pathname={pathname}
       unseen={unseen}
       unresolvedFeedback={unresolvedFeedback}
+      unreadNotifications={unreadNotifications}
       userName={user?.name}
       userEmail={user?.email}
       isAdmin={isAdmin}
@@ -309,6 +330,7 @@ function SidebarNav({
   pathname,
   unseen,
   unresolvedFeedback,
+  unreadNotifications,
   userName,
   userEmail,
   isAdmin,
@@ -320,6 +342,7 @@ function SidebarNav({
   pathname: string | null;
   unseen: number;
   unresolvedFeedback: number;
+  unreadNotifications: number;
   userName?: string;
   userEmail?: string;
   isAdmin: boolean;
@@ -369,6 +392,12 @@ function SidebarNav({
                     <span className="ms-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-alert px-1.5 text-[11px] font-semibold text-white">
                       {unresolvedFeedback}
                       <span className="sr-only"> {t("nav.newDislikes")}</span>
+                    </span>
+                  ) : null}
+                  {item.href === "/notifications" && unreadNotifications > 0 ? (
+                    <span className="ms-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-alert px-1.5 text-[11px] font-semibold text-white">
+                      {unreadNotifications}
+                      <span className="sr-only"> {t("nav.newNotifications")}</span>
                     </span>
                   ) : null}
                 </Link>

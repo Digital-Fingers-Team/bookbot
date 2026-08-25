@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { env } from "../../config/env.js";
 import { User, type UserRole } from "../../models/user.model.js";
 import { ApiError } from "../../utils/api-error.js";
+import { notifyAdmins } from "../notifications/notification.service.js";
 
 type JwtPayload = {
   sub: string;
@@ -50,6 +51,13 @@ export async function registerUser(input: { name: string; email: string; passwor
     email,
     passwordHash: await bcrypt.hash(input.password, 12),
     role: "user"
+  });
+
+  await notifyAdmins({
+    type: "user_registered",
+    title: "New user registered",
+    message: `${user.name} created an account (${user.email}).`,
+    href: "/users"
   });
 
   return buildSession(toPublicUser(user));

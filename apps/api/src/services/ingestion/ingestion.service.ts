@@ -19,6 +19,7 @@ import { extractDocument } from "./extraction.service.js";
 import { storePdfSource } from "./pdf-storage.service.js";
 import { pushBookToOmp } from "../omp/omp-push.service.js";
 import type { SourceFormat } from "../../utils/source-format.js";
+import { notifyAdmins } from "../notifications/notification.service.js";
 
 const MAX_EMBEDDING_CHARS = 50000;
 const PROGRESS_INTERVAL_MS = 1500;
@@ -195,6 +196,13 @@ export async function processBook(bookId: string): Promise<void> {
       throw new ProcessingCancelledError();
     }
 
+    await notifyAdmins({
+      type: "book_ready",
+      title: "Book uploaded successfully",
+      message: `“${completedBook.title}” is ready to read and search.`,
+      href: "/library"
+    });
+
     // Mirror the finished book into OMP (Arado). Best-effort: never blocks or
     // fails ingestion, and records its own status on the book.
     await pushBookToOmp(completedBook);
@@ -224,6 +232,7 @@ async function throwIfCancelled(bookId: string) {
  * job, so mark it failed and ask the user to re-upload.
  */
 export async function failStaleProcessingBooks(): Promise<void> {
+  const staleBooks = await Book.find({ status: "processing" }, { title: 1 }).lean();
   const result = await Book.updateMany(
     { status: "processing" },
     { $set: { status: "failed", error: "Processing was interrupted. Please delete and re-upload this book." } }
@@ -231,6 +240,14 @@ export async function failStaleProcessingBooks(): Promise<void> {
 
   if (result.modifiedCount) {
     console.log(`[ingestion] marked ${result.modifiedCount} interrupted book(s) as failed`);
+    for (const book of staleBooks) {
+      await notifyAdmins({
+        type: "book_failed",
+        title: "Book processing failed",
+        message: `“${book.title}” was interrupted and needs to be uploaded again.`,
+        href: "/library"
+      });
+    }
   }
 }
 
@@ -238,6 +255,12 @@ async function markFailed(book: HydratedDocument<BookDocument>, message: string)
   book.status = "failed";
   book.error = message.slice(0, 500);
   await book.save().catch(() => undefined);
+  await notifyAdmins({
+    type: "book_failed",
+    title: "Book processing failed",
+    message: `“${book.title}” could not be processed: ${book.error}`,
+    href: "/library"
+  });
 }
 
 async function recordUsage(

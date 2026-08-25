@@ -6,6 +6,7 @@ import { Feedback } from "../models/feedback.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { cursorFilter, nextCursor, parsePageParams } from "../utils/pagination.js";
+import { notifyAdmins } from "../services/notifications/notification.service.js";
 
 const sourceSchema = z.object({
   bookName: z.string().trim().max(200),
@@ -40,6 +41,14 @@ feedbackRouter.post(
     }
 
     await Feedback.create(parsed.data);
+    if (parsed.data.vote === "down") {
+      await notifyAdmins({
+        type: "feedback",
+        title: "New negative answer feedback",
+        message: parsed.data.note?.trim() || "A user marked an answer as not helpful and it needs review.",
+        href: "/feedback"
+      });
+    }
     res.status(201).json({ received: true });
   })
 );

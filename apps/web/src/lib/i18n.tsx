@@ -504,6 +504,13 @@ export const STRINGS = {
   },
   "orgAdmin.grantError": { ar: "تعذّر منح هذا الكتاب.", en: "Could not grant this book." },
   "orgAdmin.seatsLeft": { ar: "نسخة متبقية", en: "left" }
+,
+  "nav.notifications": { ar: "Notifications", en: "Notifications" },
+  "nav.newNotifications": { ar: "new notifications", en: "new notifications" },
+  "notifications.title": { ar: "Notifications", en: "Notifications" },
+  "notifications.subtitle": { ar: "Important activity that needs your attention.", en: "Important activity that needs your attention." },
+  "notifications.markAll": { ar: "Mark all read", en: "Mark all read" },
+  "notifications.empty": { ar: "You have no notifications yet.", en: "You have no notifications yet." }
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

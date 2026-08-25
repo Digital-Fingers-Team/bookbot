@@ -357,6 +357,36 @@ export function decideAccessRequest(id: string, action: "approve" | "reject", ad
   });
 }
 
+export type AdminNotification = {
+  id: string;
+  type: "book_ready" | "book_failed" | "access_request" | "feedback" | "user_registered";
+  title: string;
+  message: string;
+  href: string | null;
+  readAt: string | null;
+  createdAt: string;
+};
+
+export function listNotifications(token?: string, unreadOnly = false, cursor?: string) {
+  const qs = new URLSearchParams();
+  if (unreadOnly) qs.set("unread", "true");
+  if (cursor) qs.set("cursor", cursor);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return request<{ notifications: AdminNotification[]; nextCursor: string | null }>(`/api/notifications${suffix}`, { token });
+}
+
+export function unreadNotificationCount(token?: string) {
+  return request<{ count: number }>("/api/notifications/unread-count", { token });
+}
+
+export function markNotificationRead(id: string, token?: string) {
+  return request<{ id: string; readAt: string | null }>(`/api/notifications/${id}/read`, { method: "POST", token });
+}
+
+export function markAllNotificationsRead(token?: string) {
+  return request<{ ok: boolean }>("/api/notifications/mark-all-read", { method: "POST", token });
+}
+
 /** Fetch a receipt image as an object URL (auth required). Caller revokes it. */
 export async function fetchReceiptObjectUrl(id: string, token?: string): Promise<string> {
   const headers = new Headers();

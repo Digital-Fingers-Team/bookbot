@@ -14,6 +14,7 @@ import { asyncHandler } from "../utils/async-handler.js";
 import { readableBookTitle } from "../utils/file-name.js";
 import { matchesReceiptMimeType } from "../utils/file-signature.js";
 import { requireBookId } from "../utils/object-id.js";
+import { notifyAdmins } from "../services/notifications/notification.service.js";
 
 const RECEIPT_EXT: Record<string, string> = {
   "image/png": "png",
@@ -92,6 +93,13 @@ accessRequestsRouter.post(
       currency: "EGP",
       status: "pending",
       seenByUser: true
+    });
+
+    await notifyAdmins({
+      type: "access_request",
+      title: "New book access request",
+      message: `${req.user!.name} requested access to ${targetLabel}${amount > 0 ? ` for ${amount} EGP` : ""}.`,
+      href: "/requests"
     });
 
     res.status(201).json({ id: String(created._id), status: "pending" });
