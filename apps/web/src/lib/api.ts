@@ -289,8 +289,32 @@ export function previewExcel(file: File, token?: string) {
     .catch(() => { throw new ApiClientError(0, "NETWORK", "Could not reach the server. Check that the API is running and try again."); })
     .then(async (response) => { if (!response.ok) { const p = await response.json().catch(() => null); throw new ApiClientError(response.status, p?.error?.code ?? "INVALID_EXCEL", p?.error?.message ?? "The workbook could not be read."); } return response.json() as Promise<{ total: number; rows: ExcelImportRow[] }>; });
 }
-export function importExcelRows(rows: ExcelImportRow[], token?: string) {
-  return request<{ books: { bookId: string; title: string; rowNumber: number }[]; errors: { rowNumber: number; title: string; error: string }[] }>("/api/excel-import/import", { method: "POST", body: { rows }, token });
+export async function importExcelRows(rows: ExcelImportRow[], token?: string, summaryAudios: Record<number, File> = {}) {
+  const form = new FormData();
+  form.append("rows", JSON.stringify(rows));
+  const summaryAudioRowNumbers: number[] = [];
+  rows.forEach((row) => {
+    const audio = summaryAudios[row.rowNumber];
+    if (!audio) return;
+    form.append("summaryAudios", audio);
+    summaryAudioRowNumbers.push(row.rowNumber);
+  });
+  if (summaryAudioRowNumbers.length) {
+    form.append("summaryAudioRowNumbers", JSON.stringify(summaryAudioRowNumbers));
+  }
+
+  const headers = new Headers();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const response = await fetch(`${API_URL}/api/excel-import/import`, { method: "POST", headers, body: form });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as ApiErrorResponse | null;
+    throw new ApiClientError(
+      response.status,
+      payload?.error.code ?? "EXCEL_IMPORT_FAILED",
+      payload?.error.message ?? "The books could not be imported."
+    );
+  }
+  return response.json() as Promise<{ books: { bookId: string; title: string; rowNumber: number }[]; errors: { rowNumber: number; title: string; error: string }[] }>;
 }
 
 export type AccessRequest = {
