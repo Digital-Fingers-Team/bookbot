@@ -34,12 +34,12 @@ export class OpenAICompatibleProvider implements LLMProvider {
         temperature: 0.2,
         max_tokens: 900,
         messages: [
-          { role: "system", content: getSystemPrompt(false, input.allowOutsideBook) },
+          { role: "system", content: getSystemPrompt(false, input.allowOutsideBook, input.quiz) },
           ...toHistoryMessages(input.history),
-          { role: "user", content: buildUserPrompt(input.question, input.chunks, input.allowOutsideBook) }
+          { role: "user", content: buildUserPrompt(input.question, input.chunks, input.allowOutsideBook, input.quiz) }
         ]
       };
-      if (this.settings.jsonMode) {
+      if (this.settings.jsonMode && !input.quiz) {
         body.response_format = { type: "json_object" };
       }
 
@@ -62,7 +62,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
       }
 
       return {
-        answer: this.parseAnswer(content),
+        answer: this.parseAnswer(content, input.quiz),
         model,
         usage: {
           promptTokens: payload.usage?.prompt_tokens,
@@ -93,9 +93,9 @@ export class OpenAICompatibleProvider implements LLMProvider {
           max_tokens: 900,
           stream: true,
           messages: [
-            { role: "system", content: getSystemPrompt(true, input.allowOutsideBook) },
+            { role: "system", content: getSystemPrompt(true, input.allowOutsideBook, input.quiz) },
             ...toHistoryMessages(input.history),
-            { role: "user", content: buildUserPrompt(input.question, input.chunks, input.allowOutsideBook) }
+            { role: "user", content: buildUserPrompt(input.question, input.chunks, input.allowOutsideBook, input.quiz) }
           ]
         })
       });
@@ -148,7 +148,8 @@ export class OpenAICompatibleProvider implements LLMProvider {
     return headers;
   }
 
-  private parseAnswer(content: string): string {
+  private parseAnswer(content: string, quiz?: GenerateAnswerInput["quiz"]): string {
+    if (quiz) return content;
     if (this.settings.jsonMode) {
       return parseAnswerOnlyJson(content);
     }

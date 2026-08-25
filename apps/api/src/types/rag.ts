@@ -64,6 +64,15 @@ export type GenerateAnswerInput = {
   model?: string;
   history?: ChatTurn[];
   allowOutsideBook?: boolean;
+  quiz?: QuizRequest;
+};
+
+export type QuizRequest = {
+  mcqCount: number;
+  essayCount: number;
+  difficulty: "easy" | "medium" | "hard";
+  scope: "page" | "topic" | "book";
+  currentPage?: number;
 };
 
 export type GenerateAnswerResult = {

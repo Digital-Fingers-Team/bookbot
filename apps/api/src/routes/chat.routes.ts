@@ -4,8 +4,8 @@ import { env } from "../config/env.js";
 import { getConfiguredLLMModel } from "../config/llm.js";
 import { UsageEvent } from "../models/usage-event.model.js";
 import { createLLMProvider } from "../services/generation/llm-provider.service.js";
+import { retrieveChatChunks } from "../services/retrieval/chat-retrieval.service.js";
 import { buildEvidenceBooks, buildStructuredSources } from "../services/retrieval/evidence.service.js";
-import { retrieveRelevantChunks } from "../services/retrieval/retrieval.service.js";
 import { allowedBookIdList, resolveAccessScope } from "../services/access/access.service.js";
 import { discoverBooks } from "../services/discovery/discovery.service.js";
 import { ApiError } from "../utils/api-error.js";
@@ -37,6 +37,7 @@ const chatSchema = z.object({
   model: z.string().trim().min(3).max(120).optional(),
   // Scope retrieval to a single book ("ask within this book").
   bookId: z.string().trim().min(1).max(64).optional(),
+  page: z.number().int().min(1).max(100000).optional(),
   // Recent turns so follow-up questions can resolve context.
   allowOutsideBook: z.boolean().optional(),
   history: z
@@ -47,11 +48,6 @@ const chatSchema = z.object({
 
 // For follow-ups, fold the previous question into the retrieval query so a
 // contextual question ("وما الفرق بينهما؟") still finds the right chunks.
-function buildRetrievalQuery(question: string, history?: { role: string; content: string }[]) {
-  const lastUser = history?.filter((turn) => turn.role === "user").at(-1)?.content?.trim();
-  return lastUser ? `${lastUser} ${question}` : question;
-}
-
 const discoverSchema = z.object({
   question: z.string().trim().min(1, "Question is required.").max(2000)
 });
@@ -85,8 +81,7 @@ chatRouter.post(
 
     const topK = parsed.data.topK ?? parsed.data.limit ?? 15;
     const scope = await resolveAccessScope(req.user!);
-    const retrievalQuery = buildRetrievalQuery(parsed.data.question, parsed.data.history);
-    const retrieval = await retrieveRelevantChunks(retrievalQuery, topK, undefined, parsed.data.bookId, allowedBookIdList(scope));
+    const { retrieval, quiz } = await retrieveChatChunks({ ...parsed.data, topK }, allowedBookIdList(scope));
     const chunks = retrieval.chunks;
     const books = buildEvidenceBooks(chunks);
     const sources = buildStructuredSources(books);
@@ -127,7 +122,8 @@ chatRouter.post(
           chunks,
           model: parsed.data.model,
           history: parsed.data.history,
-          allowOutsideBook: parsed.data.allowOutsideBook
+          allowOutsideBook: parsed.data.allowOutsideBook,
+          quiz
         });
     const generationUsage = generation.usage ?? {};
     const { answer: cleanAnswer, notFound } = extractNotFound(generation.answer);
@@ -194,8 +190,7 @@ chatRouter.post("/stream", async (req, res) => {
   try {
     const topK = parsed.data.topK ?? parsed.data.limit ?? 15;
     const scope = await resolveAccessScope(req.user!);
-    const retrievalQuery = buildRetrievalQuery(parsed.data.question, parsed.data.history);
-    const retrieval = await retrieveRelevantChunks(retrievalQuery, topK, undefined, parsed.data.bookId, allowedBookIdList(scope));
+    const { retrieval, quiz } = await retrieveChatChunks({ ...parsed.data, topK }, allowedBookIdList(scope));
     const chunks = retrieval.chunks;
     const books = buildEvidenceBooks(chunks);
     const sources = buildStructuredSources(books);
@@ -272,7 +267,8 @@ chatRouter.post("/stream", async (req, res) => {
         chunks,
         model: parsed.data.model,
         history: parsed.data.history,
-        allowOutsideBook: parsed.data.allowOutsideBook
+        allowOutsideBook: parsed.data.allowOutsideBook,
+        quiz
       })) {
         if (aborted) {
           break;
@@ -291,7 +287,8 @@ chatRouter.post("/stream", async (req, res) => {
         chunks,
         model: parsed.data.model,
         history: parsed.data.history,
-        allowOutsideBook: parsed.data.allowOutsideBook
+        allowOutsideBook: parsed.data.allowOutsideBook,
+        quiz
       });
       pendingBuffer = generated.answer;
       checkPrefix(true);

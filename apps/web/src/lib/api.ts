@@ -58,6 +58,7 @@ export type ChatInput = {
   limit?: number;
   model?: string;
   bookId?: string;
+  page?: number;
   allowOutsideBook?: boolean;
   history?: ChatTurn[];
 };

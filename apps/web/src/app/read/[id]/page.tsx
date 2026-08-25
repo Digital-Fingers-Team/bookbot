@@ -198,7 +198,7 @@ export default function ReadPage() {
         </div>
 
         <div className={`min-h-0 border-s border-line dark:border-white/10 ${tab === "assistant" ? "block" : "hidden"} h-full lg:block`}>
-          <BookAssistant bookId={id} onJumpToPage={jumpTo} />
+          <BookAssistant bookId={id} currentPage={page} onJumpToPage={jumpTo} />
         </div>
       </div>
     </div>

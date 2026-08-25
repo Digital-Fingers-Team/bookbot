@@ -5,6 +5,8 @@ import { FileText, Loader2, Search, Send, Sparkles, Trash2 } from "lucide-react"
 import { getBookConversation, saveBookConversation, streamQuestion } from "@/lib/api";
 import { useAuth } from "@/components/auth-provider";
 import type { Source } from "@/lib/types";
+import { parseQuiz } from "@/lib/quiz";
+import { QuizView } from "@/components/quiz-view";
 import { AI_NAME, useT } from "@/lib/i18n";
 
 const RESPONSE_DEPTH = 3;
@@ -16,9 +18,10 @@ type Msg = {
   sources: Source[];
   status: "searching" | "streaming" | "done" | "error";
   notFound?: boolean;
+  selectedAnswers?: Record<number, string>;
 };
 
-export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJumpToPage: (page: number) => void }) {
+export function BookAssistant({ bookId, currentPage, onJumpToPage }: { bookId: string; currentPage: number; onJumpToPage: (page: number) => void }) {
   const t = useT();
   const { token } = useAuth();
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -93,6 +96,10 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
     }
 
     const assistantId = crypto.randomUUID();
+    const history = messages
+      .filter((message) => message.content.trim())
+      .slice(-10)
+      .map((message) => ({ role: message.role, content: message.content }));
     setMessages((prev) => [
       ...prev,
       ...(appendUser ? [{ id: crypto.randomUUID(), role: "user" as const, content: question, sources: [], status: "done" as const }] : []),
@@ -106,7 +113,7 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
 
     try {
       await streamQuestion(
-        { question, limit: RESPONSE_DEPTH, bookId, allowOutsideBook },
+        { question, limit: RESPONSE_DEPTH, bookId, page: currentPage, allowOutsideBook, history },
         {
           signal: controller.signal,
           onMeta: (meta) => patch(assistantId, (message) => ({ ...message, sources: meta.sources ?? [], status: "streaming" })),
@@ -187,6 +194,17 @@ export function BookAssistant({ bookId, onJumpToPage }: { bookId: string; onJump
                       <Search className="h-4 w-4 animate-pulse" />
                       {t("ask.searching")}
                     </span>
+                  ) : message.status === "done" && parseQuiz(message.content).length ? (
+                    <QuizView
+                      questions={parseQuiz(message.content)}
+                      selectedAnswers={message.selectedAnswers ?? {}}
+                      onSelect={(index, answer) =>
+                        patch(message.id, (current) => ({
+                          ...current,
+                          selectedAnswers: { ...(current.selectedAnswers ?? {}), [index]: answer }
+                        }))
+                      }
+                    />
                   ) : (
                     <p dir="auto" className="book-text whitespace-pre-wrap text-sm text-ink dark:text-white">
                       <InlineMarkdown text={message.content} />

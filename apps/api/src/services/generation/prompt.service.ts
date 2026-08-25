@@ -1,5 +1,6 @@
-import type { RetrievedChunk } from "../../types/rag.js";
+import type { QuizRequest, RetrievedChunk } from "../../types/rag.js";
 import { bestSnippet } from "../../utils/text.js";
+import { QUIZ_OUTPUT_GUIDANCE, quizRequestSummary } from "./quiz.service.js";
 
 // Bound how much of each chunk is sent to the model. Most chunks are smaller
 // than this; only oversized ones get trimmed — centred on the matched terms so
@@ -54,12 +55,16 @@ export const EXPANDED_STRICT_SYSTEM_PROMPT = `You are zaky - زكي, a research 
 
 Use the provided book excerpts first whenever they are relevant. If they do not contain enough information, answer using reliable general knowledge and briefly distinguish it from what the book covers. Detect the language of the question and answer in that same language. Be clear and concise. Output valid JSON only in this exact shape: {"answer":"<your answer>"}.`;
 
-export function getSystemPrompt(streaming: boolean, allowOutsideBook?: boolean) {
-  if (allowOutsideBook) return streaming ? EXPANDED_STREAMING_SYSTEM_PROMPT : EXPANDED_STRICT_SYSTEM_PROMPT;
-  return streaming ? STREAMING_RAG_SYSTEM_PROMPT : STRICT_RAG_SYSTEM_PROMPT;
+export function getSystemPrompt(streaming: boolean, allowOutsideBook?: boolean, quiz?: QuizRequest) {
+  const base = quiz
+    ? allowOutsideBook ? EXPANDED_STREAMING_SYSTEM_PROMPT : STREAMING_RAG_SYSTEM_PROMPT
+    : allowOutsideBook
+      ? streaming ? EXPANDED_STREAMING_SYSTEM_PROMPT : EXPANDED_STRICT_SYSTEM_PROMPT
+      : streaming ? STREAMING_RAG_SYSTEM_PROMPT : STRICT_RAG_SYSTEM_PROMPT;
+  return quiz ? base + "\n\n" + QUIZ_OUTPUT_GUIDANCE + "\n" + quizRequestSummary(quiz) : base;
 }
 
-export function buildUserPrompt(question: string, chunks: RetrievedChunk[], allowOutsideBook = false) {
+export function buildUserPrompt(question: string, chunks: RetrievedChunk[], allowOutsideBook = false, quiz?: QuizRequest) {
   const context = chunks
     .map((chunk, index) => {
       const text =
@@ -76,5 +81,5 @@ Question:
 ${question}
 
 Library excerpts:
-${context}`;
+  ${context}${quiz ? "\n\n" + quizRequestSummary(quiz) : ""}`;
 }
