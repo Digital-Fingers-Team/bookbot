@@ -36,6 +36,9 @@ export function Landing() {
           <Link href="/login" className={buttonClass("secondary")}>
             {t("nav.signin")}
           </Link>
+          <Link href="/library" className={buttonClass("secondary")}>
+            {t("nav.library")}
+          </Link>
         </div>
       </section>
 

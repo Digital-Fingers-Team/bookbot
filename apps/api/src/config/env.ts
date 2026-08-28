@@ -11,6 +11,9 @@ dotenv.config();
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(4000),
+  // Number of trusted reverse-proxy hops in front of the API. Keep 0 for a
+  // directly exposed API; production deployments must set the actual value.
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
   // Observability. SENTRY_DSN is optional — error tracking is off when unset.
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   SENTRY_DSN: z.string().optional(),

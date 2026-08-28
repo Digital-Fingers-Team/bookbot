@@ -127,7 +127,7 @@ The complete, commented configuration is in [.env.example](.env.example). The ma
 
 | Area | Variables | Purpose |
 | --- | --- | --- |
-| Runtime | `NODE_ENV`, `PORT`, `LOG_LEVEL`, `SENTRY_DSN` | API runtime, logging, and optional error tracking |
+| Runtime | `NODE_ENV`, `PORT`, `TRUST_PROXY_HOPS`, `LOG_LEVEL`, `SENTRY_DSN` | API runtime, trusted proxy client-IP resolution, and optional error tracking |
 | Database | `MONGODB_URI` | MongoDB connection string |
 | Web/API | `CLIENT_ORIGIN`, `PUBLIC_API_URL`, `NEXT_PUBLIC_API_URL` | CORS, public API callbacks, and browser API access |
 | Authentication | `AUTH_JWT_SECRET`, `DEFAULT_ADMIN_EMAIL`, `DEFAULT_ADMIN_PASSWORD`, `ADMIN_API_KEY` | Sessions, initial admin account, and optional automation access |
@@ -177,6 +177,7 @@ Run these commands from the repository root:
 ## Production notes
 
 - Set `NODE_ENV=production` and use long, unique values for `AUTH_JWT_SECRET`, `OMP_USER_SECRET`, and `OMP_SSO_SECRET`.
+- Set `TRUST_PROXY_HOPS` to the actual number of trusted proxies in front of the API before enabling organization network restrictions; leave it at `0` for direct connections.
 - Never use the example admin credentials or placeholder API keys in production.
 - Set `CLIENT_ORIGIN` and `NEXT_PUBLIC_API_URL` to the deployed origins. `PUBLIC_API_URL` must be publicly reachable over HTTPS when Heyzine PDF conversion is enabled.
 - Prefer `STORAGE_DRIVER=gridfs` or `STORAGE_DRIVER=s3` on deployments with ephemeral disks.

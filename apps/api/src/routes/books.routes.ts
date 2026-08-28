@@ -3,9 +3,10 @@ import multer from "multer";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { env } from "../config/env.js";
 import { storage } from "../services/storage/storage.service.js";
-import { requireAdmin, requireAuth } from "../middleware/auth.middleware.js";
-import { requireBookAccess, requireDownloadAccess } from "../middleware/access.middleware.js";
+import { optionalAuth, requireAdmin, requireAuth } from "../middleware/auth.middleware.js";
+import { requireBookAccess, requireDownloadAccess, requireProtectedContentAccess } from "../middleware/access.middleware.js";
 import { allowedBookIdList, canAccessBook, canDownloadBook, resolveAccessScope } from "../services/access/access.service.js";
+import { resolveClientIp, resolveNetworkBookAccess, resolveNetworkBookIds } from "../services/access/network-policy.service.js";
 import { Book } from "../models/book.model.js";
 import { Category } from "../models/category.model.js";
 import { BookState } from "../models/book-state.model.js";
@@ -38,11 +39,12 @@ export const booksRouter: ExpressRouter = Router();
 
 booksRouter.get(
   "/",
-  requireAuth,
+  optionalAuth,
   asyncHandler(async (req, res) => {
     // The library shows the whole catalog; `accessible` marks which books the
     // user may actually open (admins / granted books / granted categories).
-    const scope = await resolveAccessScope(req.user!);
+    const scope = req.user ? await resolveAccessScope(req.user) : null;
+    const networkBookIds = req.user ? null : await resolveNetworkBookIds(resolveClientIp(req));
     const books = await Book.find(
       {},
       { title: 1, originalFileName: 1, sourceFormat: 1, createdAt: 1, readyAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, categories: 1, author: 1, featured: 1, description: 1, price: 1, summaryAudioFileName: 1, summaryAudioMimeType: 1, summaryAudioSize: 1, summaryAudioUploadedAt: 1 }
@@ -52,7 +54,7 @@ booksRouter.get(
     const bookIds = books.map((book) => book._id);
     const [firstPageChunks, favoriteStates] = await Promise.all([
       Chunk.find({ bookId: { $in: bookIds }, pageNumber: 1 }, { bookId: 1, chunkText: 1 }, { lean: true }),
-      BookState.find({ userId: req.user!.id, favorite: true }, { bookId: 1 }).lean()
+      req.user ? BookState.find({ userId: req.user.id, favorite: true }, { bookId: 1 }).lean() : []
     ]);
     const firstPageByBookId = new Map(firstPageChunks.map((chunk) => [String(chunk.bookId), excerpt(chunk.chunkText, 220)]));
     const favoriteIds = new Set(favoriteStates.map((state) => String(state.bookId)));
@@ -60,13 +62,15 @@ booksRouter.get(
     res.json({
       books: books.map((book) => {
         const firstPageText = firstPageByBookId.get(String(book._id)) ?? "";
+        const accessible = scope ? canAccessBook(scope, String(book._id)) : networkBookIds!.has(String(book._id));
+        const visibleFirstPageText = req.user || accessible ? firstPageText : "";
 
         return {
           id: String(book._id),
           title: readableBookTitle({
             title: book.title,
             originalFileName: book.originalFileName,
-            firstPageText
+            firstPageText: visibleFirstPageText
           }),
           originalFileName: normalizeUploadedFileName(book.originalFileName),
           sourceFormat: book.sourceFormat ?? "pdf",
@@ -85,8 +89,8 @@ booksRouter.get(
           description: book.description ?? "",
           price: book.price ?? 0,
           summaryAudio: summaryAudioMeta(book),
-          accessible: canAccessBook(scope, String(book._id)),
-          firstPageText
+          accessible,
+          firstPageText: visibleFirstPageText
         };
       })
     });
@@ -267,8 +271,8 @@ booksRouter.get(
 // A single book with the current user's state, for the reading view.
 booksRouter.get(
   "/:id",
-  requireAuth,
-  requireBookAccess,
+  optionalAuth,
+  requireProtectedContentAccess,
   asyncHandler(async (req, res) => {
     const bookId = requireBookId(routeId(req.params.id));
 
@@ -279,11 +283,14 @@ booksRouter.get(
 
     const [firstPage, state, canDownload] = await Promise.all([
       Chunk.findOne({ bookId, pageNumber: 1 }, { chunkText: 1 }).lean(),
-      BookState.findOne({ userId: req.user!.id, bookId }).lean(),
-      canDownloadBook(req.user!, bookId)
+      req.user ? BookState.findOne({ userId: req.user.id, bookId }).lean() : null,
+      req.user ? canDownloadBook(req.user, bookId) : false
     ]);
 
-    res.json({ ...bookCard(book, firstPage ? excerpt(firstPage.chunkText, 220) : "", state), canDownload });
+    const networkAccess = req.networkBookAccess ?? await resolveNetworkBookAccess(bookId, resolveClientIp(req));
+    const networkDownload = networkAccess.allowed && networkAccess.downloadable;
+
+    res.json({ ...bookCard(book, firstPage ? excerpt(firstPage.chunkText, 220) : "", state), canDownload: canDownload || networkDownload });
   })
 );
 
@@ -321,8 +328,8 @@ booksRouter.put(
 
 booksRouter.get(
   "/:id/pdf",
-  requireAuth,
-  requireBookAccess,
+  optionalAuth,
+  requireProtectedContentAccess,
   requireDownloadAccess,
   asyncHandler(async (req, res) => {
     const book = await findBookPdf(routeId(req.params.id));
@@ -335,8 +342,8 @@ booksRouter.get(
 
 booksRouter.get(
   "/:id/pdf-data",
-  requireAuth,
-  requireBookAccess,
+  optionalAuth,
+  requireProtectedContentAccess,
   requireDownloadAccess,
   asyncHandler(async (req, res) => {
     const book = await findBookPdf(routeId(req.params.id));
@@ -351,8 +358,8 @@ booksRouter.get(
 
 booksRouter.get(
   "/:id/pages/:page/image",
-  requireAuth,
-  requireBookAccess,
+  optionalAuth,
+  requireProtectedContentAccess,
   asyncHandler(async (req, res) => {
     const book = await findBookPdf(routeId(req.params.id));
     const pageNumber = Math.max(1, Math.floor(Number(req.params.page) || 1));
@@ -381,8 +388,8 @@ booksRouter.get(
  */
 booksRouter.get(
   "/:id/pages/:page/text",
-  requireAuth,
-  requireBookAccess,
+  optionalAuth,
+  requireProtectedContentAccess,
   asyncHandler(async (req, res) => {
     const id = requireBookId(routeId(req.params.id));
     const pageNumber = Math.max(1, Math.floor(Number(req.params.page) || 1));
@@ -403,8 +410,8 @@ booksRouter.get(
  */
 booksRouter.get(
   "/:id/source",
-  requireAuth,
-  requireBookAccess,
+  optionalAuth,
+  requireProtectedContentAccess,
   requireDownloadAccess,
   asyncHandler(async (req, res) => {
     const book = await findBookSource(routeId(req.params.id));
@@ -417,8 +424,8 @@ booksRouter.get(
 
 booksRouter.get(
   "/:id/source-data",
-  requireAuth,
-  requireBookAccess,
+  optionalAuth,
+  requireProtectedContentAccess,
   requireDownloadAccess,
   asyncHandler(async (req, res) => {
     const book = await findBookSource(routeId(req.params.id));
@@ -566,8 +573,8 @@ booksRouter.post(
 // The client fetches this authenticated blob and plays it from an object URL.
 booksRouter.get(
   "/:id/summary-audio",
-  requireAuth,
-  requireBookAccess,
+  optionalAuth,
+  requireProtectedContentAccess,
   asyncHandler(async (req, res) => {
     const id = requireBookId(routeId(req.params.id));
     const book = await Book.findById(id, { summaryAudioPath: 1, summaryAudioMimeType: 1, summaryAudioFileName: 1 }).lean();
@@ -623,8 +630,8 @@ booksRouter.delete(
 /** Return the Heyzine reader URL, creating it on first use for PDF books. */
 booksRouter.get(
   "/:id/heyzine",
-  requireAuth,
-  requireBookAccess,
+  optionalAuth,
+  requireProtectedContentAccess,
   asyncHandler(async (req, res) => {
     const bookId = requireBookId(routeId(req.params.id));
     const book = await Book.findById(bookId, { title: 1, sourceFormat: 1, heyzineUrl: 1, heyzineId: 1, status: 1 }).lean();

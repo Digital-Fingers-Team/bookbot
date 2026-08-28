@@ -20,10 +20,13 @@ import { uploadRouter } from "./routes/upload.routes.js";
 import { excelImportRouter } from "./routes/excel-import.routes.js";
 import { notificationsRouter } from "./routes/notifications.routes.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware.js";
-import { requireAuth } from "./middleware/auth.middleware.js";
 
 export function createApp(): Express {
   const app = express();
+
+  // Express will ignore client-supplied forwarded headers when this is 0 and
+  // will walk only the configured number of trusted proxy hops otherwise.
+  app.set("trust proxy", env.TRUST_PROXY_HOPS);
 
   app.use(helmet());
   app.use(
@@ -53,7 +56,7 @@ export function createApp(): Express {
   app.use("/api/auth", authLimiter, authRouter);
   app.use("/api/upload", uploadLimiter, uploadRouter);
   app.use("/api/excel-import", uploadLimiter, excelImportRouter);
-  app.use("/api/chat", requireAuth, chatRouter);
+  app.use("/api/chat", chatRouter);
   app.use("/api/books", booksRouter);
   app.use("/api/categories", categoriesRouter);
   app.use("/api/access-requests", accessRequestsRouter);

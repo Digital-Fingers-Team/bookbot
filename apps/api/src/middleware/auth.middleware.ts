@@ -17,6 +17,19 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
   }
 }
 
+/** Authenticate when a bearer token is present, but allow anonymous requests. */
+export async function optionalAuth(req: Request, _res: Response, next: NextFunction) {
+  try {
+    const token = bearerToken(req);
+    if (token) {
+      req.user = await getUserFromToken(token);
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function requireAdmin(req: Request, _res: Response, next: NextFunction) {
   try {
     if (env.ADMIN_API_KEY && req.header("x-admin-key") === env.ADMIN_API_KEY) {

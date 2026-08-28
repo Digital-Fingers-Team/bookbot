@@ -12,6 +12,7 @@ import { readableBookTitle } from "../utils/file-name.js";
 import { requireBookId, requireUserId } from "../utils/object-id.js";
 import { cursorFilter, nextCursor, parsePageParams } from "../utils/pagination.js";
 import { escapeRegExp } from "../utils/text.js";
+import { networkPolicyResponse, resolveClientIp, saveNetworkPolicy, testNetworkPolicy } from "../services/access/network-policy.service.js";
 
 const targetSchema = z.object({
   targetType: z.enum(["book", "category"]),
@@ -23,6 +24,12 @@ const grantSchema = z.object({
 });
 const bookIdSchema = z.object({ bookId: z.string().trim().min(1) });
 const addStudentSchema = z.object({ email: z.string().trim().email() });
+const networkPolicySchema = z.object({
+  networkRestrictionEnabled: z.boolean(),
+  allowedIpCidrs: z.array(z.string().trim().min(1).max(200)).max(100),
+  downloadableBookIds: z.array(z.string().trim().min(1)).max(1000).optional()
+});
+const networkTestSchema = z.object({ ip: z.string().trim().min(1).max(200).optional() });
 
 /** How many students in this org already have a given book granted. */
 async function countStudentsWithBook(orgId: string, bookId: string): Promise<number> {
@@ -70,6 +77,42 @@ orgAdminRouter.get(
         granted: grantedPerBook.get(String(b._id)) ?? 0
       }))
     });
+  })
+);
+
+orgAdminRouter.get(
+  "/network-policy",
+  asyncHandler(async (req, res) => {
+    const organization = await Organization.findById(requireMyOrgId(req)).lean();
+    if (!organization) throw new ApiError(404, "ORG_NOT_FOUND", "Your organization was not found.");
+    res.json(networkPolicyResponse(organization));
+  })
+);
+
+orgAdminRouter.put(
+  "/network-policy",
+  validate({ body: networkPolicySchema }),
+  asyncHandler(async (req, res) => {
+    res.json({ networkPolicy: await saveNetworkPolicy(requireMyOrgId(req), req.body, req.user!.id) });
+  })
+);
+
+orgAdminRouter.post(
+  "/network-policy/test",
+  validate({ body: networkTestSchema }),
+  asyncHandler(async (req, res) => {
+    res.json(await testNetworkPolicy(requireMyOrgId(req), req.body.ip ?? resolveClientIp(req)));
+  })
+);
+
+orgAdminRouter.get(
+  "/network-policy/current-ip",
+  asyncHandler(async (req, res) => {
+    const orgId = requireMyOrgId(req);
+    const ip = resolveClientIp(req);
+    const updated = await Organization.findByIdAndUpdate(orgId, { $set: { lastObservedIp: ip } }, { new: true }).lean();
+    if (!updated) throw new ApiError(404, "ORG_NOT_FOUND", "Your organization was not found.");
+    res.json({ ip, networkPolicy: networkPolicyResponse(updated) });
   })
 );
 

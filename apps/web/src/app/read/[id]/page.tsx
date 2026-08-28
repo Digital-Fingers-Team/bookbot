@@ -32,10 +32,6 @@ export default function ReadPage() {
     if (authLoading) {
       return;
     }
-    if (!user) {
-      router.replace(`/login?next=/read/${id}`);
-      return;
-    }
 
     let cancelled = false;
     let createdUrl = "";
@@ -51,7 +47,9 @@ export default function ReadPage() {
         setSummaryAudioUrl("");
         setFav(detail.favorite);
         setPage(detail.lastPage || 1);
-        void setProgress(id, detail.lastPage || 1, token).catch(() => undefined);
+        if (token) {
+          void setProgress(id, detail.lastPage || 1, token).catch(() => undefined);
+        }
 
         if (detail.canDownload) {
           const blob = detail.sourceFormat === "pdf" ? await getBookPdf(id, token) : await getBookSource(id, token);
@@ -98,10 +96,13 @@ export default function ReadPage() {
     }
     setPage(next);
     setTab("book");
-    void setProgress(id, next, token).catch(() => undefined);
+    if (token) {
+      void setProgress(id, next, token).catch(() => undefined);
+    }
   }
 
   async function toggleFavorite() {
+    if (!token) return;
     const next = !favorite;
     setFav(next);
     try {
@@ -111,7 +112,7 @@ export default function ReadPage() {
     }
   }
 
-  if (authLoading || (!user && !error)) {
+  if (authLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center text-ink/70 dark:text-white/70">
         <Loader2 className="h-5 w-5 animate-spin" />
@@ -125,7 +126,7 @@ export default function ReadPage() {
         <div className="flex min-w-0 items-center gap-2">
           <button
             type="button"
-            onClick={() => router.push("/my-books")}
+            onClick={() => router.push(user ? "/my-books" : "/library")}
             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/70 dark:hover:text-sea"
             aria-label={t("read.back")}
             title={t("read.back")}
@@ -139,7 +140,7 @@ export default function ReadPage() {
             {book?.author ? <p className="truncate text-xs text-ink/70 dark:text-white/70">{book.author}</p> : null}
           </div>
         </div>
-        <button
+        {user ? <button
           type="button"
           onClick={toggleFavorite}
           className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition ${
@@ -150,7 +151,7 @@ export default function ReadPage() {
           title={favorite ? t("read.unfavorite") : t("read.favorite")}
         >
           <Heart className={`h-4 w-4 ${favorite ? "fill-current" : ""}`} />
-        </button>
+        </button> : null}
       </header>
 
       {summaryAudioUrl ? (

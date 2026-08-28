@@ -1,5 +1,6 @@
-import { Router, type Router as ExpressRouter } from "express";
+import { Router, type Request, type Router as ExpressRouter } from "express";
 import { z } from "zod";
+import { requireAuth } from "../middleware/auth.middleware.js";
 import { env } from "../config/env.js";
 import { getConfiguredLLMModel } from "../config/llm.js";
 import { UsageEvent } from "../models/usage-event.model.js";
@@ -7,6 +8,7 @@ import { createLLMProvider } from "../services/generation/llm-provider.service.j
 import { retrieveChatChunks } from "../services/retrieval/chat-retrieval.service.js";
 import { buildEvidenceBooks, buildStructuredSources } from "../services/retrieval/evidence.service.js";
 import { allowedBookIdList, resolveAccessScope } from "../services/access/access.service.js";
+import { resolveClientIp, resolveNetworkBookIds } from "../services/access/network-policy.service.js";
 import { discoverBooks } from "../services/discovery/discovery.service.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
@@ -59,6 +61,7 @@ export const chatRouter: ExpressRouter = Router();
 // content returned — so newcomers can decide what to request access to.
 chatRouter.post(
   "/discover",
+  requireAuth,
   asyncHandler(async (req, res) => {
     const parsed = discoverSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -80,8 +83,8 @@ chatRouter.post(
     }
 
     const topK = parsed.data.topK ?? parsed.data.limit ?? 15;
-    const scope = await resolveAccessScope(req.user!);
-    const { retrieval, quiz } = await retrieveChatChunks({ ...parsed.data, topK }, allowedBookIdList(scope));
+    const allowedBookIds = await resolveChatBookIds(req, parsed.data.bookId);
+    const { retrieval, quiz } = await retrieveChatChunks({ ...parsed.data, topK }, allowedBookIds);
     const chunks = retrieval.chunks;
     const books = buildEvidenceBooks(chunks);
     const sources = buildStructuredSources(books);
@@ -159,7 +162,7 @@ chatRouter.post(
 
 // Server-Sent Events: emit retrieved evidence immediately, then stream the
 // answer token by token so the UI feels live (like a chat assistant).
-chatRouter.post("/stream", async (req, res) => {
+chatRouter.post("/stream", async (req, res, next) => {
   const startedAt = Date.now();
   const parsed = chatSchema.safeParse(req.body);
 
@@ -167,6 +170,14 @@ chatRouter.post("/stream", async (req, res) => {
     res
       .status(400)
       .json({ error: { code: "INVALID_CHAT_REQUEST", message: "Please enter a valid question." } });
+    return;
+  }
+
+  let allowedBookIds: string[] | null;
+  try {
+    allowedBookIds = await resolveChatBookIds(req, parsed.data.bookId);
+  } catch (error) {
+    next(error);
     return;
   }
 
@@ -189,8 +200,7 @@ chatRouter.post("/stream", async (req, res) => {
 
   try {
     const topK = parsed.data.topK ?? parsed.data.limit ?? 15;
-    const scope = await resolveAccessScope(req.user!);
-    const { retrieval, quiz } = await retrieveChatChunks({ ...parsed.data, topK }, allowedBookIdList(scope));
+    const { retrieval, quiz } = await retrieveChatChunks({ ...parsed.data, topK }, allowedBookIds);
     const chunks = retrieval.chunks;
     const books = buildEvidenceBooks(chunks);
     const sources = buildStructuredSources(books);
@@ -325,3 +335,19 @@ chatRouter.post("/stream", async (req, res) => {
     res.end();
   }
 });
+
+async function resolveChatBookIds(req: Request, bookId?: string) {
+  if (req.user) {
+    const scope = await resolveAccessScope(req.user);
+    if (bookId && !scope.all && !allowedBookIdList(scope)!.includes(bookId)) {
+      throw new ApiError(403, "BOOK_ACCESS_DENIED", "You don't have access to this book yet.");
+    }
+    return allowedBookIdList(scope);
+  }
+
+  const ids = await resolveNetworkBookIds(resolveClientIp(req));
+  if (!ids.size || (bookId && !ids.has(bookId))) {
+    throw new ApiError(403, "ORG_NETWORK_ACCESS_DENIED", "This content is only available from an authorized organization network.");
+  }
+  return [...ids];
+}

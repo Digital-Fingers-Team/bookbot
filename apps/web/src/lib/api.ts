@@ -837,6 +837,10 @@ export type Organization = {
   name: string;
   allowedCategories: string[];
   allowedBooks: { id: string; title: string; price: number; quota: number | null; granted: number }[];
+  networkRestrictionEnabled: boolean;
+  allowedIpCidrs: string[];
+  downloadableBookIds: string[];
+  lastObservedIp: string | null;
   studentCount: number;
   adminCount: number;
   createdAt: string;
@@ -884,6 +888,38 @@ export function setBookQuota(orgId: string, bookId: string, quota: number | null
     body: { quota },
     token
   });
+}
+
+export type NetworkPolicy = {
+  networkRestrictionEnabled: boolean;
+  allowedIpCidrs: string[];
+  downloadableBookIds: string[];
+  lastObservedIp: string | null;
+  networkPolicyUpdatedAt: string | null;
+};
+
+export function updateOrganizationNetworkPolicy(
+  orgId: string,
+  input: { networkRestrictionEnabled: boolean; allowedIpCidrs: string[]; downloadableBookIds: string[] },
+  token?: string
+) {
+  return request<{ networkPolicy: NetworkPolicy }>(`/api/organizations/${orgId}/network-policy`, {
+    method: "PUT",
+    body: input,
+    token
+  });
+}
+
+export function testOrganizationNetworkPolicy(orgId: string, ip?: string, token?: string) {
+  return request<{ ip: string; allowed: boolean; matchedCidrs: string[] }>(`/api/organizations/${orgId}/network-policy/test`, {
+    method: "POST",
+    body: ip ? { ip } : {},
+    token
+  });
+}
+
+export function getOrganizationCurrentIp(orgId: string, token?: string) {
+  return request<{ ip: string; networkPolicy: NetworkPolicy }>(`/api/organizations/${orgId}/network-policy/current-ip`, { token });
 }
 
 // --- Org admin self-service: manage the org's own students ---

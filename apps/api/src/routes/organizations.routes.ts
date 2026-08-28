@@ -10,6 +10,7 @@ import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { readableBookTitle } from "../utils/file-name.js";
 import { requireOrgId, requireUserId } from "../utils/object-id.js";
+import { resolveClientIp, networkPolicyResponse, saveNetworkPolicy, testNetworkPolicy } from "../services/access/network-policy.service.js";
 
 const createSchema = z.object({ name: z.string().trim().min(2).max(200) });
 const targetSchema = z.object({
@@ -18,6 +19,12 @@ const targetSchema = z.object({
 });
 const assignAdminSchema = z.object({ userId: z.string().trim().min(1) });
 const bookQuotaSchema = z.object({ quota: z.number().int().min(0).nullable() });
+const networkPolicySchema = z.object({
+  networkRestrictionEnabled: z.boolean(),
+  allowedIpCidrs: z.array(z.string().trim().min(1).max(200)).max(100),
+  downloadableBookIds: z.array(z.string().trim().min(1)).max(1000).optional()
+});
+const networkTestSchema = z.object({ ip: z.string().trim().min(1).max(200).optional() });
 
 /** How many students in each org have been granted each book, keyed by `${orgId}:${bookId}`. */
 async function countGrantedPerBook(orgIds: unknown[]): Promise<Map<string, number>> {
@@ -74,6 +81,10 @@ organizationsRouter.get(
           id: String(o._id),
           name: o.name,
           allowedCategories: o.allowedCategories ?? [],
+          networkRestrictionEnabled: Boolean(o.networkRestrictionEnabled),
+          allowedIpCidrs: o.allowedIpCidrs ?? [],
+          downloadableBookIds: (o.downloadableBookIds ?? []).map(String),
+          lastObservedIp: o.lastObservedIp ?? null,
           allowedBooks: (o.allowedBookIds ?? []).map((id) => {
             const info = infoById.get(String(id));
             return {
@@ -90,6 +101,45 @@ organizationsRouter.get(
         };
       })
     });
+  })
+);
+
+organizationsRouter.get(
+  "/:id/network-policy",
+  asyncHandler(async (req, res) => {
+    const orgId = requireOrgId(req.params.id);
+    const organization = await Organization.findById(orgId).lean();
+    if (!organization) throw new ApiError(404, "ORG_NOT_FOUND", "This organization was not found.");
+    res.json(networkPolicyResponse(organization));
+  })
+);
+
+organizationsRouter.put(
+  "/:id/network-policy",
+  validate({ body: networkPolicySchema }),
+  asyncHandler(async (req, res) => {
+    const orgId = requireOrgId(req.params.id);
+    res.json({ networkPolicy: await saveNetworkPolicy(orgId, req.body, req.user!.id) });
+  })
+);
+
+organizationsRouter.post(
+  "/:id/network-policy/test",
+  validate({ body: networkTestSchema }),
+  asyncHandler(async (req, res) => {
+    const orgId = requireOrgId(req.params.id);
+    res.json(await testNetworkPolicy(orgId, req.body.ip ?? resolveClientIp(req)));
+  })
+);
+
+organizationsRouter.get(
+  "/:id/network-policy/current-ip",
+  asyncHandler(async (req, res) => {
+    const orgId = requireOrgId(req.params.id);
+    const ip = resolveClientIp(req);
+    const updated = await Organization.findByIdAndUpdate(orgId, { $set: { lastObservedIp: ip } }, { new: true }).lean();
+    if (!updated) throw new ApiError(404, "ORG_NOT_FOUND", "This organization was not found.");
+    res.json({ ip, networkPolicy: networkPolicyResponse(updated) });
   })
 );
 

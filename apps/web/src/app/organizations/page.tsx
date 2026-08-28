@@ -9,11 +9,14 @@ import {
   createOrganization,
   deleteOrganization,
   getCategories,
+  getOrganizationCurrentIp,
   grantOrgCatalog,
   listOrganizations,
   listUsers,
   revokeOrgCatalog,
   setBookQuota,
+  testOrganizationNetworkPolicy,
+  updateOrganizationNetworkPolicy,
   type CatalogBook,
   type Organization
 } from "@/lib/api";
@@ -285,6 +288,8 @@ function OrgCard({
           <BookPicker size="sm" excludeIds={org.allowedBooks.map((b) => b.id)} onPick={(book: CatalogBook) => onGrant("book", book.id)} />
         </div>
 
+        <NetworkPolicyEditor org={org} token={token} onSaved={onRefresh} />
+
         <div className="border-t border-line pt-3 dark:border-white/10">
           <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/70 dark:text-white/70">
             {t("org.assignAdmin")}
@@ -311,6 +316,139 @@ function OrgCard({
         </div>
       </div>
     </li>
+  );
+}
+
+function NetworkPolicyEditor({ org, token, onSaved }: { org: Organization; token: string; onSaved: () => void }) {
+  const [enabled, setEnabled] = useState(org.networkRestrictionEnabled);
+  const [cidrs, setCidrs] = useState(org.allowedIpCidrs);
+  const [input, setInput] = useState("");
+  const [currentIp, setCurrentIp] = useState(org.lastObservedIp ?? "");
+  const [status, setStatus] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setEnabled(org.networkRestrictionEnabled);
+    setCidrs(org.allowedIpCidrs);
+    setCurrentIp(org.lastObservedIp ?? "");
+  }, [org.networkRestrictionEnabled, org.allowedIpCidrs, org.lastObservedIp]);
+
+  async function save(nextCidrs = cidrs, nextEnabled = enabled, nextDownloads = org.downloadableBookIds) {
+    setBusy(true);
+    setStatus("");
+    try {
+      await updateOrganizationNetworkPolicy(org.id, {
+        networkRestrictionEnabled: nextEnabled,
+        allowedIpCidrs: nextCidrs,
+        downloadableBookIds: nextDownloads
+      }, token);
+      setCidrs(nextCidrs);
+      setEnabled(nextEnabled);
+      setStatus("Saved");
+      onSaved();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not save network policy.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addNetwork(value = input) {
+    const trimmed = value.trim();
+    if (!trimmed || cidrs.includes(trimmed)) return;
+    setInput("");
+    await save([...cidrs, trimmed]);
+  }
+
+  async function removeNetwork(value: string) {
+    await save(cidrs.filter((cidr) => cidr !== value));
+  }
+
+  async function toggleDownload(bookId: string) {
+    const downloads = org.downloadableBookIds.includes(bookId)
+      ? org.downloadableBookIds.filter((id) => id !== bookId)
+      : [...org.downloadableBookIds, bookId];
+    await save(cidrs, enabled, downloads);
+  }
+
+  async function detectIp() {
+    setBusy(true);
+    try {
+      const result = await getOrganizationCurrentIp(org.id, token);
+      setCurrentIp(result.ip);
+      setStatus(`Current IP: ${result.ip}`);
+      onSaved();
+    } catch {
+      setStatus("Could not detect current IP.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function testIp() {
+    setBusy(true);
+    try {
+      const result = await testOrganizationNetworkPolicy(org.id, currentIp || undefined, token);
+      setStatus(result.allowed ? `Allowed (${result.matchedCidrs.join(", ")})` : "Not allowed");
+    } catch {
+      setStatus("Could not test IP.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="border-t border-line pt-3 dark:border-white/10">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-ink/70 dark:text-white/70">Network access</p>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => save(cidrs, !enabled)}
+          className={`rounded-full px-3 py-1 text-xs font-semibold ${enabled ? "bg-moss text-white dark:bg-sea" : "bg-black/10 text-ink/70 dark:bg-white/10 dark:text-white/70"}`}
+        >
+          {enabled ? "ON" : "OFF"}
+        </button>
+      </div>
+      <div className="mt-2 space-y-2">
+        <div className="flex flex-wrap gap-1.5">
+          {cidrs.map((cidr) => (
+            <span key={cidr} className="inline-flex items-center gap-1 rounded-md bg-moss/10 px-2 py-1 text-xs text-moss dark:bg-sea/15 dark:text-sea">
+              {cidr}
+              <button type="button" disabled={busy} onClick={() => removeNetwork(cidr)} aria-label={`Remove ${cidr}`}>×</button>
+            </span>
+          ))}
+          {!cidrs.length ? <span className="text-xs text-ink/45 dark:text-white/45">No allowed networks</span> : null}
+        </div>
+        <div className="flex gap-2">
+          <input
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            onKeyDown={(event) => event.key === "Enter" && void addNetwork()}
+            placeholder="Public IP or CIDR"
+            className="h-8 min-w-0 flex-1 rounded-lg border border-line bg-transparent px-2 text-xs outline-none dark:border-white/10"
+          />
+          <button type="button" disabled={busy || !input.trim()} onClick={() => void addNetwork()} className="rounded-lg border border-line px-2 text-xs dark:border-white/10">Add</button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-ink/65 dark:text-white/65">
+          <span>Current IP: {currentIp || "—"}</span>
+          <button type="button" disabled={busy} onClick={() => void detectIp()} className="underline">Detect</button>
+          <button type="button" disabled={busy} onClick={() => void testIp()} className="underline">Test</button>
+          {status ? <span>{status}</span> : null}
+        </div>
+        {org.allowedBooks.length ? (
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-ink/70 dark:text-white/70">Network downloads</p>
+            {org.allowedBooks.map((book) => (
+              <label key={book.id} className="flex items-center gap-2 text-xs text-ink/70 dark:text-white/70">
+                <input type="checkbox" checked={org.downloadableBookIds.includes(book.id)} disabled={busy} onChange={() => void toggleDownload(book.id)} />
+                <span className="truncate">{book.title}</span>
+              </label>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 }
 

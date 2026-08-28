@@ -81,10 +81,6 @@ export default function LibraryPage() {
   const [requestsKey, setRequestsKey] = useState(0);
 
   const refresh = useCallback(async () => {
-    if (!token) {
-      return;
-    }
-
     setLoading(true);
     setError("");
 
@@ -109,18 +105,13 @@ export default function LibraryPage() {
       return;
     }
 
-    if (!user) {
-      router.replace("/login?next=/library");
-      return;
-    }
-
     refresh();
-  }, [authLoading, refresh, router, user]);
+  }, [authLoading, refresh]);
 
   // Poll while any book is still being processed so progress updates live.
   const hasProcessing = books.some((book) => book.status === "processing");
   useEffect(() => {
-    if (!token || !hasProcessing) {
+    if (!hasProcessing) {
       return;
     }
 
@@ -257,6 +248,10 @@ export default function LibraryPage() {
     // Free books open directly. Paid books still go through the request flow
     // unless the user was granted access explicitly.
     if (!isBookOpenable(book)) {
+      if (!user) {
+        router.push(`/login?next=/read/${book.id}`);
+        return;
+      }
       setPayBook(book);
       return;
     }
@@ -284,7 +279,7 @@ export default function LibraryPage() {
   }
 
   function isBookOpenable(book: Book) {
-    return (book.price ?? 0) <= 0 || book.accessible !== false;
+    return user ? (book.price ?? 0) <= 0 || book.accessible !== false : book.accessible === true;
   }
 
   async function toggleFavorite(book: Book) {
@@ -365,7 +360,7 @@ export default function LibraryPage() {
     chunks: stats?.totalChunks ?? books.reduce((total, book) => total + book.chunkCount, 0)
   };
 
-  if (authLoading || !user) {
+  if (authLoading) {
     return (
       <div className="mx-auto max-w-xl rounded-2xl border border-line bg-white p-6 dark:border-white/10 dark:bg-[#0c0c0e]">
         <div className="flex items-center gap-3 text-sm font-medium text-ink/70 dark:text-white/70">
