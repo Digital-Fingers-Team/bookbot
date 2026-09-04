@@ -986,3 +986,32 @@ export function setStudentDownloadAccess(studentId: string, bookId: string, canD
     token
   });
 }
+
+// --- Org admin self-service: manage the org's own network (IP) policy ---
+
+export function getMyOrgNetworkPolicy(token?: string) {
+  return request<NetworkPolicy>("/api/org-admin/network-policy", { token });
+}
+
+export function updateMyOrgNetworkPolicy(
+  input: { networkRestrictionEnabled: boolean; allowedIpCidrs: string[]; downloadableBookIds: string[] },
+  token?: string
+) {
+  return request<{ networkPolicy: NetworkPolicy }>("/api/org-admin/network-policy", {
+    method: "PUT",
+    body: input,
+    token
+  });
+}
+
+export function testMyOrgNetworkPolicy(ip?: string, token?: string) {
+  return request<{ ip: string; allowed: boolean; matchedCidrs: string[] }>("/api/org-admin/network-policy/test", {
+    method: "POST",
+    body: ip ? { ip } : {},
+    token
+  });
+}
+
+export function getMyOrgCurrentIp(token?: string) {
+  return request<{ ip: string; networkPolicy: NetworkPolicy }>("/api/org-admin/network-policy/current-ip", { token });
+}

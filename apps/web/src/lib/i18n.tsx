@@ -505,6 +505,31 @@ export const STRINGS = {
   },
   "orgAdmin.grantError": { ar: "تعذّر منح هذا الكتاب.", en: "Could not grant this book." },
   "orgAdmin.seatsLeft": { ar: "نسخة متبقية", en: "left" }
+  ,
+  "nav.orgNetwork": { ar: "شبكة الجامعة", en: "Campus network" },
+  "orgNet.title": { ar: "الوصول عبر شبكة الجامعة", en: "Campus network access" },
+  "orgNet.subtitle": {
+    ar: "أي حد متصل من الـ IP بتاع الجامعة يقدر يفتح كتب اشتراككم من غير تسجيل دخول.",
+    en: "Anyone browsing from your organization's IP can open your subscribed books without signing in."
+  },
+  "orgNet.enabled": { ar: "مُفعَّل", en: "Enabled" },
+  "orgNet.disabled": { ar: "متوقف", en: "Disabled" },
+  "orgNet.networks": { ar: "الشبكات المسموح بها", en: "Allowed networks" },
+  "orgNet.none": { ar: "لا توجد شبكات مضافة", en: "No allowed networks" },
+  "orgNet.placeholder": { ar: "IP عام أو نطاق CIDR (مثال 197.45.10.0/24)", en: "Public IP or CIDR (e.g. 197.45.10.0/24)" },
+  "orgNet.add": { ar: "إضافة", en: "Add" },
+  "orgNet.currentIp": { ar: "الـ IP الحالي", en: "Current IP" },
+  "orgNet.detect": { ar: "اكتشاف", en: "Detect" },
+  "orgNet.test": { ar: "اختبار", en: "Test" },
+  "orgNet.allowed": { ar: "مسموح", en: "Allowed" },
+  "orgNet.notAllowed": { ar: "غير مسموح", en: "Not allowed" },
+  "orgNet.saved": { ar: "تم الحفظ", en: "Saved" },
+  "orgNet.saveError": { ar: "تعذّر حفظ إعدادات الشبكة.", en: "Could not save the network policy." },
+  "orgNet.downloads": { ar: "كتب يُسمح بتحميلها من الشبكة", en: "Books downloadable from the network" },
+  "orgNet.hint": {
+    ar: "استخدم الـ IP العام للجامعة (مش IP الجهاز الداخلي). لو الشبكة بتغيّر الـ IP، اطلب من قسم الشبكات نطاق ثابت.",
+    en: "Use the organization's public IP (not a device's internal IP). If it changes, ask your network team for a static range."
+  }
 ,
   "nav.notifications": { ar: "Notifications", en: "Notifications" },
   "nav.newNotifications": { ar: "new notifications", en: "new notifications" },

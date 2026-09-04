@@ -13,6 +13,7 @@ import {
   LogIn,
   Menu,
   MessageSquareText,
+  Network,
   ShieldCheck,
   ThumbsDown,
   UploadCloud,
@@ -49,7 +50,10 @@ const adminNavItems: NavItem[] = [
   { href: "/analytics", key: "nav.analytics", icon: BarChart3 }
 ];
 
-const orgAdminNavItems: NavItem[] = [{ href: "/org/students", key: "nav.orgStudents", icon: GraduationCap }];
+const orgAdminNavItems: NavItem[] = [
+  { href: "/org/students", key: "nav.orgStudents", icon: GraduationCap },
+  { href: "/org/network", key: "nav.orgNetwork", icon: Network }
+];
 
 // Highlight the nav item for the current route, including nested routes like
 // /read/[id] (which belongs under Library). "/" must match exactly so it does
