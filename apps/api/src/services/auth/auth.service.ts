@@ -146,7 +146,7 @@ async function toPublicUser(user: {
   allowedBookIds?: unknown[];
   allowedCategories?: unknown[];
   organizationId?: unknown;
-}): PublicUser {
+}): Promise<PublicUser> {
   let hasAccess =
     user.role === "admin" || Boolean(user.allowedBookIds?.length) || Boolean(user.allowedCategories?.length);
   if (!hasAccess && user.role === "org_admin" && user.organizationId) {
