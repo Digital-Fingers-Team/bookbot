@@ -1,0 +1,31 @@
+From 1f41ea1f7e459612f70ce9c8832fe442321ec370 Mon Sep 17 00:00:00 2001
+From: Digital-Fingers-Team <baraasaad007@gmail.com>
+Date: Fri, 4 Sep 2026 22:45:14 +0300
+Subject: [PATCH] fix(api): toPublicUser is async, so its return type must be a
+ Promise
+
+It became async in the org-admin access resolution change but kept the bare
+`PublicUser` annotation, which tsc rejects with TS1064. `tsc -p
+tsconfig.build.json` fails, so main could not be built or deployed at all.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+---
+ apps/api/src/services/auth/auth.service.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/apps/api/src/services/auth/auth.service.ts b/apps/api/src/services/auth/auth.service.ts
+index 8b6b36d..8b1aa9f 100644
+--- a/apps/api/src/services/auth/auth.service.ts
++++ b/apps/api/src/services/auth/auth.service.ts
+@@ -146,7 +146,7 @@ async function toPublicUser(user: {
+   allowedBookIds?: unknown[];
+   allowedCategories?: unknown[];
+   organizationId?: unknown;
+-}): PublicUser {
++}): Promise<PublicUser> {
+   let hasAccess =
+     user.role === "admin" || Boolean(user.allowedBookIds?.length) || Boolean(user.allowedCategories?.length);
+   if (!hasAccess && user.role === "org_admin" && user.organizationId) {
+-- 
+2.51.0.windows.1
+
