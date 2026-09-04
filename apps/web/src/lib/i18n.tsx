@@ -463,6 +463,7 @@ export const STRINGS = {
   },
   "org.namePlaceholder": { ar: "اسم الجامعة أو المؤسسة", en: "University or institution name" },
   "org.create": { ar: "إضافة", en: "Add" },
+  "org.createError": { ar: "تعذر إضافة الجامعة.", en: "Could not create the organization." },
   "org.empty": { ar: "لا توجد جامعات بعد.", en: "No organizations yet." },
   "org.catalog": { ar: "الكتب والتصنيفات المشترك بها", en: "Subscribed books & categories" },
   "org.students": { ar: "طالب", en: "students" },

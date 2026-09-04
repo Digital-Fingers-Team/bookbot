@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { env } from "../../config/env.js";
 import { User, type UserRole } from "../../models/user.model.js";
+import { Organization } from "../../models/organization.model.js";
 import { ApiError } from "../../utils/api-error.js";
 import { notifyAdmins } from "../notifications/notification.service.js";
 
@@ -60,7 +61,7 @@ export async function registerUser(input: { name: string; email: string; passwor
     href: "/users"
   });
 
-  return buildSession(toPublicUser(user));
+  return buildSession(await toPublicUser(user));
 }
 
 export async function loginUser(input: { email: string; password: string }) {
@@ -74,7 +75,7 @@ export async function loginUser(input: { email: string; password: string }) {
     throw new ApiError(401, "INVALID_CREDENTIALS", "Email or password is incorrect.");
   }
 
-  return buildSession(toPublicUser(user));
+  return buildSession(await toPublicUser(user));
 }
 
 export async function getUserFromToken(token: string): Promise<PublicUser> {
@@ -84,7 +85,7 @@ export async function getUserFromToken(token: string): Promise<PublicUser> {
     if (!user) {
       throw new ApiError(401, "UNAUTHORIZED", "Your session is no longer valid.");
     }
-    return toPublicUser(user);
+    return await toPublicUser(user);
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
@@ -104,7 +105,7 @@ export async function updateUserProfile(userId: string, input: { name: string; l
     throw new ApiError(401, "UNAUTHORIZED", "Your session is no longer valid.");
   }
 
-  return toPublicUser(user);
+  return await toPublicUser(user);
 }
 
 export async function changeUserPassword(userId: string, input: { currentPassword: string; newPassword: string }) {
@@ -136,7 +137,7 @@ function buildSession(user: PublicUser) {
   return { token, user };
 }
 
-function toPublicUser(user: {
+async function toPublicUser(user: {
   _id: unknown;
   name: string;
   email: string;
@@ -146,8 +147,12 @@ function toPublicUser(user: {
   allowedCategories?: unknown[];
   organizationId?: unknown;
 }): PublicUser {
-  const hasAccess =
+  let hasAccess =
     user.role === "admin" || Boolean(user.allowedBookIds?.length) || Boolean(user.allowedCategories?.length);
+  if (!hasAccess && user.role === "org_admin" && user.organizationId) {
+    const organization = await Organization.findById(user.organizationId, { allowedBookIds: 1, allowedCategories: 1 }).lean();
+    hasAccess = Boolean(organization?.allowedBookIds?.length || organization?.allowedCategories?.length);
+  }
   return {
     id: String(user._id),
     name: user.name,

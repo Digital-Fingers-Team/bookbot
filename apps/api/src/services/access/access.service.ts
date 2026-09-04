@@ -1,5 +1,6 @@
 import { Book } from "../../models/book.model.js";
 import { User } from "../../models/user.model.js";
+import { Organization } from "../../models/organization.model.js";
 import type { PublicUser } from "../auth/auth.service.js";
 
 // Whether a user may read / ask the AI about a book. Admins get everything;
@@ -8,9 +9,23 @@ import type { PublicUser } from "../auth/auth.service.js";
 export type AccessScope = { all: true } | { all: false; bookIds: Set<string> };
 
 /** Resolve the set of books a user is allowed to read / query. */
-export async function resolveAccessScope(user: Pick<PublicUser, "id" | "role">): Promise<AccessScope> {
+export async function resolveAccessScope(user: Pick<PublicUser, "id" | "role" | "organizationId">): Promise<AccessScope> {
   if (user.role === "admin") {
     return { all: true };
+  }
+
+  if (user.role === "org_admin" && user.organizationId) {
+    const organization = await Organization.findById(user.organizationId, { allowedBookIds: 1, allowedCategories: 1 }).lean();
+    const bookIds = new Set<string>((organization?.allowedBookIds ?? []).map((id) => String(id)));
+    const categories = organization?.allowedCategories ?? [];
+    if (categories.length) {
+      const inCategories = await Book.find(
+        { $or: [{ categories: { $in: categories } }, { category: { $in: categories } }] },
+        { _id: 1 }
+      ).lean();
+      for (const book of inCategories) bookIds.add(String(book._id));
+    }
+    return { all: false, bookIds };
   }
 
   const record = await User.findById(user.id, { allowedBookIds: 1, allowedCategories: 1 }).lean();

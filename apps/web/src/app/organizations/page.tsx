@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { GraduationCap, Loader2, Plus, ShieldPlus, Trash2, X } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import {
+  ApiClientError,
   assignOrgAdmin,
   createOrganization,
   deleteOrganization,
@@ -28,13 +29,14 @@ const nf = new Intl.NumberFormat("en");
 
 export default function OrganizationsPage() {
   const router = useRouter();
-  const { token, isAdmin, loading: authLoading } = useAuth();
+  const { token, isAdmin, loading: authLoading, logout } = useAuth();
   const t = useT();
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
   const [confirmDeleteOrg, setConfirmDeleteOrg] = useState<Organization | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -66,10 +68,19 @@ export default function OrganizationsPage() {
     const trimmed = name.trim();
     if (!trimmed || creating) return;
     setCreating(true);
+    setCreateError("");
     try {
       await createOrganization(trimmed, token);
       setName("");
       await refresh();
+    } catch (error) {
+      if (error instanceof ApiClientError && error.status === 401) {
+        // A cached JWT can outlive the API instance that issued it.
+        logout();
+        router.replace("/login");
+        return;
+      }
+      setCreateError(error instanceof ApiClientError ? error.message : t("org.createError"));
     } finally {
       setCreating(false);
     }
@@ -136,6 +147,7 @@ export default function OrganizationsPage() {
           {t("org.create")}
         </button>
       </div>
+      {createError ? <p className="-mt-3 mb-4 text-sm text-red-500">{createError}</p> : null}
 
       {loading ? (
         <div className="flex justify-center py-12 text-ink/70">
