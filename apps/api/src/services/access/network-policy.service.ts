@@ -240,8 +240,48 @@ export function normalizeCidrs(values: string[]): string[] {
   if (normalized.some((value) => !value)) {
     throw new ApiError(400, "INVALID_NETWORK_POLICY", "Every network address must be a valid IP or CIDR.");
   }
+  for (const cidr of normalized as string[]) {
+    assertPublicRoutableCidr(cidr);
+  }
   return [...new Set(normalized as string[])];
 }
+
+/**
+ * A network allow-list only makes sense for the organization's own public
+ * range. Anything wider than /16 (IPv4) or /32 (IPv6) would hand the catalog
+ * to a large slice of the internet, and a private/loopback/link-local address
+ * is never what a caller's public IP looks like — it would either match nobody
+ * or, behind a misconfigured proxy, match everybody.
+ */
+export function assertPublicRoutableCidr(cidr: string): void {
+  const parsed = parseCidr(cidr);
+  if (!parsed) {
+    throw new ApiError(400, "INVALID_NETWORK_POLICY", "Every network address must be a valid IP or CIDR.");
+  }
+  const [address, prefix] = parsed;
+  const isIpv4 = address.kind() === "ipv4";
+
+  const range = address.range();
+  if (range !== "unicast") {
+    throw new ApiError(
+      400,
+      "NETWORK_NOT_PUBLIC",
+      `${cidr} is a ${range} address. Use your organization's public IP range instead.`
+    );
+  }
+
+  const minimumPrefix = isIpv4 ? MIN_IPV4_PREFIX : MIN_IPV6_PREFIX;
+  if (prefix < minimumPrefix) {
+    throw new ApiError(
+      400,
+      "NETWORK_RANGE_TOO_BROAD",
+      `${cidr} covers too many addresses. Use a prefix of /${minimumPrefix} or narrower.`
+    );
+  }
+}
+
+const MIN_IPV4_PREFIX = 16;
+const MIN_IPV6_PREFIX = 32;
 
 function parseCidr(value: string): [ReturnType<typeof ipaddr.parse>, number] | null {
   try {

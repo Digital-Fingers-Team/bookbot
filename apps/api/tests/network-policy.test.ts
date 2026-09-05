@@ -14,6 +14,7 @@ vi.mock("../src/models/organization.model.js", () => ({
 const {
   isIpAllowed,
   normalizeCidr,
+  normalizeCidrs,
   normalizeIp,
   resolveNetworkBookAccess,
   resolveNetworkBookIds,
@@ -39,6 +40,25 @@ describe("network policy IP helpers", () => {
     expect(isIpAllowed("::ffff:197.10.20.15", ["197.10.20.0/24"])).toBe(true);
     expect(validateIp("not-an-ip")).toBe(false);
     expect(validateCidr("197.10.20.0/99")).toBe(false);
+  });
+});
+
+describe("network policy validation", () => {
+  it("accepts an organization's public range", () => {
+    expect(normalizeCidrs(["197.10.20.0/24", "2a01:4f8:1:2::/64"])).toEqual(["197.10.20.0/24", "2a01:4f8:1:2:0:0:0:0/64"]);
+  });
+
+  it("rejects ranges wider than the per-family minimum prefix", () => {
+    expect(() => normalizeCidrs(["0.0.0.0/0"])).toThrowError();
+    expect(() => normalizeCidrs(["197.0.0.0/8"])).toThrowError(/too many addresses/);
+    expect(() => normalizeCidrs(["2a01::/16"])).toThrowError(/too many addresses/);
+  });
+
+  it("rejects private, loopback and link-local addresses", () => {
+    expect(() => normalizeCidrs(["10.0.0.0/24"])).toThrowError(/public IP range/);
+    expect(() => normalizeCidrs(["192.168.1.0/24"])).toThrowError(/public IP range/);
+    expect(() => normalizeCidrs(["127.0.0.1"])).toThrowError(/public IP range/);
+    expect(() => normalizeCidrs(["169.254.1.1"])).toThrowError(/public IP range/);
   });
 });
 
