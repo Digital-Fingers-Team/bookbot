@@ -25,7 +25,7 @@ import { useAuth } from "@/components/auth-provider";
 import { BookCover } from "@/components/book-cover";
 import { RequestAccessModal } from "@/components/request-access-modal";
 import { MyRequestsPanel } from "@/components/my-requests-panel";
-import { ApiClientError, addCategory, cancelBook, deleteBook, deleteFailedBooks, deleteSummaryAudio, getCategories, getStats, listBooks, setFavorite, updateBook, uploadSummaryAudio } from "@/lib/api";
+import { ApiClientError, addCategory, cancelBook, deleteBook, deleteFailedBooks, deleteSummaryAudio, getCategories, getStats, listBooks, retryFailedBooks, setFavorite, updateBook, uploadSummaryAudio } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
 import { useLang, useT, type StringKey } from "@/lib/i18n";
 
@@ -67,6 +67,7 @@ export default function LibraryPage() {
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState("");
   const [deletingFailed, setDeletingFailed] = useState(false);
+  const [retryingFailed, setRetryingFailed] = useState(false);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -304,6 +305,32 @@ export default function LibraryPage() {
     }
   }
 
+  /** Put the failed books back in the processing queue; their source files are
+   *  still in storage, so nothing has to be uploaded again. */
+  async function retryFailed(failedCount: number) {
+    if (!isAdmin || retryingFailed || !failedCount) {
+      return;
+    }
+
+    setRetryingFailed(true);
+    setError("");
+    try {
+      const result = await retryFailedBooks(token);
+      setBooks((prev) =>
+        prev.map((book) =>
+          book.status === "failed" ? { ...book, status: "processing" as const } : book
+        )
+      );
+      if (result.unrecoverable) {
+        setError(`${result.requeued} re-queued; ${result.unrecoverable} could not be recovered.`);
+      }
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : t("lib.retryFailedError"));
+    } finally {
+      setRetryingFailed(false);
+    }
+  }
+
   /** Clear out every book whose processing failed, after confirming the count. */
   async function removeFailedBooks(failedCount: number) {
     if (!isAdmin || deletingFailed || !failedCount) {
@@ -527,8 +554,25 @@ export default function LibraryPage() {
           {isAdmin && statusCounts.failed > 0 ? (
             <button
               type="button"
+              onClick={() => retryFailed(statusCounts.failed)}
+              disabled={retryingFailed || deletingFailed}
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-moss/30 bg-moss/10 px-3 text-xs font-medium text-moss transition hover:bg-moss/15 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sea/30 dark:bg-sea/15 dark:text-sea"
+            >
+              {retryingFailed ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              {retryingFailed ? t("lib.retryingFailed") : t("lib.retryFailed")}
+              <span className="tabular-nums opacity-70">{statusCounts.failed}</span>
+            </button>
+          ) : null}
+
+          {isAdmin && statusCounts.failed > 0 ? (
+            <button
+              type="button"
               onClick={() => removeFailedBooks(statusCounts.failed)}
-              disabled={deletingFailed}
+              disabled={deletingFailed || retryingFailed}
               className="inline-flex h-8 items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-3 text-xs font-medium text-red-600 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-400/30 dark:text-red-400"
             >
               {deletingFailed ? (

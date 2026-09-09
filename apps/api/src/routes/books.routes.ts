@@ -18,6 +18,7 @@ import { normalizeUploadedFileName, readableBookTitle } from "../utils/file-name
 import { requireBookId } from "../utils/object-id.js";
 import { escapeRegExp, excerpt } from "../utils/text.js";
 import { deleteStoredPdf } from "../services/ingestion/pdf-storage.service.js";
+import { enqueueBookProcessing } from "../services/ingestion/processing-queue.js";
 import { PdfJsRenderer } from "../services/ingestion/renderers/pdfjs.renderer.js";
 import { renderPlaceholderCover } from "../services/ingestion/placeholder-cover.service.js";
 import { SOURCE_CONTENT_TYPES, type SourceFormat } from "../utils/source-format.js";
@@ -536,6 +537,49 @@ booksRouter.patch(
       description: book.description ?? "",
       price: book.price ?? 0
     });
+  })
+);
+
+/**
+ * Re-queue every failed book for processing (admin only).
+ *
+ * A restart marks in-flight books as failed even though their source file is
+ * still in storage, so the usual remedy — delete and re-upload — throws away a
+ * file we already have. A book whose source really is gone stays failed and is
+ * reported separately.
+ *
+ * Registered before "/:id/cancel" so the literal path is not parsed as a book id.
+ */
+booksRouter.post(
+  "/failed/retry",
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    const failedBooks = await Book.find({ status: "failed" }, { _id: 1, originalPdfPath: 1 });
+    let requeued = 0;
+    let unrecoverable = 0;
+
+    for (const book of failedBooks) {
+      if (!book.originalPdfPath) {
+        unrecoverable += 1;
+        continue;
+      }
+
+      // Guarded on status so a book someone else already retried is not
+      // enqueued twice.
+      const result = await Book.updateOne(
+        { _id: book._id, status: "failed" },
+        {
+          $set: { status: "processing", processedPages: 0, pageCount: 0, chunkCount: 0 },
+          $unset: { error: 1, readyAt: 1 }
+        }
+      );
+      if (result.modifiedCount) {
+        enqueueBookProcessing(book._id.toString());
+        requeued += 1;
+      }
+    }
+
+    res.json({ requeued, unrecoverable, total: failedBooks.length });
   })
 );
 

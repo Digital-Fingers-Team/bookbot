@@ -117,6 +117,12 @@ export const STRINGS = {
   "lib.statusProcessing": { ar: "قيد المعالجة", en: "Processing" },
   "lib.statusFailed": { ar: "فشل", en: "Failed" },
   "lib.deleteFailed": { ar: "حذف الكتب الفاشلة", en: "Delete failed" },
+  "lib.retryFailed": { ar: "إعادة معالجة الفاشلة", en: "Retry failed" },
+  "lib.retryingFailed": { ar: "جارٍ إعادة المعالجة…", en: "Retrying…" },
+  "lib.retryFailedError": {
+    ar: "تعذّرت إعادة معالجة الكتب الفاشلة. حاول مرة أخرى.",
+    en: "The failed books could not be re-queued. Please try again."
+  },
   "lib.deletingFailed": { ar: "جارٍ الحذف…", en: "Deleting…" },
   "lib.deleteFailedError": {
     ar: "تعذّر حذف الكتب الفاشلة. حاول مرة أخرى.",

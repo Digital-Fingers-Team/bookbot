@@ -493,6 +493,14 @@ export function searchBookCatalog(q: string, token?: string, limit = 20) {
   return request<{ books: CatalogBook[] }>(`/api/books/catalog?${qs.toString()}`, { token });
 }
 
+/** Re-queue every failed book that still has its source file in storage. */
+export function retryFailedBooks(token?: string) {
+  return request<{ requeued: number; unrecoverable: number; total: number }>(
+    "/api/books/failed/retry",
+    { method: "POST", token }
+  );
+}
+
 /** Remove every book stuck in `failed`. Returns how many were actually deleted. */
 export function deleteFailedBooks(token?: string) {
   return request<{ deleted: number; total: number }>("/api/books/failed", {
