@@ -116,6 +116,12 @@ export const STRINGS = {
   "lib.statusReady": { ar: "جاهز", en: "Ready" },
   "lib.statusProcessing": { ar: "قيد المعالجة", en: "Processing" },
   "lib.statusFailed": { ar: "فشل", en: "Failed" },
+  "lib.deleteFailed": { ar: "حذف الكتب الفاشلة", en: "Delete failed" },
+  "lib.deletingFailed": { ar: "جارٍ الحذف…", en: "Deleting…" },
+  "lib.deleteFailedError": {
+    ar: "تعذّر حذف الكتب الفاشلة. حاول مرة أخرى.",
+    en: "The failed books could not be deleted. Please try again."
+  },
   "lib.showing": { ar: "عرض", en: "Showing" },
   "lib.of": { ar: "من", en: "of" },
   "lib.pages": { ar: "صفحة", en: "pages" },

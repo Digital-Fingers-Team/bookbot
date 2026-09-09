@@ -25,7 +25,7 @@ import { useAuth } from "@/components/auth-provider";
 import { BookCover } from "@/components/book-cover";
 import { RequestAccessModal } from "@/components/request-access-modal";
 import { MyRequestsPanel } from "@/components/my-requests-panel";
-import { ApiClientError, addCategory, cancelBook, deleteBook, deleteSummaryAudio, getCategories, getStats, listBooks, setFavorite, updateBook, uploadSummaryAudio } from "@/lib/api";
+import { ApiClientError, addCategory, cancelBook, deleteBook, deleteFailedBooks, deleteSummaryAudio, getCategories, getStats, listBooks, setFavorite, updateBook, uploadSummaryAudio } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
 import { useLang, useT, type StringKey } from "@/lib/i18n";
 
@@ -66,6 +66,7 @@ export default function LibraryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState("");
+  const [deletingFailed, setDeletingFailed] = useState(false);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -303,6 +304,27 @@ export default function LibraryPage() {
     }
   }
 
+  /** Clear out every book whose processing failed, after confirming the count. */
+  async function removeFailedBooks(failedCount: number) {
+    if (!isAdmin || deletingFailed || !failedCount) {
+      return;
+    }
+    if (!window.confirm(`${t("lib.deleteFailed")} (${failedCount})?`)) {
+      return;
+    }
+
+    setDeletingFailed(true);
+    setError("");
+    try {
+      await deleteFailedBooks(token);
+      setBooks((prev) => prev.filter((book) => book.status !== "failed"));
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : t("lib.deleteFailedError"));
+    } finally {
+      setDeletingFailed(false);
+    }
+  }
+
   const statusCounts = useMemo(
     () => ({
       all: books.length,
@@ -501,6 +523,23 @@ export default function LibraryPage() {
               </button>
             );
           })}
+
+          {isAdmin && statusCounts.failed > 0 ? (
+            <button
+              type="button"
+              onClick={() => removeFailedBooks(statusCounts.failed)}
+              disabled={deletingFailed}
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-3 text-xs font-medium text-red-600 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-400/30 dark:text-red-400"
+            >
+              {deletingFailed ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5" />
+              )}
+              {deletingFailed ? t("lib.deletingFailed") : t("lib.deleteFailed")}
+              <span className="tabular-nums opacity-70">{statusCounts.failed}</span>
+            </button>
+          ) : null}
         </div>
       </div>
 

@@ -683,6 +683,40 @@ booksRouter.get(
   })
 );
 
+/**
+ * Delete every book whose processing failed (admin only).
+ *
+ * Registered before the "/:id" handler so the literal path is not parsed as a
+ * book id. One book's storage error does not abort the sweep: the failures are
+ * counted and reported so the caller can retry.
+ */
+booksRouter.delete(
+  "/failed",
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    const failedBooks = await Book.find({ status: "failed" });
+    let deleted = 0;
+
+    for (const book of failedBooks) {
+      try {
+        await Chunk.deleteMany({ bookId: book._id });
+        await BookState.deleteMany({ bookId: book._id });
+        await BookPage.deleteMany({ bookId: book._id });
+        await deleteStoredPdf(book.originalPdfPath ?? undefined);
+        if (book.summaryAudioPath) {
+          await storage.delete(book.summaryAudioPath);
+        }
+        await book.deleteOne();
+        deleted += 1;
+      } catch (error) {
+        console.warn(`[books] could not delete failed book ${book._id.toString()}:`, error);
+      }
+    }
+
+    res.json({ deleted, total: failedBooks.length });
+  })
+);
+
 booksRouter.delete(
   "/:id",
   requireAdmin,

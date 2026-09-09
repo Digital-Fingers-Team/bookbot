@@ -493,6 +493,14 @@ export function searchBookCatalog(q: string, token?: string, limit = 20) {
   return request<{ books: CatalogBook[] }>(`/api/books/catalog?${qs.toString()}`, { token });
 }
 
+/** Remove every book stuck in `failed`. Returns how many were actually deleted. */
+export function deleteFailedBooks(token?: string) {
+  return request<{ deleted: number; total: number }>("/api/books/failed", {
+    method: "DELETE",
+    token
+  });
+}
+
 export function deleteBook(id: string, token?: string) {
   return request<{ deleted: true }>(`/api/books/${id}`, {
     method: "DELETE",
