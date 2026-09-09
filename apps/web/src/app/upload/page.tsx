@@ -13,12 +13,13 @@ import {
   Loader2,
   Lock,
   ScanLine,
+  Sparkles,
   Trash2,
   UploadCloud,
   Check
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { ApiClientError, getCategories, importExcelRows, previewExcel, type ExcelImportRow, type UploadedBook, uploadPdfs } from "@/lib/api";
+import { ApiClientError, getCategories, importExcelRows, previewExcel, suggestCategories, type ExcelImportRow, type UploadedBook, uploadPdfs } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
 const ACCEPTED_EXTENSIONS = [".pdf", ".epub", ".docx", ".txt"];
@@ -53,6 +54,8 @@ export default function UploadPage() {
   const [excelLoading, setExcelLoading] = useState(false);
   const [excelMessage, setExcelMessage] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
+  const [suggesting, setSuggesting] = useState(false);
+  const [autoCategorize, setAutoCategorize] = useState(true);
 
   function chooseFiles(nextFiles: FileList | File[]) {
     setError("");
@@ -119,7 +122,7 @@ export default function UploadPage() {
 
     try {
       const numericPrice = Number(price);
-      const uploaded = await uploadPdfs(files, token, Number.isFinite(numericPrice) ? numericPrice : 0, files.map((file) => summaryAudioByFile[fileKey(file)]));
+      const uploaded = await uploadPdfs(files, token, Number.isFinite(numericPrice) ? numericPrice : 0, files.map((file) => summaryAudioByFile[fileKey(file)]), autoCategorize);
       setResults(uploaded.books);
       setFiles([]);
       setSummaryAudioByFile({});
@@ -153,6 +156,46 @@ export default function UploadPage() {
   }
 
   const totalBytes = files.reduce((total, file) => total + file.size, 0);
+
+  /** Fill the category dropdowns from the AI. Uses the selected rows, or every
+   *  parsed row when nothing is selected yet. */
+  async function suggestExcelCategories() {
+    const target = selectedRows.size
+      ? excelRows.filter((row) => selectedRows.has(row.rowNumber))
+      : excelRows;
+    if (!target.length || suggesting) return;
+
+    setSuggesting(true);
+    setExcelMessage(`Asking the AI to categorise ${target.length} books…`);
+    try {
+      const result = await suggestCategories(
+        target.map((row) => ({
+          ref: String(row.rowNumber),
+          title: row.title,
+          author: row.author,
+          description: row.description
+        })),
+        token
+      );
+      const byRow = new Map(result.suggestions.map((item) => [Number(item.ref), item]));
+      setCategories(result.categories);
+      setExcelRows((current) =>
+        current.map((row) => {
+          const suggestion = byRow.get(row.rowNumber);
+          return suggestion ? { ...row, category: suggestion.category } : row;
+        })
+      );
+      const added = result.suggestions.filter((item) => item.isNew).length;
+      setExcelMessage(
+        `${byRow.size} of ${target.length} books categorised` +
+          (added ? `; ${added} used a new category (admins notified).` : ".")
+      );
+    } catch (err) {
+      setExcelMessage(err instanceof Error ? err.message : "The AI could not categorise these books.");
+    } finally {
+      setSuggesting(false);
+    }
+  }
 
   async function importSelectedExcelRows() {
     setExcelLoading(true);
@@ -215,7 +258,7 @@ export default function UploadPage() {
         }}
       />
 
-      <ExcelImportPanel token={token} rows={excelRows} selected={selectedRows} categories={categories} loading={excelLoading} message={excelMessage}
+      <ExcelImportPanel token={token} rows={excelRows} selected={selectedRows} categories={categories} loading={excelLoading} message={excelMessage} suggesting={suggesting} onSuggest={suggestExcelCategories}
         onFile={async (file) => { setExcelLoading(true); setExcelMessage(""); try { const [result, categoryResult] = await Promise.all([previewExcel(file, token), getCategories(token)]); setExcelRows(result.rows.map((row) => ({ ...row, price: 0, category: "" }))); setCategories(categoryResult.categories); setSelectedRows(new Set()); setSummaryAudioByRow({}); setExcelMessage(`${result.total} books found. Select books to import; large selections are processed in batches.`); } catch (err) { setExcelMessage(err instanceof Error ? err.message : "The workbook could not be read."); } finally { setExcelLoading(false); } }}
         onToggle={(rowNumber) => setSelectedRows((current) => { const next = new Set(current); next.has(rowNumber) ? next.delete(rowNumber) : next.add(rowNumber); return next; })}
         onUpdate={(rowNumber, patch) => setExcelRows((current) => current.map((row) => row.rowNumber === rowNumber ? { ...row, ...patch } : row))}
@@ -274,6 +317,18 @@ export default function UploadPage() {
                 {formatBytes(totalBytes)} · {t("up.separateBooks")}
               </p>
               <p className="mt-1 text-xs text-moss/80 dark:text-sea/80">Summary audio is optional and can also be added later from Library.</p>
+              <label className="mt-2 flex cursor-pointer items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={autoCategorize}
+                  onChange={(event) => setAutoCategorize(event.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="block text-xs font-medium text-ink dark:text-white">{t("up.autoCategory")}</span>
+                  <span className="block text-xs text-ink/70 dark:text-white/70">{t("up.autoCategoryHint")}</span>
+                </span>
+              </label>
             </div>
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-2">
@@ -403,15 +458,15 @@ function isAcceptedAudio(file: File) {
   return file.type.startsWith("audio/") || /\.(mp3|m4a|wav|ogg|webm|aac|flac)$/i.test(file.name);
 }
 
-function ExcelImportPanel({ token, rows, selected, categories, loading, message, audioByRow, onFile, onToggle, onUpdate, onAudio, onImport }: {
-  token?: string; rows: ExcelImportRow[]; selected: Set<number>; categories: string[]; loading: boolean; message: string; audioByRow: Record<number, File>;
-  onFile: (file: File) => void; onToggle: (row: number) => void; onUpdate: (row: number, patch: Partial<ExcelImportRow>) => void; onAudio: (row: number, audio: File | undefined) => void; onImport: () => void;
+function ExcelImportPanel({ token, rows, selected, categories, loading, message, audioByRow, suggesting, onFile, onToggle, onUpdate, onAudio, onSuggest, onImport }: {
+  token?: string; rows: ExcelImportRow[]; selected: Set<number>; categories: string[]; loading: boolean; message: string; audioByRow: Record<number, File>; suggesting: boolean;
+  onFile: (file: File) => void; onToggle: (row: number) => void; onUpdate: (row: number, patch: Partial<ExcelImportRow>) => void; onAudio: (row: number, audio: File | undefined) => void; onSuggest: () => void; onImport: () => void;
 }) {
   return <section className="rounded-2xl border border-line bg-white p-5 dark:border-white/10 dark:bg-[#0c0c0e]">
     <div className="flex items-start gap-3"><FileSpreadsheet className="mt-1 h-5 w-5 text-moss dark:text-sea" /><div><h2 className="font-semibold text-ink dark:text-white">Import books from Excel</h2><p className="mt-1 text-xs text-ink/65 dark:text-white/65">Upload the list, choose specific books, then import only those PDFs.</p></div></div>
     <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-medium dark:border-white/10"><FileSpreadsheet className="h-4 w-4" />{loading ? "Reading…" : "Choose .xlsx"}<input type="file" accept=".xlsx" className="sr-only" disabled={loading} onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} /></label>
     {message ? <p className="mt-3 text-sm text-ink/70 dark:text-white/70">{message}</p> : null}
-    {rows.length ? <><div className="mt-4 flex flex-wrap items-center gap-2 text-xs"><button type="button" onClick={() => rows.forEach((row) => !selected.has(row.rowNumber) && onToggle(row.rowNumber))} className="rounded border border-line px-2 py-1 dark:border-white/10">Select all</button><button type="button" onClick={() => rows.forEach((row) => selected.has(row.rowNumber) && onToggle(row.rowNumber))} className="rounded border border-line px-2 py-1 dark:border-white/10">Deselect all</button><span className="text-ink/60 dark:text-white/60">{selected.size} selected</span></div><div className="mt-2 max-h-96 overflow-auto rounded-lg border border-line dark:border-white/10">{rows.map((row) => <div key={row.rowNumber} className="border-b border-line p-3 last:border-0 dark:border-white/10"><div className="flex items-start gap-3"><input type="checkbox" checked={selected.has(row.rowNumber)} onChange={() => onToggle(row.rowNumber)} /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-ink dark:text-white">{row.title}</span><span className="block text-xs text-ink/60 dark:text-white/60">{row.author || "Unknown author"} · row {row.rowNumber}</span></span>{selected.has(row.rowNumber) ? <Check className="h-4 w-4 shrink-0 text-moss dark:text-sea" /> : null}</div><div className="mt-2 grid grid-cols-1 gap-2 pl-6 sm:grid-cols-2"><input type="number" min="0" step="any" value={row.price || ""} onChange={(e) => onUpdate(row.rowNumber, { price: Number(e.target.value) || 0 })} placeholder="Price (optional)" className="h-9 rounded border border-line bg-transparent px-2 text-xs outline-none dark:border-white/10" /><select value={row.category || ""} onChange={(e) => onUpdate(row.rowNumber, { category: e.target.value })} className="h-9 rounded border border-line bg-transparent px-2 text-xs outline-none dark:border-white/10"><option value="">No category</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select><label className="inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded border border-dashed border-line px-2 text-xs font-medium text-ink/70 hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/70 dark:hover:text-sea"><Music2 className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{audioByRow[row.rowNumber]?.name ?? "Add summary audio"}</span><input type="file" accept={AUDIO_INPUT_ATTR} className="sr-only" disabled={loading} onChange={(e) => { onAudio(row.rowNumber, e.target.files?.[0]); e.target.value = ""; }} /></label></div></div>)}</div><button type="button" disabled={!selected.size || loading} onClick={onImport} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-moss px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{loading ? "Importing…" : `Import ${selected.size} selected`}</button></> : null}
+    {rows.length ? <><div className="mt-4 flex flex-wrap items-center gap-2 text-xs"><button type="button" onClick={() => rows.forEach((row) => !selected.has(row.rowNumber) && onToggle(row.rowNumber))} className="rounded border border-line px-2 py-1 dark:border-white/10">Select all</button><button type="button" onClick={() => rows.forEach((row) => selected.has(row.rowNumber) && onToggle(row.rowNumber))} className="rounded border border-line px-2 py-1 dark:border-white/10">Deselect all</button><span className="text-ink/60 dark:text-white/60">{selected.size} selected</span><button type="button" disabled={suggesting || loading || !rows.length} onClick={onSuggest} className="inline-flex items-center gap-1.5 rounded border border-moss/40 px-2 py-1 font-medium text-moss disabled:opacity-50 dark:border-sea/40 dark:text-sea"><Sparkles className="h-3.5 w-3.5" />{suggesting ? "Categorising…" : selected.size ? "Suggest categories for selected" : "Suggest categories with AI"}</button></div><div className="mt-2 max-h-96 overflow-auto rounded-lg border border-line dark:border-white/10">{rows.map((row) => <div key={row.rowNumber} className="border-b border-line p-3 last:border-0 dark:border-white/10"><div className="flex items-start gap-3"><input type="checkbox" checked={selected.has(row.rowNumber)} onChange={() => onToggle(row.rowNumber)} /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-ink dark:text-white">{row.title}</span><span className="block text-xs text-ink/60 dark:text-white/60">{row.author || "Unknown author"} · row {row.rowNumber}</span></span>{selected.has(row.rowNumber) ? <Check className="h-4 w-4 shrink-0 text-moss dark:text-sea" /> : null}</div><div className="mt-2 grid grid-cols-1 gap-2 pl-6 sm:grid-cols-2"><input type="number" min="0" step="any" value={row.price || ""} onChange={(e) => onUpdate(row.rowNumber, { price: Number(e.target.value) || 0 })} placeholder="Price (optional)" className="h-9 rounded border border-line bg-transparent px-2 text-xs outline-none dark:border-white/10" /><select value={row.category || ""} onChange={(e) => onUpdate(row.rowNumber, { category: e.target.value })} className="h-9 rounded border border-line bg-transparent px-2 text-xs outline-none dark:border-white/10"><option value="">No category</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select><label className="inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded border border-dashed border-line px-2 text-xs font-medium text-ink/70 hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/70 dark:hover:text-sea"><Music2 className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{audioByRow[row.rowNumber]?.name ?? "Add summary audio"}</span><input type="file" accept={AUDIO_INPUT_ATTR} className="sr-only" disabled={loading} onChange={(e) => { onAudio(row.rowNumber, e.target.files?.[0]); e.target.value = ""; }} /></label></div></div>)}</div><button type="button" disabled={!selected.size || loading} onClick={onImport} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-moss px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{loading ? "Importing…" : `Import ${selected.size} selected`}</button></> : null}
   </section>;
 }
 

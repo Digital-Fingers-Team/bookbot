@@ -5,7 +5,8 @@ export const NOTIFICATION_EVENT_TYPES = [
   "book_failed",
   "access_request",
   "feedback",
-  "user_registered"
+  "user_registered",
+  "category_suggested"
 ] as const;
 
 export type NotificationEventType = (typeof NOTIFICATION_EVENT_TYPES)[number];
