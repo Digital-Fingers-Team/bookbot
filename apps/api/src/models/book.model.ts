@@ -42,6 +42,9 @@ const bookSchema = new Schema(
     // Primary/legacy single-category field kept for compatibility with older
     // clients and existing documents.
     category: { type: String, trim: true, default: "", index: true },
+    // Set on upload when the admin ticked "categorise with AI". Processing
+    // fills in `category` once the text has been extracted.
+    autoCategorize: { type: Boolean, default: false },
     // New multi-category field for books that belong to multiple topics.
     categories: { type: [String], trim: true, default: [], index: true },
     author: { type: String, trim: true, default: "" },

@@ -79,6 +79,7 @@ const schema = z.object({
   // emitting the garbled characters tesseract guesses for noisy/figure regions.
   OCR_LOCAL_MIN_WORD_CONFIDENCE: z.coerce.number().int().min(0).max(100).default(45),
   OCR_VISION_MODEL: z.string().default("google/gemini-2.5-flash"),
+  CATEGORY_MODEL: z.string().default("google/gemini-2.5-flash"),
   OCR_MIN_TEXT_SCORE: z.coerce.number().int().min(0).max(100).default(65),
   // Absolute floor for the *final* chosen text of a page, checked after the OCR
   // fallback has already had a chance to fix it. Pages still below this are

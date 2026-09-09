@@ -237,7 +237,7 @@ export type UploadedBook = {
   status: "processing" | "ready" | "failed";
 };
 
-export async function uploadPdfs(files: File[], token?: string, price?: number, summaryAudios: Array<File | undefined> = []) {
+export async function uploadPdfs(files: File[], token?: string, price?: number, summaryAudios: Array<File | undefined> = [], autoCategorize = false) {
   const formData = new FormData();
   for (const file of files) {
     formData.append("files", file);
@@ -253,6 +253,9 @@ export async function uploadPdfs(files: File[], token?: string, price?: number, 
   }
   if (price && price > 0) {
     formData.append("price", String(price));
+  }
+  if (autoCategorize) {
+    formData.append("autoCategorize", "true");
   }
 
   const headers = new Headers();
@@ -506,6 +509,20 @@ export function cancelBook(id: string, token?: string) {
 
 export function getCategories(token?: string) {
   return request<{ categories: string[] }>("/api/categories", { token });
+}
+
+export type CategorySuggestion = { ref: string; category: string; isNew: boolean };
+
+/** Ask the AI to pick a category for each book. New categories it invents are
+ *  added to the curated list server-side, so `categories` comes back refreshed. */
+export function suggestCategories(
+  books: Array<{ ref: string; title: string; author?: string; description?: string }>,
+  token?: string
+) {
+  return request<{ suggestions: CategorySuggestion[]; categories: string[] }>(
+    "/api/categories/suggest",
+    { method: "POST", body: { books }, token }
+  );
 }
 
 export function addCategory(name: string, token?: string) {

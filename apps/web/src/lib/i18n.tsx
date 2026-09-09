@@ -231,6 +231,11 @@ export const STRINGS = {
   "up.books": { ar: "كتب", en: "books" },
   "up.separateBooks": { ar: "يُضاف كل ملف ككتاب منفصل", en: "added as separate books" },
   "up.price": { ar: "السعر", en: "Price" },
+  "up.autoCategory": { ar: "تصنيف تلقائي بالذكاء الاصطناعي", en: "Categorise with AI" },
+  "up.autoCategoryHint": {
+    ar: "يختار الذكاء الاصطناعي تصنيفًا لكل كتاب بعد قراءة نصه",
+    en: "The AI picks a category for each book after reading its text"
+  },
   "up.priceHint": { ar: "يُطبَّق على كل الملفات في هذه الدفعة (0 = مجاني)", en: "Applied to every file in this batch (0 = free)" },
   "up.process": { ar: "معالجة", en: "Process" },
   "up.processing": { ar: "جارٍ المعالجة…", en: "Processing…" },

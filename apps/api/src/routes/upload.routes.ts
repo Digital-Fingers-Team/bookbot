@@ -68,6 +68,9 @@ uploadRouter.post(
     const rawPrice = Number(req.body?.price);
     const price = Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : 0;
 
+    // Opt-in: the AI picks each book's category once its text is extracted.
+    const autoCategorize = String(req.body?.autoCategorize ?? "") === "true";
+
     const books = [];
     for (const file of files) {
       // fileFilter already validated this file, so the format is always known here.
@@ -84,7 +87,8 @@ uploadRouter.post(
         buffer: file.buffer,
         originalFileName: normalizeUploadedFileName(file.originalname),
         price,
-        format
+        format,
+        autoCategorize
       });
 
       const audioPosition = audioIndexes.indexOf(files.indexOf(file));

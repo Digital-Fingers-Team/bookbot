@@ -20,6 +20,7 @@ import { storePdfSource } from "./pdf-storage.service.js";
 import { pushBookToOmp } from "../omp/omp-push.service.js";
 import type { SourceFormat } from "../../utils/source-format.js";
 import { notifyAdmins } from "../notifications/notification.service.js";
+import { suggestBookCategories } from "../generation/categorization.service.js";
 
 const MAX_EMBEDDING_CHARS = 50000;
 const PROGRESS_INTERVAL_MS = 1500;
@@ -53,6 +54,7 @@ export async function createProcessingBook(input: {
   author?: string;
   description?: string;
   category?: string;
+  autoCategorize?: boolean;
 }): Promise<CreatedBook> {
   const title = input.title?.trim() || titleFromFileName(input.originalFileName);
   const storedPdf = await storePdfSource(input);
@@ -73,6 +75,7 @@ export async function createProcessingBook(input: {
     author: input.author?.trim().slice(0, 120) ?? "",
     description: input.description?.trim().slice(0, 600) ?? "",
     category: input.category?.trim() ?? "",
+    autoCategorize: input.autoCategorize === true,
     price: input.price && input.price > 0 ? input.price : 0,
     chunkCount: 0,
     pageCount: 0,
@@ -196,6 +199,8 @@ export async function processBook(bookId: string): Promise<void> {
       throw new ProcessingCancelledError();
     }
 
+    await applyAutoCategory(completedBook, cleanedChunks.slice(0, 3).map((chunk) => chunk.chunkText).join("\n"));
+
     await notifyAdmins({
       type: "book_ready",
       title: "Book uploaded successfully",
@@ -217,6 +222,38 @@ export async function processBook(bookId: string): Promise<void> {
     console.error(`[ingestion] processing failed for ${bookId}:`, error);
     await markFailed(book, error instanceof Error ? error.message : "Processing failed.");
     await recordUsage("failure", { startedAt });
+  }
+}
+
+/**
+ * Fill in an empty category using the book's own text. Best-effort: a model or
+ * provider failure leaves the category blank for an admin to set by hand and
+ * never fails an otherwise successful ingestion.
+ */
+async function applyAutoCategory(
+  book: HydratedDocument<BookDocument>,
+  excerpt: string
+): Promise<void> {
+  if (!book.autoCategorize || book.category) {
+    return;
+  }
+
+  try {
+    const [suggestion] = await suggestBookCategories([
+      {
+        ref: book._id.toString(),
+        title: book.title,
+        author: book.author || undefined,
+        description: book.description || undefined,
+        excerpt
+      }
+    ]);
+    if (!suggestion) return;
+
+    book.category = suggestion.category;
+    await Book.updateOne({ _id: book._id }, { $set: { category: suggestion.category } });
+  } catch (error) {
+    console.warn(`[ingestion] auto-categorisation failed for ${book._id.toString()}:`, error);
   }
 }
 
