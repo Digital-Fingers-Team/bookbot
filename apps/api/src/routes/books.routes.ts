@@ -671,6 +671,26 @@ booksRouter.delete(
   })
 );
 
+/**
+ * Decide whether a book reads right-to-left.
+ *
+ * Presence of Arabic is not enough to decide: an English title or body often
+ * quotes an Arabic term, and flipping that book's binding would be wrong. So
+ * compare the two scripts and let the majority win. The title alone is not
+ * enough either — a scanned Arabic book can carry a transliterated title — so
+ * the body text is weighed with it.
+ *
+ * Runs once per book, on first open, since the Heyzine URL is then cached on
+ * the record.
+ */
+async function isArabicBook(bookId: unknown, title: string): Promise<boolean> {
+  const sample = await Chunk.find({ bookId }, { chunkText: 1 }).sort({ chunkIndex: 1 }).limit(5).lean();
+  const text = [title, ...sample.map((chunk) => String(chunk.chunkText ?? ""))].join(" ");
+  const arabic = text.match(/[\u0600-\u06FF]/g)?.length ?? 0;
+  const latin = text.match(/[A-Za-z]/g)?.length ?? 0;
+  return arabic > latin;
+}
+
 /** Return the Heyzine reader URL, creating it on first use for PDF books. */
 booksRouter.get(
   "/:id/heyzine",
@@ -697,6 +717,9 @@ booksRouter.get(
         pdf: pdfUrl,
         client_id: env.HEYZINE_CLIENT_ID,
         title: book.title,
+        // Arabic books are bound on the right: the spine, the cover and the
+        // page order are all mirrored, so the reader must page that way too.
+        rtl: await isArabicBook(bookId, book.title),
         prev_next: true,
         show_info: false,
         // Downloads are gated by requireDownloadAccess on our own routes; Heyzine
