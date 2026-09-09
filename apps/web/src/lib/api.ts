@@ -1,6 +1,6 @@
 import type { ApiErrorResponse, AuthSession, Book, ChatResponse, EvidenceChunk, Source, Stats, User } from "./types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? (typeof window === "undefined" ? "http://127.0.0.1:4000" : "");
 
 export class ApiClientError extends Error {
   code: string;

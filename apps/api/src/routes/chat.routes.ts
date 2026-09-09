@@ -1,6 +1,6 @@
 import { Router, type Request, type Router as ExpressRouter } from "express";
 import { z } from "zod";
-import { requireAuth } from "../middleware/auth.middleware.js";
+import { optionalAuth, requireAuth } from "../middleware/auth.middleware.js";
 import { env } from "../config/env.js";
 import { getConfiguredLLMModel } from "../config/llm.js";
 import { UsageEvent } from "../models/usage-event.model.js";
@@ -74,6 +74,7 @@ chatRouter.post(
 
 chatRouter.post(
   "/",
+  optionalAuth,
   asyncHandler(async (req, res) => {
     const startedAt = Date.now();
     const parsed = chatSchema.safeParse(req.body);
@@ -162,7 +163,7 @@ chatRouter.post(
 
 // Server-Sent Events: emit retrieved evidence immediately, then stream the
 // answer token by token so the UI feels live (like a chat assistant).
-chatRouter.post("/stream", async (req, res, next) => {
+chatRouter.post("/stream", optionalAuth, async (req, res, next) => {
   const startedAt = Date.now();
   const parsed = chatSchema.safeParse(req.body);
 
