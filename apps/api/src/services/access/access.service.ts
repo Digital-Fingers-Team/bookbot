@@ -14,23 +14,21 @@ export async function resolveAccessScope(user: Pick<PublicUser, "id" | "role" | 
     return { all: true };
   }
 
+  // An org admin reads from the organization's subscribed catalog; everyone
+  // else from their own grants. Both then pick up the granted categories and
+  // the free books below, so neither branch returns early.
+  let bookIds: Set<string>;
+  let categories: string[];
+
   if (user.role === "org_admin" && user.organizationId) {
     const organization = await Organization.findById(user.organizationId, { allowedBookIds: 1, allowedCategories: 1 }).lean();
-    const bookIds = new Set<string>((organization?.allowedBookIds ?? []).map((id) => String(id)));
-    const categories = organization?.allowedCategories ?? [];
-    if (categories.length) {
-      const inCategories = await Book.find(
-        { $or: [{ categories: { $in: categories } }, { category: { $in: categories } }] },
-        { _id: 1 }
-      ).lean();
-      for (const book of inCategories) bookIds.add(String(book._id));
-    }
-    return { all: false, bookIds };
+    bookIds = new Set<string>((organization?.allowedBookIds ?? []).map((id) => String(id)));
+    categories = organization?.allowedCategories ?? [];
+  } else {
+    const record = await User.findById(user.id, { allowedBookIds: 1, allowedCategories: 1 }).lean();
+    bookIds = new Set<string>((record?.allowedBookIds ?? []).map((id) => String(id)));
+    categories = record?.allowedCategories ?? [];
   }
-
-  const record = await User.findById(user.id, { allowedBookIds: 1, allowedCategories: 1 }).lean();
-  const bookIds = new Set<string>((record?.allowedBookIds ?? []).map((id) => String(id)));
-  const categories = record?.allowedCategories ?? [];
 
   if (categories.length) {
     const inCategories = await Book.find(
