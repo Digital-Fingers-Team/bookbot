@@ -698,7 +698,10 @@ booksRouter.get(
         client_id: env.HEYZINE_CLIENT_ID,
         title: book.title,
         prev_next: true,
-        show_info: false
+        show_info: false,
+        // Downloads are gated by requireDownloadAccess on our own routes; Heyzine
+        // would serve the PDF straight from its servers, bypassing that check.
+        download: false
       })
     });
     const payload = await response.json().catch(() => null) as { id?: string; url?: string; state?: string; msg?: string } | null;
