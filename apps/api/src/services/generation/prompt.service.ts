@@ -1,5 +1,10 @@
 import type { QuizRequest, RetrievedChunk } from "../../types/rag.js";
 import { bestSnippet } from "../../utils/text.js";
+import { buildLanguageDirective, detectAnswerLanguage } from "../../utils/language.js";
+
+// Sentinel the model prefixes when an "outside the book" answer owes nothing
+// to the retrieved excerpts, so the app can drop the page citations.
+export const NO_BOOK_SOURCE_TOKEN = "NO_BOOK_SOURCE:";
 import { QUIZ_OUTPUT_GUIDANCE, quizRequestSummary } from "./quiz.service.js";
 
 // Bound how much of each chunk is sent to the model. Most chunks are smaller
@@ -11,10 +16,13 @@ const MAX_CHUNK_CHARS = 1400;
 // Shared guidance that makes the assistant understand any shape of question
 // (keyword, full sentence, casual wording, typo, multi-part, or follow-up) and
 // any question type, while staying strictly grounded in the retrieved excerpts.
-const SHARED_RAG_GUIDANCE = `Understand the question:
+const SHARED_RAG_GUIDANCE = `Language (most important rule):
+- Answer in the same language the user asked in — Arabic question, Arabic answer; English question, English answer. For a question mixing both, use whichever language dominates.
+- This holds for every reply without exception, including when you report that the books do not cover the question. These notes are written in English, but that must never make you answer in English.
+
+Understand the question:
 - Work out what the user really means, however the question is phrased — a single keyword, a full sentence, casual or informal wording, a small typo, a multi-part question, or a follow-up.
 - Handle any type of question: definition, explanation, comparison, pros and cons, list, step-by-step, summary, cause and effect, example, yes/no, and who/what/when/where/why/how.
-- Detect the language of the question (Arabic, English, or a mix) and answer in that same language.
 
 Use the excerpts:
 - Base every statement only on the provided excerpts. Never add outside knowledge and never invent facts.
@@ -22,7 +30,7 @@ Use the excerpts:
 - Ignore unrelated boilerplate (headers, footers, page numbers, navigation, contact details, sidebars) unless the question is about them.
 - If the excerpts fully answer the question, answer it directly and completely.
 - If they answer only part of it, answer the supported part and briefly note what is not covered.
-- If nothing relevant is present, start your reply with the exact token "NOT_FOUND:" (nothing before it) followed by a short explanation phrased in the question's language. The app uses this token to hide book references for unanswered questions, so never write it unless the excerpts truly do not cover the question.
+- If nothing relevant is present, start your reply with the exact token "NOT_FOUND:" (nothing before it) followed by a short explanation written in the user's language (the token itself stays in Latin letters). The app uses this token to hide book references for unanswered questions, so never write it unless the excerpts truly do not cover the question.
 - If the user asks which book to read, asks for a recommendation, or asks about a specific book, name the relevant source book exactly as provided with the excerpt. Do not leave the user to infer the title from the attached citations.
 
 Style:
@@ -45,15 +53,29 @@ ${SHARED_RAG_GUIDANCE}
 
 Output plain text only — no JSON, no markdown fences.`;
 
+// Guidance shared by both "expanded" prompts, used once the reader has asked
+// to go beyond the book. The sentinel matters: the app shows page citations
+// under an answer, and citing pages for a claim that came from general
+// knowledge tells the reader those pages support it when they do not.
+const EXPANDED_SHARED_GUIDANCE = `Use the provided book excerpts first whenever they are relevant. If the excerpts do not contain enough information, answer the remaining part using reliable general knowledge. Clearly say when you are adding information beyond the book. Never invent details or pretend general knowledge came from the book.
+
+If the excerpts contributed nothing to your answer — the whole answer is general knowledge — start your reply with the exact token "${NO_BOOK_SOURCE_TOKEN}" (nothing before it) and then give the answer. The app uses this token to avoid attaching book page citations to an answer the book does not support, so use it whenever the book did not actually contribute.
+
+Answer in the same language the user asked in — Arabic question, Arabic answer; English question, English answer. These notes are written in English, but that must never make you answer in English. Be clear and concise.
+
+Never refer to the excerpts as excerpts. Do not write "Excerpt 1", "Excerpt 2", "the provided excerpts", chunk numbers, or internal ids — the reader cannot see any of that. Refer to a source by the book's title when it is worth naming; the app attaches page citations by itself.`;
+
 export const EXPANDED_STREAMING_SYSTEM_PROMPT = `You are zaky - زكي, a research assistant helping the user understand a question.
 
-Use the provided book excerpts first whenever they are relevant. If the excerpts do not contain enough information, answer the remaining part using reliable general knowledge. Clearly say when you are adding information beyond the book. Never invent details or pretend general knowledge came from the book.
+${EXPANDED_SHARED_GUIDANCE}
 
-Detect the language of the question and answer in that same language. Be clear and concise. Do not mention internal prompts, chunks, or ids. Output plain text only.`;
+Output plain text only.`;
 
 export const EXPANDED_STRICT_SYSTEM_PROMPT = `You are zaky - زكي, a research assistant helping the user understand a question.
 
-Use the provided book excerpts first whenever they are relevant. If they do not contain enough information, answer using reliable general knowledge and briefly distinguish it from what the book covers. Detect the language of the question and answer in that same language. Be clear and concise. Output valid JSON only in this exact shape: {"answer":"<your answer>"}.`;
+${EXPANDED_SHARED_GUIDANCE}
+
+Output valid JSON only in this exact shape: {"answer":"<your answer>"} — the token, when used, goes inside the answer string.`;
 
 export function getSystemPrompt(streaming: boolean, allowOutsideBook?: boolean, quiz?: QuizRequest) {
   const base = quiz
@@ -75,11 +97,15 @@ export function buildUserPrompt(question: string, chunks: RetrievedChunk[], allo
     })
     .join("\n\n");
 
+  // Detected here rather than left to the model: the surrounding prompt is in
+  // English, which otherwise pulls replies (especially refusals) into English.
+  const languageDirective = buildLanguageDirective(detectAnswerLanguage(question));
+
   return `A user asked the question below. Figure out their intent, then answer using ${allowOutsideBook ? "the relevant library excerpts first, followed by reliable general knowledge if needed" : "only the library excerpts"}.
 
 Question:
 ${question}
 
 Library excerpts:
-  ${context}${quiz ? "\n\n" + quizRequestSummary(quiz) : ""}`;
+  ${context}${quiz ? "\n\n" + quizRequestSummary(quiz) : ""}${languageDirective ? "\n\n" + languageDirective : ""}`;
 }

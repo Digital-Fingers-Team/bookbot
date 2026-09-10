@@ -12,8 +12,8 @@ import { resolveClientIp, resolveNetworkBookIds } from "../services/access/netwo
 import { discoverBooks } from "../services/discovery/discovery.service.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
-
-const NOT_FOUND_ANSWER = "I couldn't find this information in the books.";
+import { notFoundMessage } from "../utils/language.js";
+import { NO_BOOK_SOURCE_TOKEN } from "../services/generation/prompt.service.js";
 
 // The prompt instructs the model to prefix "not found" answers with this
 // token so we can strip book references from them even when retrieval did
@@ -21,12 +21,42 @@ const NOT_FOUND_ANSWER = "I couldn't find this information in the books.";
 // it admits it couldn't find.
 const NOT_FOUND_PREFIX = "NOT_FOUND:";
 
-function extractNotFound(rawAnswer: string): { answer: string; notFound: boolean } {
+// Emitted for an "outside the book" answer that the excerpts did not support.
+// It clears the page citations like NOT_FOUND does, but it is NOT a "not
+// found" result: the user does get an answer, so the "expand outside the book"
+// button (which the client keys off `notFound`) must stay hidden.
+const NO_BOOK_SOURCE_PREFIX = NO_BOOK_SOURCE_TOKEN;
+
+// Longest sentinel, so the streaming path buffers enough before deciding.
+const MAX_SENTINEL_LENGTH = Math.max(NOT_FOUND_PREFIX.length, NO_BOOK_SOURCE_PREFIX.length);
+
+interface AnswerFlags {
+  answer: string;
+  /** The book could not answer at all — offer to search outside it. */
+  notFound: boolean;
+  /** Answered, but not from the book — drop the page citations. */
+  unsupportedByBook: boolean;
+}
+
+function extractSentinels(rawAnswer: string): AnswerFlags {
   const trimmed = rawAnswer.trimStart();
-  if (trimmed.slice(0, NOT_FOUND_PREFIX.length).toUpperCase() === NOT_FOUND_PREFIX) {
-    return { answer: trimmed.slice(NOT_FOUND_PREFIX.length).trimStart(), notFound: true };
+  const upper = trimmed.toUpperCase();
+
+  if (upper.startsWith(NOT_FOUND_PREFIX)) {
+    return {
+      answer: trimmed.slice(NOT_FOUND_PREFIX.length).trimStart(),
+      notFound: true,
+      unsupportedByBook: true
+    };
   }
-  return { answer: rawAnswer, notFound: false };
+  if (upper.startsWith(NO_BOOK_SOURCE_PREFIX)) {
+    return {
+      answer: trimmed.slice(NO_BOOK_SOURCE_PREFIX.length).trimStart(),
+      notFound: false,
+      unsupportedByBook: true
+    };
+  }
+  return { answer: rawAnswer, notFound: false, unsupportedByBook: false };
 }
 
 const chatSchema = z.object({
@@ -101,7 +131,7 @@ chatRouter.post(
       });
 
       res.json({
-        answer: "I couldn't find this information in the books.",
+        answer: notFoundMessage(parsed.data.question),
         books: [],
         sources: [],
         evidence: [],
@@ -130,7 +160,7 @@ chatRouter.post(
           quiz
         });
     const generationUsage = generation.usage ?? {};
-    const { answer: cleanAnswer, notFound } = extractNotFound(generation.answer);
+    const { answer: cleanAnswer, notFound, unsupportedByBook } = extractSentinels(generation.answer);
 
     await UsageEvent.create({
       type: "chat",
@@ -147,9 +177,11 @@ chatRouter.post(
 
     res.json({
       answer: cleanAnswer,
-      books: notFound ? [] : books,
-      sources: notFound ? [] : sources,
-      evidence: notFound ? [] : chunks,
+      // Citations are dropped whenever the answer is not grounded in the book,
+      // not only when nothing was found at all.
+      books: unsupportedByBook ? [] : books,
+      sources: unsupportedByBook ? [] : sources,
+      evidence: unsupportedByBook ? [] : chunks,
       usage: {
         model: generation.model,
         retrievedChunks: chunks.length,
@@ -214,8 +246,9 @@ chatRouter.post("/stream", optionalAuth, async (req, res, next) => {
     });
 
     if (!chunks.length && !parsed.data.allowOutsideBook) {
-      send("token", { delta: NOT_FOUND_ANSWER });
-      send("done", { answer: NOT_FOUND_ANSWER, notFound: true, usage: { model, retrievedChunks: 0 } });
+      const noResultsAnswer = notFoundMessage(parsed.data.question);
+      send("token", { delta: noResultsAnswer });
+      send("done", { answer: noResultsAnswer, notFound: true, usage: { model, retrievedChunks: 0 } });
       await UsageEvent.create({
         type: "chat",
         status: "success",
@@ -237,8 +270,7 @@ chatRouter.post("/stream", optionalAuth, async (req, res, next) => {
     // stream turns out to start with the NOT_FOUND sentinel, correct that
     // earlier event by re-sending "meta" with everything cleared, and strip
     // the sentinel out of what reaches the client.
-    const clearMetaForNotFound = () => {
-      notFound = true;
+    const clearBookCitations = () => {
       send("meta", {
         books: [],
         sources: [],
@@ -260,13 +292,15 @@ chatRouter.post("/stream", optionalAuth, async (req, res, next) => {
       if (prefixChecked) {
         return;
       }
-      if (!final && pendingBuffer.length < NOT_FOUND_PREFIX.length) {
+      if (!final && pendingBuffer.length < MAX_SENTINEL_LENGTH) {
         return;
       }
       prefixChecked = true;
-      if (pendingBuffer.slice(0, NOT_FOUND_PREFIX.length).toUpperCase() === NOT_FOUND_PREFIX) {
-        clearMetaForNotFound();
-        pendingBuffer = pendingBuffer.slice(NOT_FOUND_PREFIX.length).trimStart();
+      const sentinels = extractSentinels(pendingBuffer);
+      if (sentinels.unsupportedByBook) {
+        notFound = sentinels.notFound;
+        clearBookCitations();
+        pendingBuffer = sentinels.answer;
       }
       forwardChecked(pendingBuffer);
       pendingBuffer = "";
