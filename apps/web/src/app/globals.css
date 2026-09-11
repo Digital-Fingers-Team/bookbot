@@ -312,3 +312,49 @@ body {
   box-shadow: 0 0 1.1rem rgb(0 0 0 / .6);
 }
 .dark .flipbook-page-number { color: rgb(255 255 255 / .35); }
+
+/* Summary audio player — the seek bar. The played portion is drawn with a
+   non-repeating gradient whose width comes from an inline background-size, so
+   the fill tracks playback without a second element behind the input. */
+.summary-audio-range {
+  background-image: linear-gradient(#0a6b37, #0a6b37);
+  background-repeat: no-repeat;
+}
+.dark .summary-audio-range {
+  background-image: linear-gradient(#4f9a5f, #4f9a5f);
+}
+.summary-audio-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 0.75rem;
+  width: 0.75rem;
+  border-radius: 9999px;
+  background-color: #0a6b37;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / .3);
+  cursor: pointer;
+}
+.summary-audio-range::-moz-range-thumb {
+  height: 0.75rem;
+  width: 0.75rem;
+  border-radius: 9999px;
+  background-color: #0a6b37;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / .3);
+  cursor: pointer;
+}
+.dark .summary-audio-range::-webkit-slider-thumb {
+  background-color: #4f9a5f;
+  border-color: #0c0c0e;
+}
+.dark .summary-audio-range::-moz-range-thumb {
+  background-color: #4f9a5f;
+  border-color: #0c0c0e;
+}
+.summary-audio-range:disabled::-webkit-slider-thumb { opacity: .4; cursor: not-allowed; }
+.summary-audio-range:disabled::-moz-range-thumb { opacity: .4; cursor: not-allowed; }
+.summary-audio-range:focus-visible {
+  outline: 2px solid #0a6b37;
+  outline-offset: 2px;
+}
+.dark .summary-audio-range:focus-visible { outline-color: #4f9a5f; }
