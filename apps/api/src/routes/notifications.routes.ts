@@ -1,7 +1,10 @@
 import { Router, type Router as ExpressRouter } from "express";
 import { isValidObjectId } from "mongoose";
+import { z } from "zod";
 import { requireAdmin } from "../middleware/auth.middleware.js";
 import { Notification } from "../models/notification.model.js";
+import { PushSubscription } from "../models/push-subscription.model.js";
+import { isPushConfigured, pushPublicKey } from "../services/notifications/push.service.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { cursorFilter, nextCursor, parsePageParams } from "../utils/pagination.js";
@@ -77,5 +80,68 @@ notificationsRouter.post(
     }
 
     res.json({ id: String(notification._id), readAt: notification.readAt ?? null });
+  })
+);
+
+/**
+ * Web Push registration. The public key is what the browser needs to subscribe;
+ * a null key tells the client the feature is off, so it can hide the toggle
+ * instead of failing when VAPID keys aren't configured yet.
+ */
+notificationsRouter.get(
+  "/push/public-key",
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    res.json({ publicKey: pushPublicKey() });
+  })
+);
+
+const pushSubscriptionSchema = z.object({
+  endpoint: z.string().url().max(1000),
+  keys: z.object({
+    p256dh: z.string().min(1).max(200),
+    auth: z.string().min(1).max(100)
+  })
+});
+
+notificationsRouter.post(
+  "/push/subscribe",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    if (!isPushConfigured()) {
+      throw new ApiError(503, "PUSH_NOT_CONFIGURED", "Push notifications are not configured on this server.");
+    }
+    const parsed = pushSubscriptionSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ApiError(400, "INVALID_PUSH_SUBSCRIPTION", "This push subscription is invalid.");
+    }
+
+    // Re-subscribing on a browser that already registered, or one whose
+    // registration moved to another account, must not create a duplicate.
+    await PushSubscription.findOneAndUpdate(
+      { endpoint: parsed.data.endpoint },
+      {
+        $set: {
+          userId: req.user!.id,
+          keys: parsed.data.keys,
+          userAgent: String(req.headers["user-agent"] ?? "").slice(0, 300)
+        }
+      },
+      { upsert: true }
+    );
+
+    res.json({ ok: true });
+  })
+);
+
+notificationsRouter.post(
+  "/push/unsubscribe",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const endpoint = typeof req.body?.endpoint === "string" ? req.body.endpoint : "";
+    if (endpoint) {
+      await PushSubscription.deleteOne({ endpoint, userId: req.user!.id });
+    }
+    res.json({ ok: true });
   })
 );

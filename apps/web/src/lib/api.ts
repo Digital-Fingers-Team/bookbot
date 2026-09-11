@@ -423,6 +423,22 @@ export function markAllNotificationsRead(token?: string) {
   return request<{ ok: boolean }>("/api/notifications/mark-all-read", { method: "POST", token });
 }
 
+/** null publicKey means the server has no VAPID keys, so push is unavailable. */
+export function getPushPublicKey(token?: string) {
+  return request<{ publicKey: string | null }>("/api/notifications/push/public-key", { token });
+}
+
+export function subscribeToPush(
+  subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
+  token?: string
+) {
+  return request<{ ok: boolean }>("/api/notifications/push/subscribe", { method: "POST", body: subscription, token });
+}
+
+export function unsubscribeFromPush(endpoint: string, token?: string) {
+  return request<{ ok: boolean }>("/api/notifications/push/unsubscribe", { method: "POST", body: { endpoint }, token });
+}
+
 /** Fetch a receipt image as an object URL (auth required). Caller revokes it. */
 export async function fetchReceiptObjectUrl(id: string, token?: string): Promise<string> {
   const headers = new Headers();

@@ -26,6 +26,12 @@ const schema = z.object({
   // Only needed for Heyzine management endpoints; conversion uses the client id.
   HEYZINE_API_KEY: z.string().optional(),
   ADMIN_API_KEY: z.string().optional(),
+  // Web Push (VAPID). Both keys unset = the feature stays off end to end.
+  // Generate a pair with `npx web-push generate-vapid-keys`. Browsers also
+  // require the site to be served over HTTPS before they will register at all.
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default('mailto:admin@aradobot.local'),
   AUTH_JWT_SECRET: z.string().min(16).default("change-me-aradobot-auth-secret"),
   DEFAULT_ADMIN_EMAIL: z.string().email().default("admin@example.com"),
   DEFAULT_ADMIN_PASSWORD: z.string().min(6).default("admin123"),

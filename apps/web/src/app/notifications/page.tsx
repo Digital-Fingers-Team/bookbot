@@ -11,6 +11,7 @@ import {
   markNotificationRead,
   type AdminNotification
 } from "@/lib/api";
+import { PushToggle } from "@/components/push-toggle";
 import { useLang } from "@/lib/i18n";
 
 export default function NotificationsPage() {
@@ -91,6 +92,8 @@ export default function NotificationsPage() {
           </button>
         ) : null}
       </header>
+
+      <div className="mb-5"><PushToggle /></div>
 
       {loading ? (
         <div className="flex justify-center py-12 text-ink/70"><Loader2 className="h-5 w-5 animate-spin" /></div>

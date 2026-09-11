@@ -553,7 +553,12 @@ export const STRINGS = {
   "notifications.title": { ar: "Notifications", en: "Notifications" },
   "notifications.subtitle": { ar: "Important activity that needs your attention.", en: "Important activity that needs your attention." },
   "notifications.markAll": { ar: "Mark all read", en: "Mark all read" },
-  "notifications.empty": { ar: "You have no notifications yet.", en: "You have no notifications yet." }
+  "notifications.empty": { ar: "You have no notifications yet.", en: "You have no notifications yet." },
+  "notifications.push.enable": { ar: "Enable push notifications", en: "Enable push notifications" },
+  "notifications.push.disable": { ar: "Disable push notifications", en: "Disable push notifications" },
+  "notifications.push.enabled": { ar: "Push notifications are on for this device.", en: "Push notifications are on for this device." },
+  "notifications.push.denied": { ar: "Notifications are blocked in your browser settings.", en: "Notifications are blocked in your browser settings." },
+  "notifications.push.unavailable": { ar: "Push notifications are not configured on this server yet.", en: "Push notifications are not configured on this server yet." }
 } as const;
 
 export type StringKey = keyof typeof STRINGS;
