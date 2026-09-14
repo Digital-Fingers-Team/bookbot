@@ -34,10 +34,11 @@ import { useT, type StringKey } from "@/lib/i18n";
 
 type NavItem = { href: string; key: StringKey; icon: typeof Library };
 
+// The library is where signed-in readers land, so it leads.
 const baseNavItems: NavItem[] = [
-  { href: "/", key: "nav.ask", icon: MessageSquareText },
+  { href: "/library", key: "nav.library", icon: Library },
   { href: "/my-books", key: "nav.myBooks", icon: BookMarked },
-  { href: "/library", key: "nav.library", icon: Library }
+  { href: "/ask", key: "nav.ask", icon: MessageSquareText }
 ];
 
 const adminNavItems: NavItem[] = [
