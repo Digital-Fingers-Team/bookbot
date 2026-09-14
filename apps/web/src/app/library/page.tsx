@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { BookCover } from "@/components/book-cover";
+import { BooksCarousel } from "@/components/books-carousel";
 import { RequestAccessModal } from "@/components/request-access-modal";
 import { MyRequestsPanel } from "@/components/my-requests-panel";
 import { ApiClientError, addCategory, cancelBook, deleteBook, deleteFailedBooks, deleteSummaryAudio, getCategories, getStats, listBooks, retryFailedBooks, setFavorite, updateBook, uploadSummaryAudio } from "@/lib/api";
@@ -372,6 +373,16 @@ export default function LibraryPage() {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [books, categoryList]);
 
+  // Ready books this user can actually open, newest first, capped so the
+  // slides stay a glance rather than a second library. Featured books lead.
+  const slideBooks = useMemo(() => {
+    return books
+      .filter((book) => book.status === "ready" && book.accessible !== false)
+      .sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)))
+      .slice(0, 14)
+      .map((book) => ({ id: book.id, title: book.title, author: book.author }));
+  }, [books]);
+
   const visibleBooks = useMemo(() => {
     const query = search.trim().toLowerCase();
     const filtered = books.filter((book) => {
@@ -586,6 +597,14 @@ export default function LibraryPage() {
           ) : null}
         </div>
       </div>
+
+      {/* Slides across the reader's own ready books, between the toolbar and
+          the grid. Fed from the books already loaded here, so every slide
+          opens something they can actually read and it costs no extra
+          request. */}
+      {slideBooks.length ? (
+        <BooksCarousel books={slideBooks} linkTo={(id) => `/read/${id}`} heading={null} />
+      ) : null}
 
       {/* Content */}
       {loading ? (

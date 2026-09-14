@@ -12,23 +12,43 @@ import "swiper/css/effect-coverflow";
 import "swiper/css/pagination";
 import "swiper/css/navigation";
 
+type BooksCarouselProps = {
+  /**
+   * Books to show. Omit on the landing page to pull the public showcase; the
+   * library passes the reader's own books so every slide links somewhere they
+   * can actually open.
+   */
+  books?: ShowcaseBook[];
+  /** Where a slide links. Defaults to the sign-in-then-read hop for visitors. */
+  linkTo?: (id: string) => string;
+  /** Heading above the carousel; pass null to drop it. */
+  heading?: string | null;
+};
+
 /**
- * 3D coverflow books carousel for the landing page. Pulls the public showcase
- * (no auth) and shows real cover images, themed green.
+ * 3D coverflow books carousel. Pulls the public showcase (no auth) unless it
+ * is handed books, and shows real cover images, themed green.
  */
-export function BooksCarousel() {
+export function BooksCarousel({ books: provided, linkTo, heading }: BooksCarouselProps = {}) {
   const t = useT();
-  const [books, setBooks] = useState<ShowcaseBook[]>([]);
+  const [fetched, setFetched] = useState<ShowcaseBook[]>([]);
 
   useEffect(() => {
+    if (provided) {
+      return;
+    }
     let active = true;
     getShowcaseBooks(14)
-      .then((result) => active && setBooks(result.books))
+      .then((result) => active && setFetched(result.books))
       .catch(() => undefined);
     return () => {
       active = false;
     };
-  }, []);
+  }, [provided]);
+
+  const books = provided ?? fetched;
+  const href = linkTo ?? ((id: string) => `/login?next=/read/${id}`);
+  const title = heading === undefined ? t("landing.libraryTitle") : heading;
 
   if (!books.length) {
     return null;
@@ -36,10 +56,12 @@ export function BooksCarousel() {
 
   return (
     <section className="pb-12 pt-2">
-      <h2 className="mb-5 flex items-center justify-center gap-2 text-sm font-semibold text-ink/70 dark:text-white/70">
-        <BookOpenText className="h-4 w-4 text-moss dark:text-sea" />
-        {t("landing.libraryTitle")}
-      </h2>
+      {title ? (
+        <h2 className="mb-5 flex items-center justify-center gap-2 text-sm font-semibold text-ink/70 dark:text-white/70">
+          <BookOpenText className="h-4 w-4 text-moss dark:text-sea" />
+          {title}
+        </h2>
+      ) : null}
 
       <Swiper
         modules={[EffectCoverflow, Navigation, Pagination]}
@@ -56,7 +78,7 @@ export function BooksCarousel() {
       >
         {books.map((book) => (
           <SwiperSlide key={book.id} className="books-coverflow__slide">
-            <Link href={`/login?next=/read/${book.id}`} className="block">
+            <Link href={href(book.id)} className="block">
               <CoverImage id={book.id} title={book.title} />
               <p dir="auto" className="mt-3 line-clamp-2 text-center text-xs font-medium leading-5 text-ink dark:text-white">
                 {book.title}
