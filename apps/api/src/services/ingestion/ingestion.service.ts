@@ -23,7 +23,6 @@ import type { SourceFormat } from "../../utils/source-format.js";
 import { notifyAdmins } from "../notifications/notification.service.js";
 import { suggestBookCategories } from "../generation/categorization.service.js";
 
-const MAX_EMBEDDING_CHARS = 50000;
 const PROGRESS_INTERVAL_MS = 1500;
 
 class ProcessingCancelledError extends Error {
@@ -340,6 +339,7 @@ async function recordUsage(
 }
 
 async function embedChunks(texts: string[]) {
+  const { maxBatchChars } = getEmbeddingSettings();
   const embeddings: number[][] = [];
 
   let batch: string[] = [];
@@ -348,7 +348,7 @@ async function embedChunks(texts: string[]) {
   for (const text of texts) {
     const textChars = text.length;
 
-    if (batch.length > 0 && batchChars + textChars > MAX_EMBEDDING_CHARS) {
+    if (batch.length > 0 && batchChars + textChars > maxBatchChars) {
       const result = await embedTexts(batch);
       embeddings.push(...result.embeddings);
       batch = [];

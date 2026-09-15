@@ -75,6 +75,9 @@ const schema = z.object({
   LOCAL_EMBEDDING_API_KEY: z.string().optional(),
   LOCAL_EMBEDDING_MODEL: z.string().default("nomic-embed-text"),
   LOCAL_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(768),
+  // Overrides the per-provider embedding batch budget. Lower it when the local
+  // model shares the box with OCR and a batch runs long enough to time out.
+  EMBEDDING_MAX_BATCH_CHARS: z.coerce.number().int().positive().optional(),
   OCR_ENABLED: z
     .string()
     .default("true")
