@@ -28,4 +28,4 @@ pnpm-debug.log*
 *.csv
 *.bat
 # Timestamped .env backups (contain live secrets)
-.env.bak.*
+.env.bak*
