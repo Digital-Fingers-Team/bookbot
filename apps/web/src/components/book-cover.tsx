@@ -5,22 +5,26 @@ import { BookOpenText } from "lucide-react";
 import { bookCoverUrl } from "@/lib/api";
 
 /**
- * Renders a book's real cover (its first rendered page) via the public cover
- * endpoint, so it shows even for locked books the user hasn't bought yet.
- * Falls back to a book icon only if the first-page image cannot be fetched.
+ * Renders a book's cover via the public cover endpoint — the uploaded front
+ * face when there is one, otherwise the book's first rendered page — so it
+ * shows even for locked books the user hasn't bought yet. Falls back to a book
+ * icon only if the image cannot be fetched.
  */
 export function BookCover({
   bookId,
   ready: _ready,
   alt,
   className = "",
-  iconClassName = "h-5 w-5"
+  iconClassName = "h-5 w-5",
+  version = 0
 }: {
   bookId: string;
   ready: boolean;
   alt: string;
   className?: string;
   iconClassName?: string;
+  /** Bump to refetch after the cover changed; the endpoint is cached for a day. */
+  version?: number;
 }) {
   const [imageUrl, setImageUrl] = useState("");
   const [failed, setFailed] = useState(false);
@@ -34,7 +38,7 @@ export function BookCover({
 
     // Fetch the image into a local object URL. This makes the cover reliable
     // when the API is hosted on a different origin than the web app.
-    fetch(bookCoverUrl(bookId), { signal: controller.signal, cache: "no-store" })
+    fetch(version ? `${bookCoverUrl(bookId)}?v=${version}` : bookCoverUrl(bookId), { signal: controller.signal, cache: "no-store" })
       .then((response) => {
         if (!response.ok) {
           throw new Error(`Cover request failed: ${response.status}`);
@@ -60,7 +64,7 @@ export function BookCover({
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [bookId]);
+  }, [bookId, version]);
 
   // The cover endpoint is public and safely returns a placeholder only for
   // non-PDF sources. Do not gate this on the processing status: catalog data

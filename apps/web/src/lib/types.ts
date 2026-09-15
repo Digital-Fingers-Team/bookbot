@@ -64,6 +64,15 @@ export type Book = {
     size: number;
     uploadedAt: string | null;
   } | null;
+  // An admin-uploaded cover spread (front on the left half, back on the right).
+  // Present only once one has been attached; otherwise the cover endpoint falls
+  // back to rendering the book's first page.
+  cover?: {
+    fileName: string;
+    mimeType: string;
+    size: number;
+    uploadedAt: string | null;
+  } | null;
 };
 
 export type Source = {

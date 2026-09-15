@@ -23,6 +23,7 @@ import { PdfJsRenderer } from "../services/ingestion/renderers/pdfjs.renderer.js
 import { renderPlaceholderCover } from "../services/ingestion/placeholder-cover.service.js";
 import { SOURCE_CONTENT_TYPES, type SourceFormat } from "../utils/source-format.js";
 import { attachSummaryAudio, isSummaryAudio, removeSummaryAudio, summaryAudioMeta } from "../services/storage/summary-audio.service.js";
+import { attachCover, coverMeta, isCoverImage, removeCover } from "../services/ingestion/cover.service.js";
 
 const summaryAudioUpload = multer({
   storage: multer.memoryStorage(),
@@ -30,6 +31,18 @@ const summaryAudioUpload = multer({
   fileFilter: (_req, file, cb) => {
     if (!isSummaryAudio(file.originalname, file.mimetype)) {
       cb(new ApiError(400, "INVALID_AUDIO_TYPE", "Please upload an MP3, M4A, WAV, OGG, WEBM, AAC, or FLAC audio file."));
+      return;
+    }
+    cb(null, true);
+  }
+});
+
+const coverUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    if (!isCoverImage(file.originalname, file.mimetype)) {
+      cb(new ApiError(400, "INVALID_COVER_TYPE", "Please upload a PNG, JPEG, or WEBP cover image."));
       return;
     }
     cb(null, true);
@@ -48,7 +61,7 @@ booksRouter.get(
     const networkBookIds = req.user ? null : await resolveNetworkBookIds(resolveClientIp(req));
     const books = await Book.find(
       {},
-      { title: 1, originalFileName: 1, sourceFormat: 1, createdAt: 1, readyAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, categories: 1, author: 1, featured: 1, description: 1, price: 1, summaryAudioFileName: 1, summaryAudioMimeType: 1, summaryAudioSize: 1, summaryAudioUploadedAt: 1 }
+      { title: 1, originalFileName: 1, sourceFormat: 1, createdAt: 1, readyAt: 1, chunkCount: 1, pageCount: 1, status: 1, processedPages: 1, error: 1, category: 1, categories: 1, author: 1, featured: 1, description: 1, price: 1, summaryAudioFileName: 1, summaryAudioMimeType: 1, summaryAudioSize: 1, summaryAudioUploadedAt: 1, coverFileName: 1, coverMimeType: 1, coverSize: 1, coverUploadedAt: 1 }
     )
       .sort({ createdAt: -1 })
       .lean();
@@ -90,6 +103,7 @@ booksRouter.get(
           description: book.description ?? "",
           price: book.price ?? 0,
           summaryAudio: summaryAudioMeta(book),
+          cover: coverMeta(book),
           accessible,
           firstPageText: visibleFirstPageText
         };
@@ -183,7 +197,11 @@ const BOOK_CARD_FIELDS = {
   summaryAudioFileName: 1,
   summaryAudioMimeType: 1,
   summaryAudioSize: 1,
-  summaryAudioUploadedAt: 1
+  summaryAudioUploadedAt: 1,
+  coverFileName: 1,
+  coverMimeType: 1,
+  coverSize: 1,
+  coverUploadedAt: 1
 } as const;
 
 type BookStateLean = { favorite?: boolean; lastPage?: number; lastOpenedAt?: Date | null } | null | undefined;
@@ -217,6 +235,12 @@ function bookCard(book: Record<string, unknown>, firstPageText: string, state: B
       summaryAudioMimeType?: string;
       summaryAudioSize?: number;
       summaryAudioUploadedAt?: Date;
+    }),
+    cover: coverMeta(book as {
+      coverFileName?: string;
+      coverMimeType?: string;
+      coverSize?: number;
+      coverUploadedAt?: Date;
     }),
     firstPageText,
     favorite: state?.favorite ?? false,
@@ -449,9 +473,20 @@ booksRouter.get(
   asyncHandler(async (req, res) => {
     const id = requireBookId(routeId(req.params.id));
 
-    const summary = await Book.findById(id, { title: 1, sourceFormat: 1 }).lean();
+    const summary = await Book.findById(id, { title: 1, sourceFormat: 1, coverFrontPath: 1 }).lean();
     if (!summary) {
       throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
+    }
+
+    // An admin-supplied cover wins over the rendered first page.
+    if (summary.coverFrontPath) {
+      const front = await storage.get(summary.coverFrontPath).catch(() => null);
+      if (front) {
+        res.setHeader("Content-Type", "image/png");
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        res.send(front);
+        return;
+      }
     }
 
     const format = ((summary.sourceFormat as SourceFormat | undefined) ?? "pdf") as SourceFormat;
@@ -671,6 +706,63 @@ booksRouter.delete(
   })
 );
 
+/** The back face of an uploaded cover. Public, like the front cover. */
+booksRouter.get(
+  "/:id/back-cover",
+  asyncHandler(async (req, res) => {
+    const id = requireBookId(routeId(req.params.id));
+    const book = await Book.findById(id, { coverBackPath: 1 }).lean();
+    if (!book?.coverBackPath) {
+      throw new ApiError(404, "COVER_NOT_FOUND", "This book has no uploaded cover.");
+    }
+    const back = await storage.get(book.coverBackPath);
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.send(back);
+  })
+);
+
+/**
+ * Attach (or replace) a book's cover after it was uploaded. The image is one
+ * spread holding both faces — front on the left half, back on the right — and
+ * the service splits it, stores each face and writes them into the PDF.
+ */
+booksRouter.put(
+  "/:id/cover",
+  requireAdmin,
+  coverUpload.single("cover"),
+  asyncHandler(async (req, res) => {
+    const id = requireBookId(routeId(req.params.id));
+    const file = req.file;
+    if (!file) {
+      throw new ApiError(400, "MISSING_COVER", "Please choose a cover image.");
+    }
+    let cover;
+    try {
+      cover = await attachCover(id, {
+        buffer: file.buffer,
+        originalFileName: normalizeUploadedFileName(file.originalname),
+        mimeType: file.mimetype
+      });
+    } catch (error) {
+      throw new ApiError(400, "COVER_FAILED", error instanceof Error ? error.message : "The cover could not be attached.");
+    }
+    if (!cover) throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
+    res.json({ cover });
+  })
+);
+
+booksRouter.delete(
+  "/:id/cover",
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const id = requireBookId(routeId(req.params.id));
+    const removed = await removeCover(id);
+    if (!removed) throw new ApiError(404, "COVER_NOT_FOUND", "This book has no uploaded cover.");
+    res.json({ removed: true });
+  })
+);
+
 /**
  * Decide whether a book reads right-to-left.
  *
@@ -776,6 +868,8 @@ booksRouter.delete(
         if (book.summaryAudioPath) {
           await storage.delete(book.summaryAudioPath);
         }
+        if (book.coverFrontPath) await storage.delete(book.coverFrontPath);
+        if (book.coverBackPath) await storage.delete(book.coverBackPath);
         await book.deleteOne();
         deleted += 1;
       } catch (error) {
@@ -803,6 +897,8 @@ booksRouter.delete(
     await BookPage.deleteMany({ bookId: book._id });
     await deleteStoredPdf(book.originalPdfPath ?? undefined);
     if (book.summaryAudioPath) await storage.delete(book.summaryAudioPath);
+    if (book.coverFrontPath) await storage.delete(book.coverFrontPath);
+    if (book.coverBackPath) await storage.delete(book.coverBackPath);
     await book.deleteOne();
 
     res.json({ deleted: true });

@@ -10,17 +10,26 @@ import { normalizeUploadedFileName } from "../utils/file-name.js";
 import { detectSourceFormat } from "../utils/source-format.js";
 import { matchesBookSourceFormat } from "../utils/file-signature.js";
 import { attachSummaryAudio, isSummaryAudio } from "../services/storage/summary-audio.service.js";
+import { isCoverImage } from "../services/ingestion/cover.service.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: env.UPLOAD_MAX_MB * 1024 * 1024,
-    files: env.UPLOAD_MAX_FILES * 2
+    files: env.UPLOAD_MAX_FILES * 3
   },
   fileFilter: (_req, file, cb) => {
     if (file.fieldname === "summaryAudios") {
       if (!isSummaryAudio(file.originalname, file.mimetype)) {
         cb(new ApiError(400, "INVALID_AUDIO_TYPE", "Please upload an MP3, M4A, WAV, OGG, WEBM, AAC, or FLAC audio file."));
+        return;
+      }
+      cb(null, true);
+      return;
+    }
+    if (file.fieldname === "covers") {
+      if (!isCoverImage(file.originalname, file.mimetype)) {
+        cb(new ApiError(400, "INVALID_COVER_TYPE", "Please upload a PNG, JPEG, or WEBP cover image."));
         return;
       }
       cb(null, true);
@@ -41,7 +50,8 @@ uploadRouter.post(
   requireAdmin,
   upload.fields([
     { name: "files", maxCount: env.UPLOAD_MAX_FILES },
-    { name: "summaryAudios", maxCount: env.UPLOAD_MAX_FILES }
+    { name: "summaryAudios", maxCount: env.UPLOAD_MAX_FILES },
+    { name: "covers", maxCount: env.UPLOAD_MAX_FILES }
   ]),
   asyncHandler(async (req, res) => {
     const uploadedFiles = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
@@ -64,6 +74,20 @@ uploadRouter.post(
       throw new ApiError(400, "INVALID_AUDIO_MAPPING", "The summary audio files could not be matched to the books.");
     }
 
+    const coverFiles = uploadedFiles?.covers ?? [];
+    let coverIndexes: number[] = [];
+    if (req.body?.coverIndexes) {
+      try {
+        const parsed = JSON.parse(String(req.body.coverIndexes));
+        coverIndexes = Array.isArray(parsed) ? parsed.map((value) => Number(value)) : [];
+      } catch {
+        throw new ApiError(400, "INVALID_COVER_MAPPING", "The cover images could not be matched to the books.");
+      }
+    }
+    if (coverFiles.length !== coverIndexes.length || new Set(coverIndexes).size !== coverIndexes.length || coverIndexes.some((index) => !Number.isInteger(index) || index < 0 || index >= files.length)) {
+      throw new ApiError(400, "INVALID_COVER_MAPPING", "The cover images could not be matched to the books.");
+    }
+
     // One price applies to the whole batch (admin sets it on the upload form).
     const rawPrice = Number(req.body?.price);
     const price = Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : 0;
@@ -83,12 +107,25 @@ uploadRouter.post(
         );
       }
 
+      const coverPosition = coverIndexes.indexOf(files.indexOf(file));
+      const coverFile = coverPosition >= 0 ? coverFiles[coverPosition] : undefined;
+      if (coverFile && format !== "pdf") {
+        throw new ApiError(400, "COVER_NOT_SUPPORTED", `A cover can only be attached to a PDF, and "${file.originalname}" is not one.`);
+      }
+
       const created = await createProcessingBook({
         buffer: file.buffer,
         originalFileName: normalizeUploadedFileName(file.originalname),
         price,
         format,
-        autoCategorize
+        autoCategorize,
+        cover: coverFile
+          ? {
+              buffer: coverFile.buffer,
+              originalFileName: normalizeUploadedFileName(coverFile.originalname),
+              mimeType: coverFile.mimetype
+            }
+          : undefined
       });
 
       const audioPosition = audioIndexes.indexOf(files.indexOf(file));

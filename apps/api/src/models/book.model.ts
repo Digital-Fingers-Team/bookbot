@@ -15,6 +15,19 @@ const bookSchema = new Schema(
     summaryAudioMimeType: { type: String, trim: true },
     summaryAudioSize: { type: Number, min: 0 },
     summaryAudioUploadedAt: { type: Date },
+    // Optional admin-supplied cover spread: one wide image holding the front
+    // face on its left half and the back face on its right. Both halves are
+    // stored separately and also written into the PDF as its first and last
+    // pages, so the flipbook reader shows them too.
+    coverFrontPath: { type: String, trim: true },
+    coverBackPath: { type: String, trim: true },
+    coverFileName: { type: String, trim: true },
+    coverMimeType: { type: String, trim: true },
+    coverSize: { type: Number, min: 0 },
+    coverUploadedAt: { type: Date },
+    // True while the cover pages are present in the stored PDF. Guards against
+    // stacking a second pair of pages when the cover is replaced.
+    coverPagesInPdf: { type: Boolean },
     heyzineId: { type: String, trim: true },
     heyzineUrl: { type: String, trim: true },
     // Format of the originally uploaded file. Defaults to "pdf" for backward

@@ -237,7 +237,7 @@ export type UploadedBook = {
   status: "processing" | "ready" | "failed";
 };
 
-export async function uploadPdfs(files: File[], token?: string, price?: number, summaryAudios: Array<File | undefined> = [], autoCategorize = false) {
+export async function uploadPdfs(files: File[], token?: string, price?: number, summaryAudios: Array<File | undefined> = [], autoCategorize = false, covers: Array<File | undefined> = []) {
   const formData = new FormData();
   for (const file of files) {
     formData.append("files", file);
@@ -250,6 +250,15 @@ export async function uploadPdfs(files: File[], token?: string, price?: number, 
   });
   if (summaryAudioIndexes.length) {
     formData.append("summaryAudioIndexes", JSON.stringify(summaryAudioIndexes));
+  }
+  const coverIndexes: number[] = [];
+  covers.forEach((cover, index) => {
+    if (!cover) return;
+    formData.append("covers", cover);
+    coverIndexes.push(index);
+  });
+  if (coverIndexes.length) {
+    formData.append("coverIndexes", JSON.stringify(coverIndexes));
   }
   if (price && price > 0) {
     formData.append("price", String(price));
@@ -593,6 +602,31 @@ export function deleteSummaryAudio(id: string, token?: string) {
   return request<{ removed: true }>(`/api/books/${id}/summary-audio`, { method: "DELETE", token });
 }
 
+/**
+ * Attach or replace a book's cover. `cover` is one wide image holding both
+ * faces — the front on its left half and the back on its right.
+ */
+export async function uploadBookCover(id: string, cover: File, token?: string) {
+  const formData = new FormData();
+  formData.append("cover", cover);
+  const headers = new Headers();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const response = await fetch(`${API_URL}/api/books/${id}/cover`, {
+    method: "PUT",
+    headers,
+    body: formData
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as ApiErrorResponse | null;
+    throw new ApiClientError(response.status, payload?.error.code ?? "COVER_UPLOAD_FAILED", payload?.error.message ?? "The cover could not be uploaded.");
+  }
+  return response.json() as Promise<{ cover: NonNullable<Book["cover"]> }>;
+}
+
+export function deleteBookCover(id: string, token?: string) {
+  return request<{ removed: true }>(`/api/books/${id}/cover`, { method: "DELETE", token });
+}
+
 export type DiscoveryBook = { id: string; title: string; author: string; category: string; description: string };
 
 /** Ask the library guide which books/categories suit the user (metadata only). */
@@ -712,9 +746,14 @@ export function getShowcaseBooks(count = 12) {
   return request<{ books: ShowcaseBook[] }>(`/api/books/showcase?count=${count}`);
 }
 
-/** Public cover image URL (first page) for a showcase book. */
+/** Public cover image URL: the uploaded front face, else the first page. */
 export function bookCoverUrl(id: string) {
   return `${API_URL}/api/books/${id}/cover`;
+}
+
+/** Public back-cover URL. 404s unless a cover spread was uploaded. */
+export function bookBackCoverUrl(id: string) {
+  return `${API_URL}/api/books/${id}/back-cover`;
 }
 
 export type OmpAuthorLink = {

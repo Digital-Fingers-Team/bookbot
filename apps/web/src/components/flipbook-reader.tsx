@@ -18,7 +18,7 @@ type FlipbookReaderProps = {
 };
 
 /** Heyzine owns the reader UI and page effect. No local page-turn engine. */
-export function FlipbookReader({ bookId, title, kind }: FlipbookReaderProps) {
+export function FlipbookReader({ bookId, title, kind, page }: FlipbookReaderProps) {
   const { token } = useAuth();
   const t = useT();
   const [url, setUrl] = useState("");
@@ -40,6 +40,16 @@ export function FlipbookReader({ bookId, title, kind }: FlipbookReaderProps) {
     return () => { cancelled = true; };
   }, [bookId, kind, t, token]);
 
+  // Heyzine takes the page to open from the URL hash (`#page/N`). Without it
+  // the flipbook restores whatever page it last remembered, so jumping to a
+  // cited page did nothing. The hash alone won't renavigate a live
+  // cross-origin iframe, so key the iframe on the target page: a jump remounts
+  // it and lands on that page. `page` only changes on an explicit jump (the
+  // in-book assistant, or restored progress), never on an ordinary page turn,
+  // so this does not reload as the reader flips.
+  const target = Math.max(1, Math.floor(page) || 1);
+  const src = url ? `${url}#page/${target}` : "";
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-zinc-100 dark:bg-[#08080a]">
       {error ? (
@@ -48,8 +58,9 @@ export function FlipbookReader({ bookId, title, kind }: FlipbookReaderProps) {
         </div>
       ) : url ? (
         <iframe
+          key={src}
           title={title}
-          src={url}
+          src={src}
           className="h-full min-h-0 w-full border-0"
           allow="fullscreen; clipboard-write"
           allowFullScreen

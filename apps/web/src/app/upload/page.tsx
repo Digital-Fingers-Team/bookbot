@@ -7,6 +7,7 @@ import {
   ArrowRight,
   CheckCircle2,
   FileText,
+  Image as ImageIcon,
   Music2,
   FileSpreadsheet,
   Layers,
@@ -31,6 +32,7 @@ const ACCEPTED_MIME_TYPES = [
 ];
 const ACCEPTED_INPUT_ATTR = [...ACCEPTED_EXTENSIONS, ...ACCEPTED_MIME_TYPES].join(",");
 const AUDIO_INPUT_ATTR = ".mp3,.m4a,.wav,.ogg,.webm,.aac,.flac,audio/*";
+const COVER_INPUT_ATTR = ".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp";
 const EXCEL_IMPORT_BATCH_SIZE = 100;
 
 function isAcceptedFile(file: File) {
@@ -43,6 +45,7 @@ export default function UploadPage() {
   const t = useT();
   const [files, setFiles] = useState<File[]>([]);
   const [summaryAudioByFile, setSummaryAudioByFile] = useState<Record<string, File>>({});
+  const [coverByFile, setCoverByFile] = useState<Record<string, File>>({});
   const [price, setPrice] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -94,6 +97,11 @@ export default function UploadPage() {
       delete next[key];
       return next;
     });
+    setCoverByFile((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
   }
 
   function chooseSummaryAudio(book: File, audio: File | undefined) {
@@ -111,6 +119,27 @@ export default function UploadPage() {
     });
   }
 
+  function chooseCover(book: File, cover: File | undefined) {
+    if (cover && !isAcceptedCover(cover)) {
+      setError(`"${cover.name}" is not a supported image file.`);
+      return;
+    }
+    // Covers are written into the PDF, so there is nothing to attach them to on
+    // an EPUB/DOCX/TXT upload.
+    if (cover && !/\.pdf$/i.test(book.name)) {
+      setError(`A cover can only be added to a PDF, and "${book.name}" is not one.`);
+      return;
+    }
+    setError("");
+    const key = fileKey(book);
+    setCoverByFile((current) => {
+      const next = { ...current };
+      if (cover) next[key] = cover;
+      else delete next[key];
+      return next;
+    });
+  }
+
   async function submit() {
     if (!files.length || loading || !isAdmin) {
       return;
@@ -122,10 +151,11 @@ export default function UploadPage() {
 
     try {
       const numericPrice = Number(price);
-      const uploaded = await uploadPdfs(files, token, Number.isFinite(numericPrice) ? numericPrice : 0, files.map((file) => summaryAudioByFile[fileKey(file)]), autoCategorize);
+      const uploaded = await uploadPdfs(files, token, Number.isFinite(numericPrice) ? numericPrice : 0, files.map((file) => summaryAudioByFile[fileKey(file)]), autoCategorize, files.map((file) => coverByFile[fileKey(file)]));
       setResults(uploaded.books);
       setFiles([]);
       setSummaryAudioByFile({});
+      setCoverByFile({});
       setPrice("");
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : t("up.uploadFailed"));
@@ -316,7 +346,7 @@ export default function UploadPage() {
               <p className="mt-0.5 text-xs text-ink/70 dark:text-white/70">
                 {formatBytes(totalBytes)} · {t("up.separateBooks")}
               </p>
-              <p className="mt-1 text-xs text-moss/80 dark:text-sea/80">Summary audio is optional and can also be added later from Library.</p>
+              <p className="mt-1 text-xs text-moss/80 dark:text-sea/80">Summary audio and the cover are optional and can also be added later from Library. A cover is one image holding both faces of the printed jacket — the front on its left half, the back on its right.</p>
               <label className="mt-2 flex cursor-pointer items-start gap-2">
                 <input
                   type="checkbox"
@@ -382,6 +412,21 @@ export default function UploadPage() {
                   />
                 </label>
                 {summaryAudioByFile[fileKey(file)] ? <span className="text-[11px] text-moss dark:text-sea">Attached</span> : null}
+                <label className="inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-line px-2.5 py-1.5 text-xs font-medium text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/70 dark:hover:text-sea">
+                  <ImageIcon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="max-w-36 truncate">{coverByFile[fileKey(file)]?.name ?? "Add cover"}</span>
+                  <input
+                    type="file"
+                    accept={COVER_INPUT_ATTR}
+                    className="sr-only"
+                    disabled={loading}
+                    onChange={(event) => {
+                      chooseCover(file, event.target.files?.[0]);
+                      event.target.value = "";
+                    }}
+                  />
+                </label>
+                {coverByFile[fileKey(file)] ? <span className="text-[11px] text-moss dark:text-sea">Cover set</span> : null}
                 <button
                   type="button"
                   onClick={() => removeFile(file)}
@@ -452,6 +497,10 @@ function chunkRows<T>(rows: T[], size: number): T[][] {
     batches.push(rows.slice(index, index + size));
   }
   return batches;
+}
+
+function isAcceptedCover(file: File) {
+  return file.type.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(file.name);
 }
 
 function isAcceptedAudio(file: File) {

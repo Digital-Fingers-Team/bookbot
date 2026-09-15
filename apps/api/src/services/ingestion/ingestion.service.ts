@@ -17,6 +17,7 @@ import { storage } from "../storage/storage.service.js";
 import { chunkPages } from "./chunker.service.js";
 import { extractDocument } from "./extraction.service.js";
 import { storePdfSource } from "./pdf-storage.service.js";
+import { applyCoverToPdf, splitCoverSpread, storeCoverHalves, type CoverInput } from "./cover.service.js";
 import { pushBookToOmp } from "../omp/omp-push.service.js";
 import type { SourceFormat } from "../../utils/source-format.js";
 import { notifyAdmins } from "../notifications/notification.service.js";
@@ -55,9 +56,17 @@ export async function createProcessingBook(input: {
   description?: string;
   category?: string;
   autoCategorize?: boolean;
+  cover?: CoverInput;
 }): Promise<CreatedBook> {
   const title = input.title?.trim() || titleFromFileName(input.originalFileName);
-  const storedPdf = await storePdfSource(input);
+
+  // A cover supplied at upload time is written into the PDF before it is
+  // stored, so extraction counts and numbers the pages the reader will see and
+  // nothing needs shifting afterwards.
+  const halves = input.cover && input.format === "pdf" ? await splitCoverSpread(input.cover.buffer) : null;
+  const storedPdf = await storePdfSource(
+    halves ? { ...input, buffer: await applyCoverToPdf(input.buffer, halves) } : input
+  );
 
   const book = await Book.create({
     title,
@@ -81,6 +90,23 @@ export async function createProcessingBook(input: {
     pageCount: 0,
     processedPages: 0
   });
+
+  if (halves && input.cover) {
+    const stored = await storeCoverHalves(book._id.toString(), halves);
+    await Book.updateOne(
+      { _id: book._id },
+      {
+        $set: {
+          ...stored,
+          coverFileName: input.cover.originalFileName,
+          coverMimeType: input.cover.mimeType,
+          coverSize: input.cover.buffer.length,
+          coverUploadedAt: new Date(),
+          coverPagesInPdf: true
+        }
+      }
+    );
+  }
 
   return {
     bookId: book._id.toString(),

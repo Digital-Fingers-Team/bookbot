@@ -11,6 +11,7 @@ import {
   List as ListIcon,
   Loader2,
   Lock,
+  Image as ImageIcon,
   Music2,
   Plus,
   RefreshCw,
@@ -26,7 +27,7 @@ import { BookCover } from "@/components/book-cover";
 import { BooksCarousel } from "@/components/books-carousel";
 import { RequestAccessModal } from "@/components/request-access-modal";
 import { MyRequestsPanel } from "@/components/my-requests-panel";
-import { ApiClientError, addCategory, cancelBook, deleteBook, deleteFailedBooks, deleteSummaryAudio, getCategories, getStats, listBooks, retryFailedBooks, setFavorite, updateBook, uploadSummaryAudio } from "@/lib/api";
+import { ApiClientError, addCategory, cancelBook, deleteBook, deleteFailedBooks, deleteBookCover, deleteSummaryAudio, getCategories, getStats, listBooks, retryFailedBooks, setFavorite, updateBook, uploadBookCover, uploadSummaryAudio } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
 import { useLang, useT, type StringKey } from "@/lib/i18n";
 
@@ -81,6 +82,9 @@ export default function LibraryPage() {
   const [confirmDeleteBook, setConfirmDeleteBook] = useState<Book | null>(null);
   const [payBook, setPayBook] = useState<Book | null>(null);
   const [audioBook, setAudioBook] = useState<Book | null>(null);
+  const [coverBook, setCoverBook] = useState<Book | null>(null);
+  // Bumped after a cover change so <BookCover> drops its cached image.
+  const [coverVersion, setCoverVersion] = useState(0);
   const [requestsKey, setRequestsKey] = useState(0);
 
   const refresh = useCallback(async () => {
@@ -279,6 +283,29 @@ export default function LibraryPage() {
     await deleteSummaryAudio(current.id, token);
     setBooks((prev) => prev.map((item) => item.id === current.id ? { ...item, summaryAudio: null } : item));
     setAudioBook(null);
+  }
+
+  function manageCover(book: Book) {
+    setCoverBook(book);
+  }
+
+  async function saveCover(file: File) {
+    const current = coverBook;
+    if (!current) return;
+    const result = await uploadBookCover(current.id, file, token);
+    setBooks((prev) => prev.map((item) => item.id === current.id ? { ...item, cover: result.cover } : item));
+    setCoverBook(null);
+    // The cover endpoint is cached for a day, so force the cards to refetch.
+    setCoverVersion((value) => value + 1);
+  }
+
+  async function removeCoverFromBook() {
+    const current = coverBook;
+    if (!current || !window.confirm("Remove this cover? Its two pages come back out of the PDF.")) return;
+    await deleteBookCover(current.id, token);
+    setBooks((prev) => prev.map((item) => item.id === current.id ? { ...item, cover: null } : item));
+    setCoverBook(null);
+    setCoverVersion((value) => value + 1);
   }
 
   function isBookOpenable(book: Book) {
@@ -659,6 +686,8 @@ export default function LibraryPage() {
                   onSetDescription={() => setDescription(book)}
                   onSetPrice={() => setPrice(book)}
                   onManageAudio={() => manageSummaryAudio(book)}
+                  onManageCover={() => manageCover(book)}
+                  coverVersion={coverVersion}
                   onToggleFavorite={() => toggleFavorite(book)}
                   onToggleFeatured={() => toggleFeatured(book)}
                 />
@@ -679,6 +708,8 @@ export default function LibraryPage() {
                   onSetDescription={() => setDescription(book)}
                   onSetPrice={() => setPrice(book)}
                   onManageAudio={() => manageSummaryAudio(book)}
+                  onManageCover={() => manageCover(book)}
+                  coverVersion={coverVersion}
                   onToggleFavorite={() => toggleFavorite(book)}
                   onToggleFeatured={() => toggleFeatured(book)}
                 />
@@ -743,6 +774,15 @@ export default function LibraryPage() {
           onRemove={audioBook.summaryAudio ? removeSummaryAudioFromBook : undefined}
         />
       ) : null}
+
+      {coverBook ? (
+        <CoverModal
+          book={coverBook}
+          onClose={() => setCoverBook(null)}
+          onSave={saveCover}
+          onRemove={coverBook.cover ? removeCoverFromBook : undefined}
+        />
+      ) : null}
     </div>
   );
 }
@@ -786,6 +826,8 @@ function BookCard({
   onSetDescription,
   onSetPrice,
   onManageAudio,
+  onManageCover,
+  coverVersion,
   onToggleFavorite,
   onToggleFeatured
 }: {
@@ -799,6 +841,8 @@ function BookCard({
   onSetDescription: () => void;
   onSetPrice: () => void;
   onManageAudio: () => void;
+  onManageCover: () => void;
+  coverVersion: number;
   onToggleFavorite: () => void;
   onToggleFeatured: () => void;
 }) {
@@ -852,6 +896,7 @@ function BookCard({
           </button>
         ) : null}
         <BookCover
+          version={coverVersion}
           bookId={book.id}
           ready={book.status === "ready"}
           alt={book.title}
@@ -888,6 +933,7 @@ function BookCard({
           />
           {isAdmin ? <FeaturedToggle featured={Boolean(book.featured)} onToggle={onToggleFeatured} /> : null}
           {(book.summaryAudio && !locked) || isAdmin ? <SummaryAudioControl audio={book.summaryAudio} isAdmin={isAdmin} onManage={onManageAudio} /> : null}
+          {isAdmin ? <CoverControl cover={book.cover} onManage={onManageCover} /> : null}
         </div>
 
         {book.description ? (
@@ -963,6 +1009,8 @@ function BookRow({
   onSetDescription,
   onSetPrice,
   onManageAudio,
+  onManageCover,
+  coverVersion,
   onToggleFavorite,
   onToggleFeatured
 }: {
@@ -976,6 +1024,8 @@ function BookRow({
   onSetDescription: () => void;
   onSetPrice: () => void;
   onManageAudio: () => void;
+  onManageCover: () => void;
+  coverVersion: number;
   onToggleFavorite: () => void;
   onToggleFeatured: () => void;
 }) {
@@ -999,6 +1049,7 @@ function BookRow({
     >
       <div className="relative shrink-0">
         <BookCover
+          version={coverVersion}
           bookId={book.id}
           ready={book.status === "ready"}
           alt={book.title}
@@ -1034,6 +1085,7 @@ function BookRow({
         />
         {isAdmin ? <StatusBadge book={book} compact /> : null}
         {(book.summaryAudio && !locked) || isAdmin ? <SummaryAudioControl audio={book.summaryAudio} isAdmin={isAdmin} onManage={onManageAudio} compact /> : null}
+        {isAdmin ? <CoverControl cover={book.cover} onManage={onManageCover} compact /> : null}
       </div>
       <div className="hidden shrink-0 sm:block">
         <PriceTag price={book.price} isAdmin={isAdmin} onEdit={onSetPrice} />
@@ -1155,6 +1207,114 @@ function SummaryAudioControl({
       <Music2 className="h-3 w-3" />
       {compact ? (audio ? "Audio" : "Add audio") : (audio ? "Summary audio" : "Add audio")}
     </button>
+  );
+}
+
+/** Admin-only affordance to add, replace or remove a book's cover spread. */
+function CoverControl({
+  cover,
+  onManage,
+  compact = false
+}: {
+  cover: Book["cover"];
+  onManage: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(event) => { event.stopPropagation(); onManage(); }}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition ${cover ? "border-moss/20 bg-moss/[0.06] text-moss dark:border-sea/25 dark:bg-sea/10 dark:text-sea" : "border-dashed border-line text-ink/70 hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/70 dark:hover:text-sea"}`}
+      title={cover ? "Replace or remove the cover" : "Add a cover"}
+    >
+      <ImageIcon className="h-3 w-3" />
+      {cover ? "Cover" : compact ? "Add cover" : "Add cover"}
+    </button>
+  );
+}
+
+/**
+ * Add or replace a book's cover after upload. One image carries both faces of
+ * the printed jacket; the server splits it and writes the two pages into the
+ * PDF, so the flipbook reader shows them too.
+ */
+function CoverModal({
+  book,
+  onClose,
+  onSave,
+  onRemove
+}: {
+  book: Book;
+  onClose: () => void;
+  onSave: (file: File) => Promise<void>;
+  onRemove?: () => Promise<void>;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!file || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await onSave(file);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The cover could not be uploaded.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    if (!onRemove || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await onRemove();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The cover could not be removed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm" onClick={onClose}>
+      <form onSubmit={submit} onClick={(event) => event.stopPropagation()} className="w-full max-w-md space-y-5 rounded-2xl border border-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-[#0c0c0e]">
+        <div className="flex items-start gap-3">
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-moss/10 text-moss dark:bg-sea/15 dark:text-sea"><ImageIcon className="h-5 w-5" /></span>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-semibold text-ink dark:text-white">Book cover</h3>
+            <p dir="auto" className="mt-1 truncate text-xs text-ink/70 dark:text-white/70">{book.title}</p>
+          </div>
+          <button type="button" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-ink/70 hover:bg-ink/5 dark:text-white/70 dark:hover:bg-white/10" aria-label="Close"><X className="h-4 w-4" /></button>
+        </div>
+
+        <div className="rounded-xl border border-line bg-paper/60 p-3.5 dark:border-white/10 dark:bg-white/[0.03]">
+          {book.cover ? (
+            <div className="flex items-center gap-3">
+              <ImageIcon className="h-4 w-4 shrink-0 text-moss dark:text-sea" />
+              <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-ink dark:text-white">{book.cover.fileName}</p><p className="mt-0.5 text-xs text-ink/60 dark:text-white/60">{formatBytes(book.cover.size)} · Front and back are in the PDF</p></div>
+            </div>
+          ) : <p className="text-sm text-ink/70 dark:text-white/70">No cover has been added yet. The library shows the book&rsquo;s first page instead.</p>}
+        </div>
+
+        <label className="block cursor-pointer rounded-xl border-2 border-dashed border-line p-4 text-center transition hover:border-moss/40 dark:border-white/10 dark:hover:border-sea/40">
+          <ImageIcon className="mx-auto h-5 w-5 text-moss dark:text-sea" />
+          <span className="mt-2 block text-sm font-medium text-ink dark:text-white">{file ? file.name : book.cover ? "Choose a replacement cover" : "Choose a cover image"}</span>
+          <span className="mt-1 block text-xs text-ink/60 dark:text-white/60">One image holding both faces &mdash; front on the left half, back on the right. PNG, JPEG, or WEBP.</span>
+          <input type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" className="sr-only" disabled={busy} onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+        </label>
+        {error ? <p className="text-sm text-red-600 dark:text-red-300">{error}</p> : null}
+
+        <div className="flex items-center justify-between gap-2">
+          {onRemove ? <button type="button" onClick={remove} disabled={busy} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-500/10"><Trash2 className="h-4 w-4" />Remove</button> : <span />}
+          <div className="flex items-center gap-2"><button type="button" onClick={onClose} className="inline-flex h-9 items-center rounded-lg border border-line px-3.5 text-sm font-medium text-ink/70 dark:border-white/10 dark:text-white/70">Cancel</button><button type="submit" disabled={!file || busy} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-moss px-3.5 text-sm font-medium text-white hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}{book.cover ? "Replace cover" : "Add cover"}</button></div>
+        </div>
+      </form>
+    </div>
   );
 }
 
