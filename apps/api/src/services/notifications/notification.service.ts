@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 import { Notification, type NotificationEventType } from "../../models/notification.model.js";
 import { User } from "../../models/user.model.js";
 import { sendPushToUsers } from "./push.service.js";
@@ -8,6 +9,25 @@ export type NotificationInput = {
   message: string;
   href?: string;
 };
+
+/**
+ * Deliver to one person — the reader an admin just answered, say. Same
+ * best-effort contract as notifyAdmins: the triggering action must still
+ * succeed if the notification or its push fails.
+ */
+export async function notifyUser(recipientId: unknown, input: NotificationInput): Promise<void> {
+  try {
+    const id = new Types.ObjectId(String(recipientId));
+    const title = input.title.slice(0, 160);
+    const message = input.message.slice(0, 500);
+    const href = input.href?.slice(0, 200);
+
+    await Notification.create({ recipientId: id, type: input.type, title, message, href });
+    await sendPushToUsers([id], { title, message, href });
+  } catch (error) {
+    console.warn("[notifications] could not notify user:", error);
+  }
+}
 
 /**
  * Notifications are best-effort side effects. A database hiccup should never

@@ -1,7 +1,7 @@
 import { Router, type Router as ExpressRouter } from "express";
 import { isValidObjectId } from "mongoose";
 import { z } from "zod";
-import { requireAdmin } from "../middleware/auth.middleware.js";
+import { requireAuth } from "../middleware/auth.middleware.js";
 import { Notification } from "../models/notification.model.js";
 import { PushSubscription } from "../models/push-subscription.model.js";
 import { isPushConfigured, pushPublicKey } from "../services/notifications/push.service.js";
@@ -13,7 +13,7 @@ export const notificationsRouter: ExpressRouter = Router();
 
 notificationsRouter.get(
   "/",
-  requireAdmin,
+  requireAuth,
   asyncHandler(async (req, res) => {
     const { limit, cursor } = parsePageParams(req.query, 30, 100);
     const filter = {
@@ -43,7 +43,7 @@ notificationsRouter.get(
 
 notificationsRouter.get(
   "/unread-count",
-  requireAdmin,
+  requireAuth,
   asyncHandler(async (req, res) => {
     const count = await Notification.countDocuments({ recipientId: req.user!.id, readAt: { $exists: false } });
     res.json({ count });
@@ -52,7 +52,7 @@ notificationsRouter.get(
 
 notificationsRouter.post(
   "/mark-all-read",
-  requireAdmin,
+  requireAuth,
   asyncHandler(async (req, res) => {
     await Notification.updateMany(
       { recipientId: req.user!.id, readAt: { $exists: false } },
@@ -64,7 +64,7 @@ notificationsRouter.post(
 
 notificationsRouter.post(
   "/:id/read",
-  requireAdmin,
+  requireAuth,
   asyncHandler(async (req, res) => {
     if (!isValidObjectId(req.params.id)) {
       throw new ApiError(400, "INVALID_NOTIFICATION_ID", "The notification id is invalid.");
@@ -90,7 +90,7 @@ notificationsRouter.post(
  */
 notificationsRouter.get(
   "/push/public-key",
-  requireAdmin,
+  requireAuth,
   asyncHandler(async (_req, res) => {
     res.json({ publicKey: pushPublicKey() });
   })
@@ -106,7 +106,7 @@ const pushSubscriptionSchema = z.object({
 
 notificationsRouter.post(
   "/push/subscribe",
-  requireAdmin,
+  requireAuth,
   asyncHandler(async (req, res) => {
     if (!isPushConfigured()) {
       throw new ApiError(503, "PUSH_NOT_CONFIGURED", "Push notifications are not configured on this server.");
@@ -136,7 +136,7 @@ notificationsRouter.post(
 
 notificationsRouter.post(
   "/push/unsubscribe",
-  requireAdmin,
+  requireAuth,
   asyncHandler(async (req, res) => {
     const endpoint = typeof req.body?.endpoint === "string" ? req.body.endpoint : "";
     if (endpoint) {

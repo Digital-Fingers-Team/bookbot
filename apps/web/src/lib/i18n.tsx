@@ -567,7 +567,72 @@ export const STRINGS = {
   "notifications.push.disable": { ar: "Disable push notifications", en: "Disable push notifications" },
   "notifications.push.enabled": { ar: "Push notifications are on for this device.", en: "Push notifications are on for this device." },
   "notifications.push.denied": { ar: "Notifications are blocked in your browser settings.", en: "Notifications are blocked in your browser settings." },
-  "notifications.push.unavailable": { ar: "Push notifications are not configured on this server yet.", en: "Push notifications are not configured on this server yet." }
+  "notifications.push.unavailable": { ar: "Push notifications are not configured on this server yet.", en: "Push notifications are not configured on this server yet." },
+  // Support messaging ("contact us")
+  "nav.support": { ar: "المراسلات", en: "Messages" },
+  "nav.newSupportMessages": { ar: "رسائل جديدة", en: "new messages" },
+  "support.title": { ar: "المراسلات", en: "Messages" },
+  "support.subtitleUser": { ar: "تواصل مباشرةً مع إدارة المنصّة", en: "Talk directly to the platform team" },
+  "support.subtitleAdmin": { ar: "رسائل المستخدمين الواردة", en: "Incoming messages from readers" },
+  "support.new": { ar: "رسالة جديدة", en: "New message" },
+  "support.newTitle": { ar: "رسالة جديدة إلى الإدارة", en: "New message to the team" },
+  "support.subject": { ar: "الموضوع", en: "Subject" },
+  "support.subjectPlaceholder": { ar: "بمَ يمكننا مساعدتك؟", en: "What can we help you with?" },
+  "support.topic": { ar: "التصنيف", en: "Topic" },
+  "support.messagePlaceholder": {
+    ar: "اشرح استفسارك أو المشكلة بالتفصيل…",
+    en: "Describe your question or issue…"
+  },
+  "support.replyPlaceholder": { ar: "اكتب ردّك…", en: "Write your reply…" },
+  "support.send": { ar: "إرسال", en: "Send" },
+  "support.sending": { ar: "جارٍ الإرسال…", en: "Sending…" },
+  "support.cancel": { ar: "إلغاء", en: "Cancel" },
+  "support.back": { ar: "رجوع", en: "Back" },
+  "support.attach": { ar: "إرفاق ملف", en: "Attach a file" },
+  "support.attachHint": {
+    ar: "صور أو PDF أو Word أو Excel أو نص — حتى ٥ ملفات، ١٠ ميجابايت لكل ملف",
+    en: "Images, PDF, Word, Excel, or text — up to 5 files, 10 MB each"
+  },
+  "support.removeFile": { ar: "إزالة الملف", en: "Remove file" },
+  "support.download": { ar: "تنزيل", en: "Download" },
+  "support.close": { ar: "إغلاق المحادثة", en: "Close" },
+  "support.reopen": { ar: "إعادة الفتح", en: "Reopen" },
+  "support.closed": { ar: "مغلقة", en: "Closed" },
+  "support.open": { ar: "مفتوحة", en: "Open" },
+  "support.needsReply": { ar: "بانتظار الرد", en: "Needs reply" },
+  "support.all": { ar: "الكل", en: "All" },
+  "support.searchPlaceholder": { ar: "ابحث في المواضيع…", en: "Search subjects…" },
+  "support.emptyList": { ar: "لا توجد محادثات بعد", en: "No conversations yet" },
+  "support.emptyListHint": {
+    ar: "ابدأ محادثة جديدة وسيصلك الرد هنا.",
+    en: "Start a conversation and the reply will land here."
+  },
+  "support.emptyInbox": { ar: "لا توجد رسائل في هذا العرض", en: "Nothing in this view" },
+  "support.pickThread": { ar: "اختر محادثة لعرضها", en: "Pick a conversation to read it" },
+  "support.you": { ar: "أنت", en: "You" },
+  "support.team": { ar: "فريق الدعم", en: "Support team" },
+  "support.truncated": { ar: "يتم عرض أحدث الرسائل فقط.", en: "Only the most recent messages are shown." },
+  "support.closedNotice": {
+    ar: "هذه المحادثة مغلقة. أي رسالة جديدة ستعيد فتحها.",
+    en: "This conversation is closed. A new message reopens it."
+  },
+  "support.tooManyFiles": { ar: "يمكنك إرفاق ٥ ملفات كحدٍّ أقصى.", en: "You can attach up to 5 files." },
+  "support.fileTooLarge": { ar: "حجم الملف يتجاوز ١٠ ميجابايت.", en: "That file is larger than 10 MB." },
+  "support.sendFailed": { ar: "تعذّر إرسال الرسالة.", en: "Could not send your message." },
+  "support.topic.general": { ar: "استفسار عام", en: "General" },
+  "support.topic.access": { ar: "الاشتراك والصلاحيات", en: "Access & subscription" },
+  "support.topic.technical": { ar: "مشكلة تقنية", en: "Technical issue" },
+  "support.topic.content": { ar: "محتوى الكتب", en: "Book content" },
+  "support.topic.billing": { ar: "الدفع والفواتير", en: "Payments" },
+  "set.notifications": { ar: "إشعارات الجهاز", en: "Device notifications" },
+  "set.notificationsDesc": {
+    ar: "استقبل تنبيهًا على هذا الجهاز عند وصول رد أو تحديث مهم.",
+    en: "Get an alert on this device when a reply or an important update arrives."
+  },
+  "set.notificationsHint": {
+    ar: "الإعداد خاص بكل جهاز ومتصفح على حدة، ويتطلب فتح الموقع عبر HTTPS.",
+    en: "This is per device and browser, and needs the site to be served over HTTPS."
+  }
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

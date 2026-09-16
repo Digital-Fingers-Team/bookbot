@@ -13,6 +13,7 @@ import {
   LogIn,
   Menu,
   MessageSquareText,
+  MessagesSquare,
   Network,
   ShieldCheck,
   ThumbsDown,
@@ -29,7 +30,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { LanguageToggle } from "./language-toggle";
 import { SiteFooter } from "./site-footer";
 import { useAuth } from "./auth-provider";
-import { unreadNotificationCount, unresolvedFeedbackCount, unseenRequestCount } from "@/lib/api";
+import { supportUnreadCount, unreadNotificationCount, unresolvedFeedbackCount, unseenRequestCount } from "@/lib/api";
 import { useT, type StringKey } from "@/lib/i18n";
 
 type NavItem = { href: string; key: StringKey; icon: typeof Library };
@@ -41,9 +42,19 @@ const baseNavItems: NavItem[] = [
   { href: "/ask", key: "nav.ask", icon: MessageSquareText }
 ];
 
+// Both sides of "contact us" live at the same route: readers see their own
+// conversations, admins see the whole inbox. Signed-in only, so it is absent
+// from the public header.
+const signedInNavItems: NavItem[] = [
+  ...baseNavItems,
+  { href: "/support", key: "nav.support", icon: MessagesSquare },
+  // Readers get notified too (a reply to their message), so this is no longer
+  // an admin-only screen.
+  { href: "/notifications", key: "nav.notifications", icon: Bell }
+];
+
 const adminNavItems: NavItem[] = [
   { href: "/upload", key: "nav.upload", icon: UploadCloud },
-  { href: "/notifications", key: "nav.notifications", icon: Bell },
   { href: "/requests", key: "nav.requests", icon: Inbox },
   { href: "/feedback", key: "nav.feedback", icon: ThumbsDown },
   { href: "/users", key: "nav.users", icon: UsersRound },
@@ -167,10 +178,10 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
   // Keep user-facing items together and group admin tools under their own
   // labeled section instead of interleaving the two scopes.
   const sections: { label?: string; items: NavItem[] }[] = isAdmin
-    ? [{ items: baseNavItems }, { label: t("nav.adminSection"), items: adminNavItems }]
+    ? [{ items: signedInNavItems }, { label: t("nav.adminSection"), items: adminNavItems }]
     : isOrgAdmin
-      ? [{ items: baseNavItems }, { label: t("nav.orgAdminSection"), items: orgAdminNavItems }]
-      : [{ items: baseNavItems }];
+      ? [{ items: signedInNavItems }, { label: t("nav.orgAdminSection"), items: orgAdminNavItems }]
+      : [{ items: signedInNavItems }];
   const navItems = sections.flatMap((section) => section.items);
 
   // Non-admins: show a dot on "Library" when a paid request was decided.
@@ -194,7 +205,7 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
 
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   useEffect(() => {
-    if (!isAdmin || !token) return;
+    if (!token) return;
     let active = true;
     const poll = () =>
       unreadNotificationCount(token)
@@ -208,7 +219,27 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
       active = false;
       clearInterval(interval);
     };
-  }, [isAdmin, token, pathname]);
+  }, [token, pathname]);
+
+  // Conversations waiting on whoever is signed in — unanswered readers for an
+  // admin, unread replies for everyone else.
+  const [unreadSupport, setUnreadSupport] = useState(0);
+  useEffect(() => {
+    if (!token) return;
+    let active = true;
+    const poll = () =>
+      supportUnreadCount(token)
+        .then((r) => {
+          if (active) setUnreadSupport(r.count);
+        })
+        .catch(() => undefined);
+    poll();
+    const interval = setInterval(poll, 30000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [token, pathname]);
 
   // Admins: show a count on "Feedback" for disliked answers still needing review.
   const [unresolvedFeedback, setUnresolvedFeedback] = useState(0);
@@ -251,6 +282,7 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
       unseen={unseen}
       unresolvedFeedback={unresolvedFeedback}
       unreadNotifications={unreadNotifications}
+      unreadSupport={unreadSupport}
       userName={user?.name}
       userEmail={user?.email}
       isAdmin={isAdmin}
@@ -336,6 +368,7 @@ function SidebarNav({
   unseen,
   unresolvedFeedback,
   unreadNotifications,
+  unreadSupport,
   userName,
   userEmail,
   isAdmin,
@@ -348,6 +381,7 @@ function SidebarNav({
   unseen: number;
   unresolvedFeedback: number;
   unreadNotifications: number;
+  unreadSupport: number;
   userName?: string;
   userEmail?: string;
   isAdmin: boolean;
@@ -391,6 +425,12 @@ function SidebarNav({
                     <span className="ms-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-alert px-1.5 text-[11px] font-semibold text-white">
                       {unseen}
                       <span className="sr-only"> {t("nav.newDecisions")}</span>
+                    </span>
+                  ) : null}
+                  {item.href === "/support" && unreadSupport > 0 ? (
+                    <span className="ms-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-alert px-1.5 text-[11px] font-semibold text-white">
+                      {unreadSupport}
+                      <span className="sr-only"> {t("nav.newSupportMessages")}</span>
                     </span>
                   ) : null}
                   {item.href === "/feedback" && unresolvedFeedback > 0 ? (

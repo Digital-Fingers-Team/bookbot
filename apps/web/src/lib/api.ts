@@ -1103,3 +1103,133 @@ export function testMyOrgNetworkPolicy(ip?: string, token?: string) {
 export function getMyOrgCurrentIp(token?: string) {
   return request<{ ip: string; networkPolicy: NetworkPolicy }>("/api/org-admin/network-policy/current-ip", { token });
 }
+
+// --- Support messaging ("contact us") ----------------------------------------
+// One conversation model serves both sides: a reader sees their own threads,
+// an admin sees every reader's. The same endpoints back both views.
+
+export const SUPPORT_TOPICS = ["general", "access", "technical", "content", "billing"] as const;
+export type SupportTopic = (typeof SUPPORT_TOPICS)[number];
+export type SupportStatus = "open" | "closed";
+
+export type SupportAttachment = { name: string; mime: string; size: number; url: string };
+
+export type SupportMessage = {
+  id: string;
+  senderRole: "user" | "admin";
+  senderName: string;
+  body: string;
+  attachments: SupportAttachment[];
+  createdAt: string;
+};
+
+export type SupportThread = {
+  id: string;
+  subject: string;
+  topic: SupportTopic;
+  status: SupportStatus;
+  lastMessageAt: string;
+  lastMessagePreview: string;
+  lastSenderRole: "user" | "admin";
+  messageCount: number;
+  unreadForUser: number;
+  unreadForAdmin: number;
+  user: { id: string; name: string; email: string };
+  createdAt: string;
+};
+
+export type SupportThreadFilters = {
+  status?: SupportStatus;
+  needsReply?: boolean;
+  q?: string;
+  cursor?: string;
+};
+
+export function listSupportThreads(token: string | undefined, filters: SupportThreadFilters = {}) {
+  const qs = new URLSearchParams();
+  if (filters.status) qs.set("status", filters.status);
+  if (filters.needsReply) qs.set("needsReply", "true");
+  if (filters.q) qs.set("q", filters.q);
+  if (filters.cursor) qs.set("cursor", filters.cursor);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return request<{ threads: SupportThread[]; nextCursor: string | null }>(`/api/support/threads${suffix}`, { token });
+}
+
+export function getSupportThread(id: string, token?: string) {
+  return request<{ thread: SupportThread; messages: SupportMessage[]; truncated: boolean }>(
+    `/api/support/threads/${id}`,
+    { token }
+  );
+}
+
+export function supportUnreadCount(token?: string) {
+  return request<{ count: number }>("/api/support/unread-count", { token });
+}
+
+export function setSupportThreadStatus(id: string, status: SupportStatus, token?: string) {
+  return request<{ id: string; status: SupportStatus }>(`/api/support/threads/${id}/status`, {
+    method: "POST",
+    body: { status },
+    token
+  });
+}
+
+export function createSupportThread(
+  input: { subject: string; topic: SupportTopic; body: string; attachments?: File[] },
+  token?: string
+) {
+  const formData = new FormData();
+  formData.append("subject", input.subject);
+  formData.append("topic", input.topic);
+  formData.append("body", input.body);
+  for (const file of input.attachments ?? []) {
+    formData.append("attachments", file);
+  }
+  return sendSupportForm<{ thread: SupportThread; message: SupportMessage }>("/api/support/threads", formData, token);
+}
+
+export function sendSupportMessage(
+  threadId: string,
+  input: { body: string; attachments?: File[] },
+  token?: string
+) {
+  const formData = new FormData();
+  formData.append("body", input.body);
+  for (const file of input.attachments ?? []) {
+    formData.append("attachments", file);
+  }
+  return sendSupportForm<{ message: SupportMessage }>(`/api/support/threads/${threadId}/messages`, formData, token);
+}
+
+/** Attachments are auth-gated, so they're fetched as blobs rather than linked. */
+export async function fetchSupportAttachmentUrl(url: string, token?: string): Promise<string> {
+  const headers = new Headers();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  const response = await fetch(`${API_URL}${url}`, { headers });
+  if (!response.ok) {
+    throw new ApiClientError(response.status, "ATTACHMENT_FAILED", "Could not load this attachment.");
+  }
+  return URL.createObjectURL(await response.blob());
+}
+
+/** Multipart POST — `request` is JSON-only, and the browser must set the boundary. */
+async function sendSupportForm<T>(path: string, formData: FormData, token?: string): Promise<T> {
+  const headers = new Headers();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(`${API_URL}${path}`, { method: "POST", headers, body: formData });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as ApiErrorResponse | null;
+    throw new ApiClientError(
+      response.status,
+      payload?.error.code ?? "SUPPORT_FAILED",
+      payload?.error.message ?? "Could not send your message. Please try again."
+    );
+  }
+
+  return response.json() as Promise<T>;
+}

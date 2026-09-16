@@ -34,6 +34,11 @@ function isJpeg(buffer: Buffer): boolean {
   return buffer.subarray(0, JPEG_SIGNATURE.length).equals(JPEG_SIGNATURE);
 }
 
+function isGif(buffer: Buffer): boolean {
+  const header = buffer.subarray(0, 6).toString("ascii");
+  return header === "GIF87a" || header === "GIF89a";
+}
+
 function isWebp(buffer: Buffer): boolean {
   return (
     buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP"
@@ -52,6 +57,25 @@ export function matchesBookSourceFormat(buffer: Buffer, format: "pdf" | "epub" |
       // Plain text has no magic bytes; reject payloads that are actually one
       // of the binary formats above (e.g. a mislabeled/renamed PDF or zip).
       return !isPdf(buffer) && !isZip(buffer);
+  }
+}
+
+/**
+ * Support-ticket attachments. Wider than a receipt (documents are allowed), but
+ * still byte-checked: Office files are zip containers and plain text is only
+ * accepted once it has been ruled out as a disguised binary.
+ */
+export function matchesAttachmentMimeType(buffer: Buffer, mimetype: string): boolean {
+  switch (mimetype) {
+    case "image/gif":
+      return isGif(buffer);
+    case "text/plain":
+      return !isPdf(buffer) && !isZip(buffer);
+    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+      return isZip(buffer);
+    default:
+      return matchesReceiptMimeType(buffer, mimetype);
   }
 }
 

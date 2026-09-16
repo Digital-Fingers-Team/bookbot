@@ -20,6 +20,18 @@ export const authLimiter = rateLimit({
   message: json("Too many attempts. Please wait a minute and try again.")
 });
 
+/**
+ * Support messaging. Generous enough for a real back-and-forth (and for the
+ * inbox's polling), tight enough that one account can't flood the admin inbox.
+ */
+export const supportLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: json("Too many messages in a short time. Please wait a moment.")
+});
+
 /** Moderate limiter for the upload endpoint (admin, but expensive). */
 export const uploadLimiter = rateLimit({
   windowMs: 60_000,

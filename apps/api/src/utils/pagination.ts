@@ -17,15 +17,19 @@ export function parsePageParams(query: unknown, defaultLimit = 50, maxLimit = 10
   return { limit, cursor: decodeCursor(typeof q.cursor === "string" ? q.cursor : "") };
 }
 
-/** Mongo filter fragment that selects rows strictly "after" the cursor. */
-export function cursorFilter(cursor: PageParams["cursor"]): Record<string, unknown> {
+/**
+ * Mongo filter fragment that selects rows strictly "after" the cursor. `field`
+ * names the date the list is ordered by — lists like the support inbox sort on
+ * last activity rather than creation.
+ */
+export function cursorFilter(cursor: PageParams["cursor"], field = "createdAt"): Record<string, unknown> {
   if (!cursor) {
     return {};
   }
   return {
     $or: [
-      { createdAt: { $lt: cursor.createdAt } },
-      { createdAt: cursor.createdAt, _id: { $lt: cursor.id } }
+      { [field]: { $lt: cursor.createdAt } },
+      { [field]: cursor.createdAt, _id: { $lt: cursor.id } }
     ]
   };
 }
@@ -35,12 +39,21 @@ export function nextCursor(
   rows: { _id: unknown; createdAt?: Date | null }[],
   limit: number
 ): string | null {
+  return nextCursorAt(rows, limit, (row) => row.createdAt);
+}
+
+/** `nextCursor` for a list ordered by some other date, e.g. last activity. */
+export function nextCursorAt<T extends { _id: unknown }>(
+  rows: T[],
+  limit: number,
+  at: (row: T) => Date | null | undefined
+): string | null {
   const last = rows[rows.length - 1];
   if (rows.length < limit || !last) {
     return null;
   }
-  const createdAt = last.createdAt instanceof Date ? last.createdAt : new Date();
-  return encodeCursor(createdAt, String(last._id));
+  const orderedBy = at(last);
+  return encodeCursor(orderedBy instanceof Date ? orderedBy : new Date(), String(last._id));
 }
 
 function encodeCursor(createdAt: Date, id: string): string {

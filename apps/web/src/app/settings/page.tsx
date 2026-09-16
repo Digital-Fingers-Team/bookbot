@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, BookOpen, CheckCircle2, ExternalLink, KeyRound, Loader2, LogOut, ShieldCheck, UserRound } from "lucide-react";
+import { AlertCircle, BellRing, BookOpen, CheckCircle2, ExternalLink, KeyRound, Loader2, LogOut, ShieldCheck, UserRound } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import {
   ApiClientError,
@@ -13,6 +13,7 @@ import {
   type OmpAuthorLink
 } from "@/lib/api";
 import { buttonClass } from "@/components/ui/button";
+import { PushToggle } from "@/components/push-toggle";
 import { useT } from "@/lib/i18n";
 
 const inputClass =
@@ -210,6 +211,11 @@ export default function SettingsPage() {
           </form>
         </SectionCard>
       </div>
+
+      <SectionCard icon={BellRing} title={t("set.notifications")} description={t("set.notificationsDesc")}>
+        <PushToggle />
+        <p className="mt-3 text-xs text-ink/60 dark:text-white/60">{t("set.notificationsHint")}</p>
+      </SectionCard>
 
       <OmpPublishingCard token={token} />
     </div>
