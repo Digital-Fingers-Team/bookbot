@@ -38,6 +38,7 @@ describe("chat route", () => {
         name: "Admin",
         email: "admin@example.com",
         language: "ar",
+        adminPermissions: [],
         hasAccess: true
       };
       next();

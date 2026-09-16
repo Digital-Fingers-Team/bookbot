@@ -1,6 +1,6 @@
 import { Router, type Router as ExpressRouter } from "express";
 import { z } from "zod";
-import { requireAdmin } from "../middleware/auth.middleware.js";
+import { requirePermission } from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
 import { Book } from "../models/book.model.js";
 import { Organization } from "../models/organization.model.js";
@@ -38,7 +38,7 @@ async function countGrantedPerBook(orgIds: unknown[]): Promise<Map<string, numbe
 
 export const organizationsRouter: ExpressRouter = Router();
 
-organizationsRouter.use(requireAdmin);
+organizationsRouter.use(requirePermission("organizations"));
 
 /** List organizations with their subscribed catalog (book titles + categories) and member counts. */
 organizationsRouter.get(

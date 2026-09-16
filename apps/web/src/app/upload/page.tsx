@@ -41,7 +41,9 @@ function isAcceptedFile(file: File) {
 }
 
 export default function UploadPage() {
-  const { token, user, isAdmin, loading: authLoading } = useAuth();
+  const { token, user, can, loading: authLoading } = useAuth();
+  // This screen needs one specific admin permission, not merely the role.
+  const isAdmin = can("books");
   const t = useT();
   const [files, setFiles] = useState<File[]>([]);
   const [summaryAudioByFile, setSummaryAudioByFile] = useState<Record<string, File>>({});

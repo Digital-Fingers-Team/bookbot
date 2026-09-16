@@ -29,7 +29,9 @@ const nf = new Intl.NumberFormat("en");
 
 export default function OrganizationsPage() {
   const router = useRouter();
-  const { token, isAdmin, loading: authLoading, logout } = useAuth();
+  const { token, can, loading: authLoading, logout } = useAuth();
+  // This screen needs one specific admin permission, not merely the role.
+  const isAdmin = can("organizations");
   const t = useT();
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [categories, setCategories] = useState<string[]>([]);

@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { env } from "../config/env.js";
 import { getUserFromToken } from "../services/auth/auth.service.js";
 import { ApiError } from "../utils/api-error.js";
+import type { AdminPermission } from "../models/user.model.js";
 
 export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
   try {
@@ -54,6 +55,41 @@ export async function requireAdmin(req: Request, _res: Response, next: NextFunct
   } catch (error) {
     next(error);
   }
+}
+
+/**
+ * Gate a route on one admin permission. Same shape as requireAdmin — including
+ * the ADMIN_API_KEY bypass for machine callers — but an admin whose account was
+ * not granted this permission is refused rather than let through.
+ */
+export function requirePermission(permission: AdminPermission) {
+  return async function guard(req: Request, _res: Response, next: NextFunction) {
+    try {
+      if (env.ADMIN_API_KEY && req.header("x-admin-key") === env.ADMIN_API_KEY) {
+        next();
+        return;
+      }
+
+      const token = bearerToken(req);
+      if (!token) {
+        throw new ApiError(401, "UNAUTHORIZED", "Admin access is required for this action.");
+      }
+
+      const user = await getUserFromToken(token);
+      req.user = user;
+
+      if (user.role !== "admin") {
+        throw new ApiError(403, "FORBIDDEN", "Only admins can perform this action.");
+      }
+      if (!user.adminPermissions.includes(permission)) {
+        throw new ApiError(403, "MISSING_PERMISSION", "Your admin account does not have access to this tool.");
+      }
+
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export async function requireOrgAdmin(req: Request, _res: Response, next: NextFunction) {

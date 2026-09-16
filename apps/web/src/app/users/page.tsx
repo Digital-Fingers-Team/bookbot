@@ -19,7 +19,9 @@ import { useT } from "@/lib/i18n";
 
 export default function UsersPage() {
   const router = useRouter();
-  const { token, isAdmin, loading: authLoading } = useAuth();
+  const { token, can, loading: authLoading } = useAuth();
+  // This screen needs one specific admin permission, not merely the role.
+  const isAdmin = can("users");
   const t = useT();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [categories, setCategories] = useState<string[]>([]);

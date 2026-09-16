@@ -1,6 +1,6 @@
 import { Router, type Router as ExpressRouter } from "express";
 import { z } from "zod";
-import { requireAdmin } from "../middleware/auth.middleware.js";
+import { requirePermission } from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
 import { Book } from "../models/book.model.js";
 import { User } from "../models/user.model.js";
@@ -23,7 +23,7 @@ const bookIdSchema = z.object({
 
 export const adminUsersRouter: ExpressRouter = Router();
 
-adminUsersRouter.use(requireAdmin);
+adminUsersRouter.use(requirePermission("users"));
 
 /** List users with their granted access (categories + book titles). */
 adminUsersRouter.get(

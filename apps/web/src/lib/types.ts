@@ -16,6 +16,8 @@ export type User = {
   language?: "en" | "ar";
   // True when the user can read at least one book (drives discovery-vs-library).
   hasAccess?: boolean;
+  // Which admin tools this account may use. Empty for non-admins.
+  adminPermissions?: string[];
   // Set for org_admins and students belonging to a subscribing organization.
   organizationId?: string;
 };

@@ -3,7 +3,7 @@ import multer from "multer";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { env } from "../config/env.js";
 import { storage } from "../services/storage/storage.service.js";
-import { optionalAuth, requireAdmin, requireAuth } from "../middleware/auth.middleware.js";
+import { optionalAuth, requirePermission, requireAuth } from "../middleware/auth.middleware.js";
 import { requireBookAccess, requireDownloadAccess, requireProtectedContentAccess } from "../middleware/access.middleware.js";
 import { allowedBookIdList, canAccessBook, canDownloadBook, resolveAccessScope } from "../services/access/access.service.js";
 import { resolveClientIp, resolveNetworkBookAccess, resolveNetworkBookIds } from "../services/access/network-policy.service.js";
@@ -514,7 +514,7 @@ booksRouter.get(
 
 booksRouter.patch(
   "/:id",
-  requireAdmin,
+  requirePermission("books"),
   asyncHandler(async (req, res) => {
     requireBookId(req.params.id);
 
@@ -587,7 +587,7 @@ booksRouter.patch(
  */
 booksRouter.post(
   "/failed/retry",
-  requireAdmin,
+  requirePermission("books"),
   asyncHandler(async (_req, res) => {
     const failedBooks = await Book.find({ status: "failed" }, { _id: 1, originalPdfPath: 1 });
     let requeued = 0;
@@ -620,7 +620,7 @@ booksRouter.post(
 
 booksRouter.post(
   "/:id/cancel",
-  requireAdmin,
+  requirePermission("books"),
   asyncHandler(async (req, res) => {
     requireBookId(req.params.id);
 
@@ -676,7 +676,7 @@ booksRouter.get(
 
 booksRouter.put(
   "/:id/summary-audio",
-  requireAdmin,
+  requirePermission("books"),
   summaryAudioUpload.single("audio"),
   asyncHandler(async (req, res) => {
     const id = requireBookId(routeId(req.params.id));
@@ -697,7 +697,7 @@ booksRouter.put(
 
 booksRouter.delete(
   "/:id/summary-audio",
-  requireAdmin,
+  requirePermission("books"),
   asyncHandler(async (req, res) => {
     const id = requireBookId(routeId(req.params.id));
     const removed = await removeSummaryAudio(id);
@@ -729,7 +729,7 @@ booksRouter.get(
  */
 booksRouter.put(
   "/:id/cover",
-  requireAdmin,
+  requirePermission("books"),
   coverUpload.single("cover"),
   asyncHandler(async (req, res) => {
     const id = requireBookId(routeId(req.params.id));
@@ -754,7 +754,7 @@ booksRouter.put(
 
 booksRouter.delete(
   "/:id/cover",
-  requireAdmin,
+  requirePermission("books"),
   asyncHandler(async (req, res) => {
     const id = requireBookId(routeId(req.params.id));
     const removed = await removeCover(id);
@@ -854,7 +854,7 @@ booksRouter.get(
  */
 booksRouter.delete(
   "/failed",
-  requireAdmin,
+  requirePermission("books"),
   asyncHandler(async (_req, res) => {
     const failedBooks = await Book.find({ status: "failed" });
     let deleted = 0;
@@ -883,7 +883,7 @@ booksRouter.delete(
 
 booksRouter.delete(
   "/:id",
-  requireAdmin,
+  requirePermission("books"),
   asyncHandler(async (req, res) => {
     requireBookId(req.params.id);
 

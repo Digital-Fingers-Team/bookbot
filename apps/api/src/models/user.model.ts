@@ -1,11 +1,36 @@
 import { Schema, model, type InferSchemaType } from "mongoose";
 
+/**
+ * What an admin account may do. Admin is no longer all-or-nothing: one account
+ * can answer support and nothing else, another can publish books but never open
+ * a reader's record. `admins` is the meta-permission — it lets an account
+ * create other admins and decide what each of them may reach.
+ */
+export const ADMIN_PERMISSIONS = [
+  "books",
+  "requests",
+  "users",
+  "organizations",
+  "support",
+  "feedback",
+  "analytics",
+  "admins"
+] as const;
+
+export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
+
 const userSchema = new Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 120 },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
     passwordHash: { type: String, required: true, select: false },
     role: { type: String, enum: ["admin", "org_admin", "user"], required: true, default: "user" },
+    // Which admin tools this account may use. Only meaningful for role "admin".
+    // The field is deliberately left absent rather than defaulted to []: an
+    // absent field marks an account created before permissions existed, which
+    // backfillAdminPermissions() grants the full set exactly once. An admin
+    // deliberately restricted to an empty list keeps the empty list.
+    adminPermissions: { type: [String], enum: ADMIN_PERMISSIONS, default: undefined },
     language: { type: String, enum: ["en", "ar"], required: true, default: "en" },
     // --- Access control (admin-granted) ---
     // A user may read / ask the AI about a book only if its id is in
@@ -40,6 +65,14 @@ export type UserDocument = InferSchemaType<typeof userSchema> & {
   _id: unknown;
   role: UserRole;
 };
+
+/** Keep only values that are still real permissions (stale rows, bad input). */
+export function normalizeAdminPermissions(value: unknown): AdminPermission[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return ADMIN_PERMISSIONS.filter((permission) => value.includes(permission));
+}
 
 userSchema.index({ organizationId: 1 });
 

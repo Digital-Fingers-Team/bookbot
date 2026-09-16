@@ -16,7 +16,9 @@ type StatusFilter = "pending" | "approved" | "rejected";
 
 export default function RequestsPage() {
   const router = useRouter();
-  const { token, isAdmin, loading: authLoading } = useAuth();
+  const { token, can, loading: authLoading } = useAuth();
+  // This screen needs one specific admin permission, not merely the role.
+  const isAdmin = can("requests");
   const t = useT();
   const [requests, setRequests] = useState<AccessRequest[]>([]);
   const [filter, setFilter] = useState<StatusFilter>("pending");

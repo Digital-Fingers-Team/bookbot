@@ -1,7 +1,7 @@
 import { Router, type Router as ExpressRouter } from "express";
 import multer from "multer";
 import { env } from "../config/env.js";
-import { requireAdmin } from "../middleware/auth.middleware.js";
+import { requirePermission } from "../middleware/auth.middleware.js";
 import { createProcessingBook } from "../services/ingestion/ingestion.service.js";
 import { enqueueBookProcessing } from "../services/ingestion/processing-queue.js";
 import { ApiError } from "../utils/api-error.js";
@@ -47,7 +47,7 @@ export const uploadRouter: ExpressRouter = Router();
 
 uploadRouter.post(
   "/",
-  requireAdmin,
+  requirePermission("books"),
   upload.fields([
     { name: "files", maxCount: env.UPLOAD_MAX_FILES },
     { name: "summaryAudios", maxCount: env.UPLOAD_MAX_FILES },

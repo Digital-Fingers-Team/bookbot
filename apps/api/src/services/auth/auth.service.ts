@@ -1,7 +1,13 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { env } from "../../config/env.js";
-import { User, type UserRole } from "../../models/user.model.js";
+import {
+  ADMIN_PERMISSIONS,
+  User,
+  normalizeAdminPermissions,
+  type AdminPermission,
+  type UserRole
+} from "../../models/user.model.js";
 import { Organization } from "../../models/organization.model.js";
 import { ApiError } from "../../utils/api-error.js";
 import { notifyAdmins } from "../notifications/notification.service.js";
@@ -21,6 +27,9 @@ export type PublicUser = {
   // True when the user can read at least one book (admins always; users once an
   // admin grants them a book or category). Drives the discovery-vs-library UI.
   hasAccess: boolean;
+  // Empty for everyone who is not an admin. Admin screens and guards read this
+  // rather than the bare role.
+  adminPermissions: AdminPermission[];
   // Set for org_admins and students belonging to a subscribing organization.
   organizationId?: string;
 };
@@ -36,8 +45,23 @@ export async function seedDefaultAdmin() {
     name: "Admin",
     email,
     passwordHash: await bcrypt.hash(env.DEFAULT_ADMIN_PASSWORD, 12),
-    role: "admin"
+    role: "admin",
+    adminPermissions: [...ADMIN_PERMISSIONS]
   });
+}
+
+/**
+ * Admin accounts predate per-permission access control. Grant every admin that
+ * has no permission field the full set, once, so upgrading the code can never
+ * silently strip an account of tools it already had. Accounts that have been
+ * given a list — even an empty one — are left exactly as configured.
+ */
+export async function backfillAdminPermissions(): Promise<number> {
+  const result = await User.updateMany(
+    { role: "admin", adminPermissions: { $exists: false } },
+    { $set: { adminPermissions: [...ADMIN_PERMISSIONS] } }
+  );
+  return result.modifiedCount ?? 0;
 }
 
 export async function registerUser(input: { name: string; email: string; password: string }) {
@@ -146,6 +170,7 @@ async function toPublicUser(user: {
   allowedBookIds?: unknown[];
   allowedCategories?: unknown[];
   organizationId?: unknown;
+  adminPermissions?: unknown;
 }): Promise<PublicUser> {
   let hasAccess =
     user.role === "admin" || Boolean(user.allowedBookIds?.length) || Boolean(user.allowedCategories?.length);
@@ -160,6 +185,7 @@ async function toPublicUser(user: {
     role: user.role,
     language: user.language === "ar" ? "ar" : "en",
     hasAccess,
+    adminPermissions: user.role === "admin" ? normalizeAdminPermissions(user.adminPermissions) : [],
     organizationId: user.organizationId ? String(user.organizationId) : undefined
   };
 }

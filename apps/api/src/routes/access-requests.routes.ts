@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import multer from "multer";
 import { isValidObjectId } from "mongoose";
 import { storage } from "../services/storage/storage.service.js";
-import { requireAdmin, requireAuth } from "../middleware/auth.middleware.js";
+import { requirePermission, requireAuth } from "../middleware/auth.middleware.js";
 import { cursorFilter, nextCursor, parsePageParams } from "../utils/pagination.js";
 import { AccessRequest } from "../models/access-request.model.js";
 import { Book } from "../models/book.model.js";
@@ -215,7 +215,7 @@ accessRequestsRouter.get(
 /** Approve a request: grant the access and mark it approved (admin only). */
 accessRequestsRouter.post(
   "/:id/approve",
-  requireAdmin,
+  requirePermission("requests"),
   asyncHandler(async (req, res) => {
     const request = await findPending(req.params.id);
 
@@ -241,7 +241,7 @@ accessRequestsRouter.post(
 /** Reject a request (admin only). */
 accessRequestsRouter.post(
   "/:id/reject",
-  requireAdmin,
+  requirePermission("requests"),
   asyncHandler(async (req, res) => {
     const request = await findPending(req.params.id);
     request.status = "rejected";

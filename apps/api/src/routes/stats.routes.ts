@@ -1,5 +1,5 @@
 import { Router, type Router as ExpressRouter } from "express";
-import { requireAdmin } from "../middleware/auth.middleware.js";
+import { requirePermission } from "../middleware/auth.middleware.js";
 import { AccessRequest } from "../models/access-request.model.js";
 import { Book } from "../models/book.model.js";
 import { Chunk } from "../models/chunk.model.js";
@@ -11,7 +11,7 @@ export const statsRouter: ExpressRouter = Router();
 
 statsRouter.get(
   "/",
-  requireAdmin,
+  requirePermission("analytics"),
   asyncHandler(async (_req, res) => {
     const monthStart = new Date();
     monthStart.setDate(1);

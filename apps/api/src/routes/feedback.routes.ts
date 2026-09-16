@@ -1,7 +1,7 @@
 import { Router, type Router as ExpressRouter } from "express";
 import { isValidObjectId } from "mongoose";
 import { z } from "zod";
-import { requireAdmin } from "../middleware/auth.middleware.js";
+import { requirePermission } from "../middleware/auth.middleware.js";
 import { Feedback } from "../models/feedback.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
@@ -56,7 +56,7 @@ feedbackRouter.post(
 /** Browse feedback, disliked answers first, for admin triage. */
 feedbackRouter.get(
   "/",
-  requireAdmin,
+  requirePermission("feedback"),
   asyncHandler(async (req, res) => {
     const filter: Record<string, unknown> = {};
     if (req.query.vote === "up" || req.query.vote === "down") {
@@ -101,7 +101,7 @@ feedbackRouter.get(
 /** How many disliked answers still need admin review (nav badge). */
 feedbackRouter.get(
   "/unresolved-count",
-  requireAdmin,
+  requirePermission("feedback"),
   asyncHandler(async (_req, res) => {
     const count = await Feedback.countDocuments({ vote: "down", resolved: false });
     res.json({ count });
@@ -111,7 +111,7 @@ feedbackRouter.get(
 /** Mark a piece of feedback reviewed/unreviewed (admin triage). */
 feedbackRouter.patch(
   "/:id",
-  requireAdmin,
+  requirePermission("feedback"),
   asyncHandler(async (req, res) => {
     if (!isValidObjectId(req.params.id)) {
       throw new ApiError(400, "INVALID_FEEDBACK_ID", "The feedback id is invalid.");

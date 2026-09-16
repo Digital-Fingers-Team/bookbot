@@ -30,7 +30,9 @@ const nf = new Intl.NumberFormat("en");
 
 export default function AnalyticsPage() {
   const router = useRouter();
-  const { token, user, isAdmin, loading: authLoading } = useAuth();
+  const { token, user, can, loading: authLoading } = useAuth();
+  // This screen needs one specific admin permission, not merely the role.
+  const isAdmin = can("analytics");
   const t = useT();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);

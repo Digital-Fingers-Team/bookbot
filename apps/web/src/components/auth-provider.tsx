@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ApiClientError, login as loginRequest, me, register as registerRequest, updateProfile as updateProfileRequest } from "@/lib/api";
+import type { AdminPermission } from "@/lib/api";
 import type { AuthSession, User } from "@/lib/types";
 
 type AuthContextValue = {
@@ -10,6 +11,12 @@ type AuthContextValue = {
   loading: boolean;
   isAdmin: boolean;
   isOrgAdmin: boolean;
+  /**
+   * Whether this admin was granted one specific tool. Admin is no longer
+   * all-or-nothing, so screens gate on this rather than on `isAdmin`. The
+   * server enforces the same check — this only decides what is worth showing.
+   */
+  can: (permission: AdminPermission) => boolean;
   login: (input: { email: string; password: string }) => Promise<void>;
   register: (input: { name: string; email: string; password: string }) => Promise<void>;
   updateProfile: (input: { name: string; language: "en" | "ar" }) => Promise<void>;
@@ -109,6 +116,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       isAdmin: user?.role === "admin",
       isOrgAdmin: user?.role === "org_admin",
+      can: (permission: AdminPermission) =>
+        user?.role === "admin" && Boolean(user.adminPermissions?.includes(permission)),
       login,
       register,
       updateProfile,

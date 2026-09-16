@@ -1,5 +1,5 @@
 import { Router, type Router as ExpressRouter } from "express";
-import { requireAdmin, requireAuth } from "../middleware/auth.middleware.js";
+import { requirePermission, requireAuth } from "../middleware/auth.middleware.js";
 import { Category } from "../models/category.model.js";
 import { suggestBookCategories, type CategorizationItem } from "../services/generation/categorization.service.js";
 import { ApiError } from "../utils/api-error.js";
@@ -20,7 +20,7 @@ categoriesRouter.get(
 /** Add a category to the list (admin only). Idempotent on the name. */
 categoriesRouter.post(
   "/",
-  requireAdmin,
+  requirePermission("books"),
   asyncHandler(async (req, res) => {
     const name = typeof req.body?.name === "string" ? req.body.name.trim().slice(0, 80) : "";
     if (!name) {
@@ -42,7 +42,7 @@ categoriesRouter.post(
  */
 categoriesRouter.post(
   "/suggest",
-  requireAdmin,
+  requirePermission("books"),
   asyncHandler(async (req, res) => {
     const rawBooks = Array.isArray(req.body?.books) ? req.body.books : [];
     if (!rawBooks.length) {

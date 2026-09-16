@@ -55,6 +55,7 @@ async function ask(body: Record<string, unknown>): Promise<ChatPayload> {
       name: "Admin",
       email: "admin@example.com",
       language: "ar",
+      adminPermissions: [],
       hasAccess: true
     };
     next();

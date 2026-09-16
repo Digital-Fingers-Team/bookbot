@@ -1233,3 +1233,50 @@ async function sendSupportForm<T>(path: string, formData: FormData, token?: stri
 
   return response.json() as Promise<T>;
 }
+
+// --- Admin accounts and their permissions ------------------------------------
+
+export const ADMIN_PERMISSIONS = [
+  "books",
+  "requests",
+  "users",
+  "organizations",
+  "support",
+  "feedback",
+  "analytics",
+  "admins"
+] as const;
+export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
+
+export type AdminAccount = {
+  id: string;
+  name: string;
+  email: string;
+  permissions: AdminPermission[];
+  /** True for the signed-in admin's own row, which they may not edit. */
+  isSelf: boolean;
+  createdAt: string | null;
+};
+
+export function listAdminAccounts(token?: string) {
+  return request<{ admins: AdminAccount[]; permissions: AdminPermission[] }>("/api/admin/accounts", { token });
+}
+
+export function createAdminAccount(
+  input: { name: string; email: string; password: string; permissions: AdminPermission[] },
+  token?: string
+) {
+  return request<{ admin: AdminAccount }>("/api/admin/accounts", { method: "POST", body: input, token });
+}
+
+export function updateAdminAccount(
+  id: string,
+  input: { name?: string; permissions?: AdminPermission[] },
+  token?: string
+) {
+  return request<{ admin: AdminAccount }>(`/api/admin/accounts/${id}`, { method: "PATCH", body: input, token });
+}
+
+export function demoteAdminAccount(id: string, token?: string) {
+  return request<{ id: string; role: string }>(`/api/admin/accounts/${id}/demote`, { method: "POST", token });
+}

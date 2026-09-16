@@ -632,6 +632,73 @@ export const STRINGS = {
   "set.notificationsHint": {
     ar: "الإعداد خاص بكل جهاز ومتصفح على حدة، ويتطلب فتح الموقع عبر HTTPS.",
     en: "This is per device and browser, and needs the site to be served over HTTPS."
+  },
+
+  // Admin accounts and permissions
+  "nav.admins": { ar: "المديرون", en: "Admins" },
+  "admins.title": { ar: "المديرون والصلاحيات", en: "Admins & permissions" },
+  "admins.subtitle": {
+    ar: "أنشئ حسابات إدارة وحدّد لكل واحد ما يستطيع الوصول إليه.",
+    en: "Create admin accounts and decide exactly what each one can reach."
+  },
+  "admins.new": { ar: "مدير جديد", en: "New admin" },
+  "admins.newTitle": { ar: "حساب مدير جديد", en: "New admin account" },
+  "admins.name": { ar: "الاسم", en: "Name" },
+  "admins.email": { ar: "البريد الإلكتروني", en: "Email" },
+  "admins.password": { ar: "كلمة المرور", en: "Password" },
+  "admins.create": { ar: "إنشاء الحساب", en: "Create account" },
+  "admins.cancel": { ar: "إلغاء", en: "Cancel" },
+  "admins.you": { ar: "أنت", en: "You" },
+  "admins.selfNote": {
+    ar: "لا يمكنك تعديل صلاحيات حسابك؛ يلزم مدير آخر لتغييرها.",
+    en: "You cannot change your own permissions — another admin has to."
+  },
+  "admins.demote": { ar: "إلغاء الإشراف", en: "Remove admin" },
+  "admins.demoteTitle": {
+    ar: "تحويل هذا الحساب إلى مستخدم عادي؟",
+    en: "Turn this account back into a regular user?"
+  },
+  "admins.saveFailed": { ar: "تعذّر حفظ التغيير.", en: "Could not save the change." },
+
+  "perm.books": { ar: "الكتب", en: "Books" },
+  "perm.books.desc": {
+    ar: "رفع الكتب وتعديلها وحذفها، وإدارة التصنيفات والاستيراد.",
+    en: "Upload, edit, and delete books; manage categories and imports."
+  },
+  "perm.requests": { ar: "طلبات الوصول", en: "Access requests" },
+  "perm.requests.desc": {
+    ar: "مراجعة طلبات الاشتراك وقبولها أو رفضها.",
+    en: "Review paid access requests and approve or reject them."
+  },
+  "perm.users": { ar: "المستخدمون", en: "Users" },
+  "perm.users.desc": {
+    ar: "عرض المستخدمين ومنح أو سحب صلاحية قراءة الكتب.",
+    en: "See readers and grant or revoke their access to books."
+  },
+  "perm.organizations": { ar: "الجهات", en: "Organizations" },
+  "perm.organizations.desc": {
+    ar: "إدارة الجامعات والجهات المشتركة ومدرائها.",
+    en: "Manage subscribing organizations, their catalog, and their admins."
+  },
+  "perm.support": { ar: "الرد على المراسلات", en: "Answer messages" },
+  "perm.support.desc": {
+    ar: "قراءة مراسلات المستخدمين والرد عليها.",
+    en: "Read readers' conversations and reply to them."
+  },
+  "perm.feedback": { ar: "ملاحظات الإجابات", en: "Answer feedback" },
+  "perm.feedback.desc": {
+    ar: "مراجعة الإجابات التي قيّمها القراء سلبًا.",
+    en: "Triage answers readers marked as unhelpful."
+  },
+  "perm.analytics": { ar: "الإحصاءات", en: "Analytics" },
+  "perm.analytics.desc": {
+    ar: "الاطلاع على إحصاءات الاستخدام والمحتوى.",
+    en: "View usage and content statistics."
+  },
+  "perm.admins": { ar: "إدارة المديرين", en: "Manage admins" },
+  "perm.admins.desc": {
+    ar: "إنشاء حسابات إدارة وتحديد صلاحياتها. امنحها بحذر.",
+    en: "Create admin accounts and set their permissions. Grant sparingly."
   }
 } as const;
 

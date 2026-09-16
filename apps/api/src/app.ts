@@ -6,6 +6,7 @@ import { httpLogger } from "./config/logger.js";
 import { authLimiter, globalLimiter, supportLimiter, uploadLimiter } from "./middleware/rate-limit.middleware.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { accessRequestsRouter } from "./routes/access-requests.routes.js";
+import { adminAccountsRouter } from "./routes/admin-accounts.routes.js";
 import { adminUsersRouter } from "./routes/admin-users.routes.js";
 import { booksRouter } from "./routes/books.routes.js";
 import { categoriesRouter } from "./routes/categories.routes.js";
@@ -62,6 +63,7 @@ export function createApp(): Express {
   app.use("/api/categories", categoriesRouter);
   app.use("/api/access-requests", accessRequestsRouter);
   app.use("/api/admin/users", adminUsersRouter);
+  app.use("/api/admin/accounts", adminAccountsRouter);
   app.use("/api/organizations", organizationsRouter);
   app.use("/api/org-admin", orgAdminRouter);
   app.use("/api/conversations", conversationsRouter);

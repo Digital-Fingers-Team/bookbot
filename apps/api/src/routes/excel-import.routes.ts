@@ -1,7 +1,7 @@
 import { Router, type Router as ExpressRouter } from "express";
 import multer from "multer";
 import { env } from "../config/env.js";
-import { requireAdmin } from "../middleware/auth.middleware.js";
+import { requirePermission } from "../middleware/auth.middleware.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { ApiError } from "../utils/api-error.js";
 import { parseBooksExcel, resolvePdfUrl, type ExcelBookRow } from "../services/import/excel-book-import.service.js";
@@ -33,14 +33,14 @@ const audioUpload = multer({
 });
 export const excelImportRouter: ExpressRouter = Router();
 
-excelImportRouter.post("/preview", requireAdmin, upload.single("file"), asyncHandler(async (req, res) => {
+excelImportRouter.post("/preview", requirePermission("books"), upload.single("file"), asyncHandler(async (req, res) => {
   if (!req.file || !/\.xlsx$/i.test(req.file.originalname)) throw new ApiError(400, "INVALID_EXCEL", "Please upload an .xlsx file.");
   let rows: ExcelBookRow[];
   try { rows = await parseBooksExcel(req.file.buffer); } catch { throw new ApiError(400, "INVALID_EXCEL", "The workbook could not be read."); }
   res.json({ total: rows.length, rows });
 }));
 
-excelImportRouter.post("/import", requireAdmin, audioUpload.array("summaryAudios", 100), asyncHandler(async (req, res) => {
+excelImportRouter.post("/import", requirePermission("books"), audioUpload.array("summaryAudios", 100), asyncHandler(async (req, res) => {
   let rows: ExcelBookRow[];
   try {
     rows = Array.isArray(req.body?.rows) ? req.body.rows as ExcelBookRow[] : JSON.parse(String(req.body?.rows ?? "")) as ExcelBookRow[];

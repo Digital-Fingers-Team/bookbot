@@ -17,7 +17,9 @@ const TAB_PARAMS: Record<Tab, { resolved?: boolean }> = {
 
 export default function FeedbackPage() {
   const router = useRouter();
-  const { token, isAdmin, loading: authLoading } = useAuth();
+  const { token, can, loading: authLoading } = useAuth();
+  // This screen needs one specific admin permission, not merely the role.
+  const isAdmin = can("feedback");
   const { t } = useLang();
   const [tab, setTab] = useState<Tab>("needsReview");
   const [items, setItems] = useState<FeedbackItem[]>([]);

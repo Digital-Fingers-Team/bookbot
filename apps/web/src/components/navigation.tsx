@@ -30,10 +30,17 @@ import { ThemeToggle } from "./theme-toggle";
 import { LanguageToggle } from "./language-toggle";
 import { SiteFooter } from "./site-footer";
 import { useAuth } from "./auth-provider";
-import { supportUnreadCount, unreadNotificationCount, unresolvedFeedbackCount, unseenRequestCount } from "@/lib/api";
+import {
+  supportUnreadCount,
+  unreadNotificationCount,
+  unresolvedFeedbackCount,
+  unseenRequestCount,
+  type AdminPermission
+} from "@/lib/api";
 import { useT, type StringKey } from "@/lib/i18n";
 
-type NavItem = { href: string; key: StringKey; icon: typeof Library };
+// `permission`, where present, is the admin permission the item needs.
+type NavItem = { href: string; key: StringKey; icon: typeof Library; permission?: AdminPermission };
 
 // The library is where signed-in readers land, so it leads.
 const baseNavItems: NavItem[] = [
@@ -54,12 +61,13 @@ const signedInNavItems: NavItem[] = [
 ];
 
 const adminNavItems: NavItem[] = [
-  { href: "/upload", key: "nav.upload", icon: UploadCloud },
-  { href: "/requests", key: "nav.requests", icon: Inbox },
-  { href: "/feedback", key: "nav.feedback", icon: ThumbsDown },
-  { href: "/users", key: "nav.users", icon: UsersRound },
-  { href: "/organizations", key: "nav.organizations", icon: GraduationCap },
-  { href: "/analytics", key: "nav.analytics", icon: BarChart3 }
+  { href: "/upload", key: "nav.upload", icon: UploadCloud, permission: "books" },
+  { href: "/requests", key: "nav.requests", icon: Inbox, permission: "requests" },
+  { href: "/feedback", key: "nav.feedback", icon: ThumbsDown, permission: "feedback" },
+  { href: "/users", key: "nav.users", icon: UsersRound, permission: "users" },
+  { href: "/organizations", key: "nav.organizations", icon: GraduationCap, permission: "organizations" },
+  { href: "/analytics", key: "nav.analytics", icon: BarChart3, permission: "analytics" },
+  { href: "/admins", key: "nav.admins", icon: ShieldCheck, permission: "admins" }
 ];
 
 const orgAdminNavItems: NavItem[] = [
@@ -173,12 +181,17 @@ function PublicHeader({ loading = false }: { loading?: boolean }) {
 
 function AuthenticatedShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { user, isAdmin, isOrgAdmin, token } = useAuth();
+  const { user, isAdmin, isOrgAdmin, token, can } = useAuth();
   const t = useT();
+  // An admin restricted to, say, answering support should not be shown links
+  // that would only bounce them off a page they cannot open.
+  const grantedAdminItems = adminNavItems.filter((item) => !item.permission || can(item.permission));
   // Keep user-facing items together and group admin tools under their own
   // labeled section instead of interleaving the two scopes.
   const sections: { label?: string; items: NavItem[] }[] = isAdmin
-    ? [{ items: signedInNavItems }, { label: t("nav.adminSection"), items: adminNavItems }]
+    ? grantedAdminItems.length > 0
+      ? [{ items: signedInNavItems }, { label: t("nav.adminSection"), items: grantedAdminItems }]
+      : [{ items: signedInNavItems }]
     : isOrgAdmin
       ? [{ items: signedInNavItems }, { label: t("nav.orgAdminSection"), items: orgAdminNavItems }]
       : [{ items: signedInNavItems }];
@@ -244,7 +257,7 @@ function AuthenticatedShell({ children }: { children: ReactNode }) {
   // Admins: show a count on "Feedback" for disliked answers still needing review.
   const [unresolvedFeedback, setUnresolvedFeedback] = useState(0);
   useEffect(() => {
-    if (!isAdmin || !token) return;
+    if (!token || !can("feedback")) return;
     let active = true;
     const poll = () =>
       unresolvedFeedbackCount(token)

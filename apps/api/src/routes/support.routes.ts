@@ -120,7 +120,7 @@ supportRouter.get(
   "/threads",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const isAdmin = req.user!.role === "admin";
+    const isAdmin = isSupportAgent(req.user!);
     const { limit, cursor } = parsePageParams(req.query, 20, 50);
 
     const filter: Record<string, unknown> = isAdmin ? {} : { userId: req.user!.id };
@@ -160,9 +160,8 @@ supportRouter.get(
   "/unread-count",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const count =
-      req.user!.role === "admin"
-        ? await SupportThread.countDocuments({ unreadForAdmin: { $gt: 0 } })
+    const count = isSupportAgent(req.user!)
+      ? await SupportThread.countDocuments({ unreadForAdmin: { $gt: 0 } })
         : await SupportThread.countDocuments({ userId: req.user!.id, unreadForUser: { $gt: 0 } });
     res.json({ count });
   })
@@ -173,7 +172,7 @@ supportRouter.get(
   "/threads/:id",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const isAdmin = req.user!.role === "admin";
+    const isAdmin = isSupportAgent(req.user!);
     const thread = await findThreadForCaller(req.params.id, req.user!);
 
     // Mark read for whichever side is looking, not both.
@@ -217,7 +216,7 @@ supportRouter.post(
     const message = await appendMessage(String(thread._id), req.user!, body, attachments);
 
     // Each side hears about the other's message, and only the other's.
-    if (req.user!.role === "admin") {
+    if (isSupportAgent(req.user!)) {
       await notifyUser(thread.userId, {
         type: "support_message",
         title: `Reply: ${thread.subject}`,
@@ -295,6 +294,15 @@ supportRouter.get(
   })
 );
 
+/**
+ * Who answers on behalf of the organization. An admin without the `support`
+ * permission is treated as an ordinary reader here: they see their own
+ * conversations and nobody else's.
+ */
+function isSupportAgent(user: PublicUser) {
+  return user.role === "admin" && user.adminPermissions.includes("support");
+}
+
 /** Load a thread the caller is allowed to see, or fail the way the route should. */
 async function findThreadForCaller(id: unknown, user: PublicUser) {
   const threadId = requireObjectId(id, "INVALID_THREAD_ID", "The conversation id is invalid.");
@@ -302,7 +310,7 @@ async function findThreadForCaller(id: unknown, user: PublicUser) {
   // Admins reach every thread; everyone else only their own. A thread that
   // isn't theirs reads as missing rather than forbidden, so the endpoint can't
   // be used to probe which conversation ids exist.
-  if (!thread || (user.role !== "admin" && String(thread.userId) !== String(user.id))) {
+  if (!thread || (!isSupportAgent(user) && String(thread.userId) !== String(user.id))) {
     throw new ApiError(404, "THREAD_NOT_FOUND", "This conversation was not found.");
   }
   return thread;
@@ -318,7 +326,7 @@ async function appendMessage(
   body: string,
   attachments: { key: string; name: string; mime: string; size: number }[]
 ) {
-  const senderRole = sender.role === "admin" ? "admin" : "user";
+  const senderRole = isSupportAgent(sender) ? "admin" : "user";
   const message = await SupportMessage.create({
     threadId,
     senderId: sender.id,

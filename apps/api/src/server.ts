@@ -3,7 +3,7 @@ import { connectDatabase, ensureIndexes } from "./config/database.js";
 import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { initSentry } from "./config/sentry.js";
-import { seedDefaultAdmin } from "./services/auth/auth.service.js";
+import { backfillAdminPermissions, seedDefaultAdmin } from "./services/auth/auth.service.js";
 import { seedDefaultCategories } from "./models/category.model.js";
 import { failStaleProcessingBooks } from "./services/ingestion/ingestion.service.js";
 import { pushPendingBooksToOmp } from "./services/omp/omp-push.service.js";
@@ -14,6 +14,10 @@ async function bootstrap() {
   initSentry();
   await connectDatabase();
   await seedDefaultAdmin();
+  const upgraded = await backfillAdminPermissions();
+  if (upgraded > 0) {
+    logger.info(`Granted the full permission set to ${upgraded} pre-existing admin(s)`);
+  }
   await seedDefaultCategories();
   await failStaleProcessingBooks();
   // Retry any book that finished processing but never made it into OMP (e.g. a

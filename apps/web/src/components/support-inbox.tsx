@@ -60,7 +60,9 @@ export function SupportInbox() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const { isAdmin } = useAuth();
+  // Only an admin granted "support" answers on the organization's behalf;
+  // any other account sees this page as their own conversation list.
+  const isAdmin = useAuth().can("support");
   const { t } = useLang();
 
   const [view, setView] = useState<AdminView>("needsReply");
