@@ -17,11 +17,12 @@ import {
   type OrgStudent
 } from "@/lib/api";
 import { Switch } from "@/components/ui/switch";
-import { useT } from "@/lib/i18n";
+import { useErrorText, useT } from "@/lib/i18n";
 
 const nf = new Intl.NumberFormat("en");
 
 export default function OrgStudentsPage() {
+  const errorText = useErrorText();
   const router = useRouter();
   const { token, isOrgAdmin, loading: authLoading } = useAuth();
   const t = useT();
@@ -105,7 +106,7 @@ export default function OrgStudentsPage() {
       await grantStudentAccess(student.id, bookId, token);
       await Promise.all([refresh(), Promise.resolve(refreshOrg())]);
     } catch (err) {
-      setGrantError(err instanceof ApiClientError ? err.message : t("orgAdmin.grantError"));
+      setGrantError(errorText(err, "orgAdmin.grantError"));
     }
   }
 
@@ -301,7 +302,7 @@ export default function OrgStudentsPage() {
                             <button
                               type="button"
                               onClick={() => revoke(student, "book", book.id)}
-                              aria-label="remove"
+                              aria-label={t("common.remove")}
                               className="shrink-0 text-ink/40 transition hover:text-red-500"
                             >
                               <X className="h-3.5 w-3.5" />
@@ -365,6 +366,7 @@ function AccessSection({
   onRemove: (value: string) => void;
   hideChips?: boolean;
 }) {
+  const t = useT();
   const [adding, setAdding] = useState(false);
   return (
     <div>
@@ -381,7 +383,7 @@ function AccessSection({
               className="inline-flex max-w-[14rem] items-center gap-1 rounded-full bg-moss/10 py-0.5 pe-1 ps-2 text-[11px] font-medium text-moss dark:bg-sea/15 dark:text-sea"
             >
               <span className="truncate">{chip.label}</span>
-              <button type="button" onClick={() => onRemove(chip.value)} aria-label="remove" className="hover:text-red-500">
+              <button type="button" onClick={() => onRemove(chip.value)} aria-label={t("common.remove")} className="hover:text-red-500">
                 <X className="h-3 w-3" />
               </button>
             </span>

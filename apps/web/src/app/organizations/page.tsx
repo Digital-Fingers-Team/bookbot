@@ -23,11 +23,12 @@ import {
 } from "@/lib/api";
 import { BookPicker } from "@/components/book-picker";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useT } from "@/lib/i18n";
+import { useErrorText, useT, useTf } from "@/lib/i18n";
 
 const nf = new Intl.NumberFormat("en");
 
 export default function OrganizationsPage() {
+  const errorText = useErrorText();
   const router = useRouter();
   const { token, can, loading: authLoading, logout } = useAuth();
   // This screen needs one specific admin permission, not merely the role.
@@ -82,7 +83,7 @@ export default function OrganizationsPage() {
         router.replace("/login");
         return;
       }
-      setCreateError(error instanceof ApiClientError ? error.message : t("org.createError"));
+      setCreateError(errorText(error, "org.createError"));
     } finally {
       setCreating(false);
     }
@@ -290,7 +291,7 @@ function OrgCard({
                   <button
                     type="button"
                     onClick={() => onRevoke("book", book.id)}
-                    aria-label="remove"
+                    aria-label={t("common.remove")}
                     className="shrink-0 text-ink/40 transition hover:text-red-500"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -334,6 +335,9 @@ function OrgCard({
 }
 
 function NetworkPolicyEditor({ org, token, onSaved }: { org: Organization; token: string; onSaved: () => void }) {
+  const t = useT();
+  const tf = useTf();
+  const errorText = useErrorText();
   const [enabled, setEnabled] = useState(org.networkRestrictionEnabled);
   const [cidrs, setCidrs] = useState(org.allowedIpCidrs);
   const [input, setInput] = useState("");
@@ -358,10 +362,10 @@ function NetworkPolicyEditor({ org, token, onSaved }: { org: Organization; token
       }, token);
       setCidrs(nextCidrs);
       setEnabled(nextEnabled);
-      setStatus("Saved");
+      setStatus(t("common.saved"));
       onSaved();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not save network policy.");
+      setStatus(errorText(error, "org.savePolicyFailed"));
     } finally {
       setBusy(false);
     }
@@ -390,10 +394,10 @@ function NetworkPolicyEditor({ org, token, onSaved }: { org: Organization; token
     try {
       const result = await getOrganizationCurrentIp(org.id, token);
       setCurrentIp(result.ip);
-      setStatus(`Current IP: ${result.ip}`);
+      setStatus(tf("org.currentIp", { ip: result.ip }));
       onSaved();
     } catch {
-      setStatus("Could not detect current IP.");
+      setStatus(t("org.detectIpFailed"));
     } finally {
       setBusy(false);
     }
@@ -403,9 +407,9 @@ function NetworkPolicyEditor({ org, token, onSaved }: { org: Organization; token
     setBusy(true);
     try {
       const result = await testOrganizationNetworkPolicy(org.id, currentIp || undefined, token);
-      setStatus(result.allowed ? `Allowed (${result.matchedCidrs.join(", ")})` : "Not allowed");
+      setStatus(result.allowed ? `Allowed (${result.matchedCidrs.join(", ")})` : t("org.notAllowed"));
     } catch {
-      setStatus("Could not test IP.");
+      setStatus(t("org.testIpFailed"));
     } finally {
       setBusy(false);
     }
@@ -414,7 +418,7 @@ function NetworkPolicyEditor({ org, token, onSaved }: { org: Organization; token
   return (
     <div className="border-t border-line pt-3 dark:border-white/10">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-ink/70 dark:text-white/70">Network access</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-ink/70 dark:text-white/70">{t("org.networkAccess")}</p>
         <button
           type="button"
           disabled={busy}
@@ -429,30 +433,30 @@ function NetworkPolicyEditor({ org, token, onSaved }: { org: Organization; token
           {cidrs.map((cidr) => (
             <span key={cidr} className="inline-flex items-center gap-1 rounded-md bg-moss/10 px-2 py-1 text-xs text-moss dark:bg-sea/15 dark:text-sea">
               {cidr}
-              <button type="button" disabled={busy} onClick={() => removeNetwork(cidr)} aria-label={`Remove ${cidr}`}>×</button>
+              <button type="button" disabled={busy} onClick={() => removeNetwork(cidr)} aria-label={tf("org.removeCidr", { cidr })}>×</button>
             </span>
           ))}
-          {!cidrs.length ? <span className="text-xs text-ink/45 dark:text-white/45">No allowed networks</span> : null}
+          {!cidrs.length ? <span className="text-xs text-ink/45 dark:text-white/45">{t("org.noAllowedNetworks")}</span> : null}
         </div>
         <div className="flex gap-2">
           <input
             value={input}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => event.key === "Enter" && void addNetwork()}
-            placeholder="Public IP or CIDR"
+            placeholder={t("org.ipPlaceholder")}
             className="h-8 min-w-0 flex-1 rounded-lg border border-line bg-transparent px-2 text-xs outline-none dark:border-white/10"
           />
           <button type="button" disabled={busy || !input.trim()} onClick={() => void addNetwork()} className="rounded-lg border border-line px-2 text-xs dark:border-white/10">Add</button>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-ink/65 dark:text-white/65">
-          <span>Current IP: {currentIp || "—"}</span>
-          <button type="button" disabled={busy} onClick={() => void detectIp()} className="underline">Detect</button>
-          <button type="button" disabled={busy} onClick={() => void testIp()} className="underline">Test</button>
+          <span>{tf("org.currentIp", { ip: currentIp || "—" })}</span>
+          <button type="button" disabled={busy} onClick={() => void detectIp()} className="underline">{t("org.detect")}</button>
+          <button type="button" disabled={busy} onClick={() => void testIp()} className="underline">{t("org.test")}</button>
           {status ? <span>{status}</span> : null}
         </div>
         {org.allowedBooks.length ? (
           <div className="space-y-1">
-            <p className="text-xs font-medium text-ink/70 dark:text-white/70">Network downloads</p>
+            <p className="text-xs font-medium text-ink/70 dark:text-white/70">{t("org.networkDownloads")}</p>
             {org.allowedBooks.map((book) => (
               <label key={book.id} className="flex items-center gap-2 text-xs text-ink/70 dark:text-white/70">
                 <input type="checkbox" checked={org.downloadableBookIds.includes(book.id)} disabled={busy} onChange={() => void toggleDownload(book.id)} />
@@ -552,6 +556,7 @@ function AccessSection({
   onAdd: (value: string) => void;
   onRemove: (value: string) => void;
 }) {
+  const t = useT();
   const [adding, setAdding] = useState(false);
   return (
     <div>
@@ -565,7 +570,7 @@ function AccessSection({
             className="inline-flex max-w-[14rem] items-center gap-1 rounded-full bg-moss/10 py-0.5 pe-1 ps-2 text-[11px] font-medium text-moss dark:bg-sea/15 dark:text-sea"
           >
             <span className="truncate">{chip.label}</span>
-            <button type="button" onClick={() => onRemove(chip.value)} aria-label="remove" className="hover:text-red-500">
+            <button type="button" onClick={() => onRemove(chip.value)} aria-label={t("common.remove")} className="hover:text-red-500">
               <X className="h-3 w-3" />
             </button>
           </span>

@@ -8,9 +8,10 @@ import { useAuth } from "@/components/auth-provider";
 import { AuthField, AuthShell, ErrorBanner, authInputClass } from "@/components/auth-shell";
 import { buttonClass } from "@/components/ui/button";
 import { ApiClientError } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { useErrorText, useT } from "@/lib/i18n";
 
 export default function RegisterPage() {
+  const errorText = useErrorText();
   const router = useRouter();
   const { register, user, loading } = useAuth();
   const t = useT();
@@ -40,7 +41,7 @@ export default function RegisterPage() {
       await register({ name: name.trim(), email: email.trim(), password });
       router.replace("/");
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t("auth.createError"));
+      setError(errorText(err, "auth.createError"));
     } finally {
       setSubmitting(false);
     }

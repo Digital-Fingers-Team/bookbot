@@ -12,12 +12,13 @@ import {
 } from "@/lib/api";
 import { buttonClass } from "@/components/ui/button";
 import { PushToggle } from "@/components/push-toggle";
-import { useT } from "@/lib/i18n";
+import { useErrorText, useT } from "@/lib/i18n";
 
 const inputClass =
   "h-11 w-full rounded-lg border border-line bg-white px-3.5 text-sm text-ink outline-none transition placeholder:text-ink/35 focus:border-moss focus:ring-2 focus:ring-moss/15 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/35";
 
 export default function SettingsPage() {
+  const errorText = useErrorText();
   const router = useRouter();
   const { token, user, loading, updateProfile, logout } = useAuth();
   const t = useT();
@@ -57,7 +58,7 @@ export default function SettingsPage() {
       await updateProfile({ name: name.trim(), language });
       setProfileStatus(t("set.profileUpdated"));
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t("set.profileError"));
+      setError(errorText(err, "set.profileError"));
     } finally {
       setSavingProfile(false);
     }
@@ -79,7 +80,7 @@ export default function SettingsPage() {
       setNewPassword("");
       setPasswordStatus(t("set.passwordChanged"));
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t("set.passwordError"));
+      setError(errorText(err, "set.passwordError"));
     } finally {
       setSavingPassword(false);
     }
@@ -221,6 +222,7 @@ export default function SettingsPage() {
 }
 
 function OmpPublishingCard({ token }: { token: string | null }) {
+  const errorText = useErrorText();
   const t = useT();
   // Admins go to OMP to manage the press; everyone else goes there to submit.
   const { isAdmin } = useAuth();
@@ -250,7 +252,7 @@ function OmpPublishingCard({ token }: { token: string | null }) {
       }
     } catch (err) {
       tab?.close();
-      setError(err instanceof ApiClientError ? err.message : t("omp.openError"));
+      setError(errorText(err, "omp.openError"));
     } finally {
       setOpening(false);
     }

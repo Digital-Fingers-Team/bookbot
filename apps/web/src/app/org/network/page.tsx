@@ -14,12 +14,14 @@ import {
   type MyOrganization,
   type NetworkPolicy
 } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { useErrorText, useT, useTf } from "@/lib/i18n";
 
 export default function OrgNetworkPage() {
+  const errorText = useErrorText();
   const router = useRouter();
   const { token, isOrgAdmin, loading: authLoading } = useAuth();
   const t = useT();
+  const tf = useTf();
   const [org, setOrg] = useState<MyOrganization | null>(null);
   const [policy, setPolicy] = useState<NetworkPolicy | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,7 +68,7 @@ export default function OrgNetworkPage() {
       setPolicy(result.networkPolicy);
       setStatus(t("orgNet.saved"));
     } catch (error) {
-      setStatus(error instanceof ApiClientError ? error.message : t("orgNet.saveError"));
+      setStatus(errorText(error, "orgNet.saveError"));
     } finally {
       setBusy(false);
     }
@@ -164,7 +166,7 @@ export default function OrgNetworkPage() {
                 className="inline-flex items-center gap-1 rounded-md bg-moss/10 px-2 py-1 text-xs text-moss dark:bg-sea/15 dark:text-sea"
               >
                 {cidr}
-                <button type="button" disabled={busy} onClick={() => void removeNetwork(cidr)} aria-label={`Remove ${cidr}`}>
+                <button type="button" disabled={busy} onClick={() => void removeNetwork(cidr)} aria-label={tf("org.removeCidr", { cidr })}>
                   ×
                 </button>
               </span>

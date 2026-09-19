@@ -8,9 +8,10 @@ import { ApiClientError, getBook, getBookPdf, getBookSource, getBookSummaryAudio
 import { BookAssistant } from "@/components/book-assistant";
 import { FlipbookReader } from "@/components/flipbook-reader";
 import { SummaryAudioPlayer } from "@/components/summary-audio-player";
-import { AI_NAME, useT } from "@/lib/i18n";
+import { AI_NAME, useErrorText, useT } from "@/lib/i18n";
 
 export default function ReadPage() {
+  const errorText = useErrorText();
   const params = useParams();
   const id = String(params.id);
   const router = useRouter();
@@ -70,7 +71,7 @@ export default function ReadPage() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof ApiClientError ? err.message : t("read.notFound"));
+          setError(errorText(err, "read.notFound"));
         }
       } finally {
         if (!cancelled) setLoading(false);

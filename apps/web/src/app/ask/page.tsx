@@ -49,7 +49,7 @@ import { EvidenceText } from "@/components/evidence-text";
 import { answerOverlapHighlights, citeSentences } from "@/lib/highlight";
 import { DiscoveryExperience } from "@/components/discovery-experience";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useLang, useT } from "@/lib/i18n";
+import { useErrorText, useLang, useT, useTf } from "@/lib/i18n";
 import { createClientId } from "@/lib/client-id";
 
 type ChatMessage = {
@@ -96,6 +96,7 @@ export default function AskPage() {
 }
 
 function ChatExperience() {
+  const errorText = useErrorText();
   const { token } = useAuth();
   const t = useT();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -272,7 +273,7 @@ function ChatExperience() {
       const blob = await getBookPageImage(source.bookId, source.pageNumber, token);
       setReaderUrl(URL.createObjectURL(blob));
     } catch (error) {
-      setReaderError(error instanceof ApiClientError ? error.message : t("ask.openFailed"));
+      setReaderError(errorText(error, "ask.openFailed"));
     } finally {
       setReaderLoading(false);
     }
@@ -931,6 +932,7 @@ function Evidence({
   answer: string;
   onOpenSource: (source: Source) => void;
 }) {
+  const tf = useTf();
   const t = useT();
   if (!sources.length && !evidence.length) {
     return null;
@@ -972,7 +974,7 @@ function Evidence({
                     }
                   : undefined
               }
-              title={canOpen ? `Open ${source.bookName} at page ${source.pageNumber}` : undefined}
+              title={canOpen ? tf("ask.openSourceAt", { book: source.bookName, page: source.pageNumber }) : undefined}
               className={`group/src animate-fade-in rounded-lg border border-line bg-paper p-3.5 dark:border-white/10 dark:bg-white/5 ${
                 canOpen
                   ? "cursor-pointer transition hover:border-moss/40 hover:bg-moss/[0.04] focus:outline-none focus:ring-2 focus:ring-moss/25 dark:hover:border-sea/40"
@@ -1074,8 +1076,8 @@ function Composer({
               type="button"
               onClick={onStop}
               className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-line bg-white text-ink/70 transition hover:border-moss hover:text-moss dark:border-white/10 dark:bg-white/10 dark:text-white/70"
-              title="Stop generating"
-              aria-label="Stop generating"
+              title={t("ask.stopGenerating")}
+              aria-label={t("ask.stopGenerating")}
             >
               <Square className="h-4 w-4 fill-current" />
             </button>
@@ -1084,8 +1086,8 @@ function Composer({
               type="submit"
               disabled={!input.trim()}
               className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-moss text-white transition hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-40"
-              title="Send"
-              aria-label="Send"
+              title={t("ask.send")}
+              aria-label={t("ask.send")}
             >
               <Send className="h-4 w-4" />
             </button>

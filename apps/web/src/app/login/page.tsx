@@ -8,7 +8,7 @@ import { useAuth } from "@/components/auth-provider";
 import { AuthField, AuthShell, ErrorBanner, authInputClass } from "@/components/auth-shell";
 import { buttonClass } from "@/components/ui/button";
 import { ApiClientError } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { useErrorText, useT } from "@/lib/i18n";
 
 export default function LoginPage() {
   return (
@@ -19,6 +19,7 @@ export default function LoginPage() {
 }
 
 function LoginForm() {
+  const errorText = useErrorText();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, user, loading } = useAuth();
@@ -50,7 +51,7 @@ function LoginForm() {
       await login({ email: email.trim(), password });
       router.replace(nextPath);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t("auth.signinError"));
+      setError(errorText(err, "auth.signinError"));
     } finally {
       setSubmitting(false);
     }

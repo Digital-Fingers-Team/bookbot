@@ -24,11 +24,12 @@ import {
 import { useAuth } from "@/components/auth-provider";
 import { ApiClientError, getStats } from "@/lib/api";
 import type { Stats } from "@/lib/types";
-import { useT } from "@/lib/i18n";
+import { useErrorText, useT } from "@/lib/i18n";
 
 const nf = new Intl.NumberFormat("en");
 
 export default function AnalyticsPage() {
+  const errorText = useErrorText();
   const router = useRouter();
   const { token, user, can, loading: authLoading } = useAuth();
   // This screen needs one specific admin permission, not merely the role.
@@ -47,7 +48,7 @@ export default function AnalyticsPage() {
     try {
       setStats(await getStats(token));
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t("an.loadError"));
+      setError(errorText(err, "an.loadError"));
     } finally {
       setLoading(false);
     }

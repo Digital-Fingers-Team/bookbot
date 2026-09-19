@@ -696,10 +696,247 @@ export const STRINGS = {
   "perm.admins.desc": {
     ar: "إنشاء حسابات إدارة وتحديد صلاحياتها. امنحها بحذر.",
     en: "Create admin accounts and set their permissions. Grant sparingly."
-  }
+  },
+  // Shared verbs and controls
+  "common.remove": { ar: "إزالة", en: "Remove" },
+  "common.cancel": { ar: "إلغاء", en: "Cancel" },
+  "common.close": { ar: "إغلاق", en: "Close" },
+  "common.clear": { ar: "مسح", en: "Clear" },
+  "common.open": { ar: "فتح", en: "Open" },
+  "common.download": { ar: "تنزيل", en: "Download" },
+  "common.saved": { ar: "تم الحفظ", en: "Saved" },
+  "common.toggleTheme": { ar: "تبديل المظهر", en: "Toggle theme" },
+
+  // Library: covers
+  "lib.gridView": { ar: "عرض شبكي", en: "Grid view" },
+  "lib.listView": { ar: "عرض قائمة", en: "List view" },
+  "lib.favoriteAdd": { ar: "إضافة إلى المفضّلة", en: "Add to favorites" },
+  "lib.favoriteRemove": { ar: "إزالة من المفضّلة", en: "Remove from favorites" },
+  "lib.deleteBook": { ar: "حذف {title}", en: "Delete {title}" },
+  "lib.coverAlt": { ar: "غلاف الكتاب", en: "Book cover" },
+  "lib.coverShort": { ar: "الغلاف", en: "Cover" },
+  "lib.coverAddShort": { ar: "إضافة غلاف", en: "Add cover" },
+  "lib.coverAdd": { ar: "إضافة غلاف", en: "Add a cover" },
+  "lib.coverReplaceOrRemove": { ar: "استبدال الغلاف أو إزالته", en: "Replace or remove the cover" },
+  "lib.coverReplaceButton": { ar: "استبدال الغلاف", en: "Replace cover" },
+  "lib.coverChoose": { ar: "اختر ملف الغلاف", en: "Choose a cover file" },
+  "lib.coverChooseReplacement": { ar: "اختر غلافًا بديلًا", en: "Choose a replacement cover" },
+  "lib.coverNoneYet": {
+    ar: "لم يُضف غلاف بعد. المكتبة تعرض الصفحة الأولى من الكتاب بدلًا منه.",
+    en: "No cover has been added yet. The library shows the book’s first page instead."
+  },
+  "lib.coverHint": {
+    ar: "صورة واحدة تحمل وجهَي الغلاف — الوش في نصفها الأيسر والضهر في الأيمن. PNG أو JPEG أو WEBP. ويصلح ملف PDF أيضًا: صفحة واحدة تحمل الوجهين، أو الوش والضهر في أول صفحتين.",
+    en: "One image holding both faces — the front on its left half, the back on its right. PNG, JPEG, or WEBP. A PDF works too: one page holding the spread, or front and back as its first two pages."
+  },
+  "lib.coverRemoveConfirm": {
+    ar: "إزالة هذا الغلاف؟ ستخرج صفحتاه من ملف الـPDF.",
+    en: "Remove this cover? Its two pages come back out of the PDF."
+  },
+  "lib.coverUploadFailed": { ar: "تعذّر رفع الغلاف.", en: "The cover could not be uploaded." },
+  "lib.coverRemoveFailed": { ar: "تعذّرت إزالة الغلاف.", en: "The cover could not be removed." },
+
+  // Library: summary audio
+  "lib.audioLabel": { ar: "الملخّص الصوتي", en: "Summary audio" },
+  "lib.audioBadge": { ar: "صوت", en: "Audio" },
+  "lib.audioAvailable": { ar: "يتوفّر ملخّص صوتي", en: "Summary audio available" },
+  "lib.audioAddShort": { ar: "إضافة صوت", en: "Add audio" },
+  "lib.audioAdd": { ar: "إضافة ملخّص صوتي", en: "Add summary audio" },
+  "lib.audioReplaceOrRemove": { ar: "استبدال الملخّص الصوتي أو إزالته", en: "Replace or remove summary audio" },
+  "lib.audioReplaceButton": { ar: "استبدال الصوت", en: "Replace audio" },
+  "lib.audioChoose": { ar: "اختر ملفًا صوتيًا", en: "Choose an audio file" },
+  "lib.audioChooseReplacement": { ar: "اختر ملفًا صوتيًا بديلًا", en: "Choose replacement audio" },
+  "lib.audioNoneYet": { ar: "لم يُضف ملخّص صوتي بعد.", en: "No summary audio has been added yet." },
+  "lib.audioFormats": { ar: "MP3 أو M4A أو WAV أو OGG أو WEBM أو AAC أو FLAC", en: "MP3, M4A, WAV, OGG, WEBM, AAC, or FLAC" },
+  "lib.audioRemoveConfirm": { ar: "إزالة الملخّص الصوتي من هذا الكتاب؟", en: "Remove this summary audio from the book?" },
+  "lib.audioUploadFailed": { ar: "تعذّر رفع الملخّص الصوتي.", en: "The summary audio could not be uploaded." },
+  "lib.audioRemoveFailed": { ar: "تعذّرت إزالة الملخّص الصوتي.", en: "The summary audio could not be removed." },
+
+  // Upload page
+  "up.addSummaryAudio": { ar: "إضافة ملخّص صوتي", en: "Add summary audio" },
+  "up.addCover": { ar: "إضافة غلاف", en: "Add cover" },
+  "up.attached": { ar: "مُرفق", en: "Attached" },
+  "up.coverSet": { ar: "تم ضبط الغلاف", en: "Cover set" },
+  "up.coverHint": {
+    ar: "الملخّص الصوتي والغلاف اختياريان ويمكن إضافتهما لاحقًا من المكتبة. الغلاف صورة أو ملف PDF يحمل وجهَي الغلاف المطبوع — الوش في النصف الأيسر والضهر في الأيمن. ويمكن لملف الـPDF أن يحمل الوش والضهر في أول صفحتين بدلًا من ذلك.",
+    en: "Summary audio and the cover are optional and can also be added later from Library. A cover is one image or PDF holding both faces of the printed jacket — the front on its left half, the back on its right. A PDF may instead carry the front and back as its first two pages."
+  },
+  "up.coverUnsupported": {
+    ar: "«{name}» ليس ملف غلاف مدعومًا. استخدم صورة PNG أو JPEG أو WEBP، أو ملف PDF.",
+    en: "“{name}” is not a supported cover file. Use a PNG, JPEG, or WEBP image, or a PDF."
+  },
+  "up.coverPdfOnly": {
+    ar: "لا يمكن إضافة غلاف إلا إلى ملف PDF، و«{name}» ليس كذلك.",
+    en: "A cover can only be added to a PDF, and “{name}” is not one."
+  },
+  "up.audioUnsupported": {
+    ar: "«{name}» ليس ملفًا صوتيًا مدعومًا.",
+    en: "“{name}” is not a supported audio file."
+  },
+  "up.excelTitle": { ar: "استيراد الكتب من ملف Excel", en: "Import books from Excel" },
+  "up.excelDesc": {
+    ar: "ارفع القائمة، اختر كتبًا بعينها، ثم استورد ملفات الـPDF الخاصة بها وحدها.",
+    en: "Upload the list, choose specific books, then import only those PDFs."
+  },
+  "up.chooseXlsx": { ar: "اختر ملف ‎.xlsx", en: "Choose .xlsx" },
+  "up.reading": { ar: "جارٍ القراءة…", en: "Reading…" },
+  "up.selectAll": { ar: "تحديد الكل", en: "Select all" },
+  "up.deselectAll": { ar: "إلغاء تحديد الكل", en: "Deselect all" },
+  "up.selectedCount": { ar: "{count} محدّد", en: "{count} selected" },
+  "up.noCategory": { ar: "بدون تصنيف", en: "No category" },
+  "up.pricePlaceholder": { ar: "السعر (اختياري)", en: "Price (optional)" },
+  "up.unknownAuthor": { ar: "مؤلف غير معروف", en: "Unknown author" },
+  "up.row": { ar: "صف {number}", en: "row {number}" },
+  "up.suggestSelected": { ar: "اقترح تصنيفات للمحدّد", en: "Suggest categories for selected" },
+  "up.suggestAi": { ar: "اقترح تصنيفات بالذكاء الاصطناعي", en: "Suggest categories with AI" },
+  "up.categorising": { ar: "جارٍ التصنيف…", en: "Categorising…" },
+  "up.importSelected": { ar: "استيراد {count} محدّد", en: "Import {count} selected" },
+  "up.importing": { ar: "جارٍ الاستيراد…", en: "Importing…" },
+  "up.categoriseFailed": { ar: "تعذّر على الذكاء الاصطناعي تصنيف هذه الكتب.", en: "The AI could not categorise these books." },
+  "up.importFailed": { ar: "فشل الاستيراد. الدفعات المكتملة محفوظة.", en: "Import failed. Completed batches were kept." },
+  "up.workbookFailed": { ar: "تعذّرت قراءة الملف.", en: "The workbook could not be read." },
+
+  // Organizations: network policy
+  "org.networkAccess": { ar: "الوصول عبر الشبكة", en: "Network access" },
+  "org.networkDownloads": { ar: "التنزيل عبر الشبكة", en: "Network downloads" },
+  "org.noAllowedNetworks": { ar: "لا توجد شبكات مسموح بها", en: "No allowed networks" },
+  "org.ipPlaceholder": { ar: "عنوان IP عام أو نطاق CIDR", en: "Public IP or CIDR" },
+  "org.detect": { ar: "اكتشاف", en: "Detect" },
+  "org.test": { ar: "اختبار", en: "Test" },
+  "org.removeCidr": { ar: "إزالة {cidr}", en: "Remove {cidr}" },
+  "org.currentIp": { ar: "عنوانك الحالي: {ip}", en: "Current IP: {ip}" },
+  "org.notAllowed": { ar: "غير مسموح", en: "Not allowed" },
+  "org.savePolicyFailed": { ar: "تعذّر حفظ سياسة الشبكة.", en: "Could not save network policy." },
+  "org.detectIpFailed": { ar: "تعذّر اكتشاف عنوانك الحالي.", en: "Could not detect current IP." },
+  "org.testIpFailed": { ar: "تعذّر اختبار العنوان.", en: "Could not test IP." },
+
+  // Readers
+  "reader.zoomIn": { ar: "تكبير", en: "Zoom in" },
+  "reader.zoomOut": { ar: "تصغير", en: "Zoom out" },
+  "reader.pdfOnly": { ar: "يدعم Heyzine ملفات PDF فقط حاليًا.", en: "Heyzine currently supports PDF books only." },
+  "reader.receiptAlt": { ar: "إيصال الدفع", en: "Payment receipt" },
+
+  // Ask
+  "ask.stopGenerating": { ar: "إيقاف التوليد", en: "Stop generating" },
+  "ask.openSourceAt": { ar: "فتح {book} عند صفحة {page}", en: "Open {book} at page {page}" },
+
+  // Quiz
+  "quiz.correct": { ar: "إجابة صحيحة.", en: "Correct." },
+  "quiz.correctAnswerIs": { ar: "الإجابة الصحيحة هي", en: "The correct answer is" },
+  "quiz.showSample": { ar: "عرض إجابة نموذجية", en: "Show sample answer" },
+  "quiz.hideSample": { ar: "إخفاء الإجابة النموذجية", en: "Hide sample answer" },
+  "up.excelFound": {
+    ar: "تم العثور على {total} كتاب. اختر ما تريد استيراده؛ التحديدات الكبيرة تُعالَج على دفعات.",
+    en: "{total} books found. Select books to import; large selections are processed in batches."
+  },
+  "up.excelCategorised": { ar: "تم تصنيف {done} من {total} كتاب", en: "{done} of {total} books categorised" },
+  "up.excelNewCategory": { ar: "؛ استخدم {count} منها تصنيفًا جديدًا (أُبلغ المديرون).", en: "; {count} used a new category (admins notified)." },
+  "up.excelQueued": { ar: "تم إدراج {count} كتاب في الطابور", en: "{count} books queued" },
+  "up.excelFailedSuffix": { ar: "؛ فشل {count}", en: "; {count} failed" },
+
 } as const;
 
 export type StringKey = keyof typeof STRINGS;
+
+/**
+ * Error copy keyed by the `code` the API returns alongside every failure.
+ *
+ * The API answers in English because its messages are part of the protocol,
+ * read by logs and other callers as much as by people. The reader's language
+ * is decided here instead: a code listed below is shown in their language, and
+ * anything unlisted falls back to the server's own message, so a new code is
+ * never a blank screen.
+ */
+export const ERROR_STRINGS: Record<string, { ar: string; en: string }> = {
+  // Transport
+  NETWORK: { ar: "تعذّر الوصول إلى الخادم.", en: "Could not reach the server." },
+  STREAM_INTERRUPTED: { ar: "انقطع الاتصال أثناء الرد.", en: "The connection was interrupted." },
+  REQUEST_FAILED: { ar: "فشل الطلب. حاول مرة أخرى.", en: "The request failed. Please try again." },
+
+  // Auth and permissions
+  UNAUTHORIZED: { ar: "انتهت جلستك. سجّل الدخول من جديد.", en: "Your session ended. Please sign in again." },
+  FORBIDDEN: { ar: "ليس لديك صلاحية لهذا الإجراء.", en: "You do not have permission for this." },
+  MISSING_PERMISSION: { ar: "هذا الإجراء يحتاج صلاحية لا يملكها حسابك.", en: "Your account is missing the permission for this." },
+  INVALID_CREDENTIALS: { ar: "البريد الإلكتروني أو كلمة المرور غير صحيحة.", en: "That email or password is not right." },
+  EMAIL_ALREADY_EXISTS: { ar: "هذا البريد الإلكتروني مسجّل بالفعل.", en: "That email is already registered." },
+  ORG_NETWORK_ACCESS_DENIED: { ar: "لا يمكن الوصول من هذه الشبكة.", en: "This network is not allowed to reach the library." },
+  BOOK_ACCESS_REQUIRED: { ar: "هذا الكتاب يحتاج اشتراكًا.", en: "This book needs a subscription." },
+  BOOK_ACCESS_DENIED: { ar: "ليس لديك وصول إلى هذا الكتاب.", en: "You do not have access to this book." },
+
+  // Missing things
+  BOOK_NOT_FOUND: { ar: "لم يُعثر على هذا الكتاب.", en: "This book was not found." },
+  FILE_NOT_AVAILABLE: { ar: "لم يُعثر على الملف الأصلي.", en: "The original file could not be found." },
+  PAGE_NOT_FOUND: { ar: "لم يُعثر على هذه الصفحة.", en: "This page was not found." },
+  COVER_NOT_FOUND: { ar: "لا يوجد غلاف لهذا الكتاب.", en: "This book has no uploaded cover." },
+  SUMMARY_AUDIO_NOT_FOUND: { ar: "لا يوجد ملخّص صوتي لهذا الكتاب.", en: "This book has no summary audio." },
+  USER_NOT_FOUND: { ar: "لم يُعثر على هذا المستخدم.", en: "This user was not found." },
+  ORG_NOT_FOUND: { ar: "لم يُعثر على هذه الجهة.", en: "This organization was not found." },
+  STUDENT_NOT_FOUND: { ar: "لم يُعثر على هذا الطالب.", en: "This student was not found." },
+  CATEGORY_NOT_FOUND: { ar: "لم يُعثر على هذا التصنيف.", en: "This category was not found." },
+  CONVERSATION_NOT_FOUND: { ar: "لم يُعثر على هذه المحادثة.", en: "This conversation was not found." },
+  REQUEST_NOT_FOUND: { ar: "لم يُعثر على هذا الطلب.", en: "This request was not found." },
+  RECEIPT_NOT_FOUND: { ar: "لم يُعثر على الإيصال.", en: "That receipt was not found." },
+  ATTACHMENT_NOT_FOUND: { ar: "لم يُعثر على المرفق.", en: "That attachment was not found." },
+  THREAD_NOT_FOUND: { ar: "لم يُعثر على هذه المراسلة.", en: "That conversation was not found." },
+  NOTIFICATION_NOT_FOUND: { ar: "لم يُعثر على هذا الإشعار.", en: "That notification was not found." },
+
+  // Uploads and files
+  INVALID_FILE_TYPE: { ar: "ارفع ملف PDF أو EPUB أو DOCX أو TXT.", en: "Please upload a PDF, EPUB, DOCX, or TXT file." },
+  INVALID_COVER_TYPE: { ar: "ارفع صورة PNG أو JPEG أو WEBP، أو ملف PDF، كغلاف.", en: "Please upload a PNG, JPEG, or WEBP image, or a PDF, as the cover." },
+  INVALID_AUDIO_TYPE: { ar: "ارفع ملفًا صوتيًا MP3 أو M4A أو WAV أو OGG أو WEBM أو AAC أو FLAC.", en: "Please upload an MP3, M4A, WAV, OGG, WEBM, AAC, or FLAC audio file." },
+  MISSING_FILE: { ar: "اختر ملفًا أولًا.", en: "Please choose a file first." },
+  MISSING_COVER: { ar: "اختر ملف الغلاف.", en: "Please choose a cover file." },
+  MISSING_AUDIO: { ar: "اختر ملفًا صوتيًا.", en: "Please choose an audio file." },
+  MISSING_RECEIPT: { ar: "أرفق صورة الإيصال.", en: "Please attach the receipt." },
+  INVALID_RECEIPT: { ar: "تعذّرت قراءة هذا الإيصال.", en: "That receipt could not be read." },
+  NOT_A_PDF: { ar: "هذا الإجراء يخصّ ملفات PDF فقط.", en: "This only applies to PDF books." },
+  UPLOAD_FAILED: { ar: "فشل الرفع. حاول مرة أخرى.", en: "The upload failed. Please try again." },
+
+  // Excel import
+  INVALID_EXCEL: { ar: "تعذّرت قراءة الملف.", en: "The workbook could not be read." },
+  NO_ROWS: { ar: "لا توجد صفوف في هذا الملف.", en: "That workbook has no rows." },
+  TOO_MANY_ROWS: { ar: "عدد الصفوف أكبر مما يمكن استيراده دفعة واحدة.", en: "That workbook has more rows than one import can take." },
+  TOO_MANY_BOOKS: { ar: "عدد الكتب أكبر مما يمكن استيراده دفعة واحدة.", en: "That is more books than one import can take." },
+  NO_BOOKS: { ar: "لم تُحدَّد أي كتب.", en: "No books were selected." },
+  UNKNOWN_CATEGORY: { ar: "تصنيف غير معروف.", en: "That category is not one of yours." },
+
+  // Chat
+  CHAT_FAILED: { ar: "فشل طلب المحادثة.", en: "The chat request failed." },
+  EMPTY_MESSAGE: { ar: "اكتب رسالة أولًا.", en: "Write a message first." },
+  INVALID_CONVERSATION: { ar: "هذه المحادثة غير صالحة.", en: "That conversation is not valid." },
+
+  // Providers
+  OPENROUTER_NOT_CONFIGURED: { ar: "خدمة الذكاء الاصطناعي غير مهيّأة بعد.", en: "The AI provider is not configured yet." },
+  OCR_OUT_OF_CREDITS: { ar: "نفد رصيد خدمة استخراج النص.", en: "The OCR provider is out of credits." },
+  OCR_PROVIDER_ERROR: { ar: "تعذّر على خدمة استخراج النص معالجة هذه الصفحة.", en: "The OCR provider could not process this page." },
+  OPENROUTER_EMBEDDING_FAILURE: { ar: "تعذّر على خدمة الفهرسة معالجة هذا الكتاب.", en: "The embedding provider could not process this book." }
+};
+
+/**
+ * Turn a failed request into a sentence in the reader's language.
+ *
+ * Pass whatever was caught: an `ApiClientError` carries the code this looks
+ * up, and anything else falls back to its own message.
+ */
+export function useErrorText() {
+  const { lang } = useLang();
+
+  return useCallback(
+    (error: unknown, fallbackKey?: StringKey): string => {
+      const code =
+        error && typeof error === "object" && "code" in error
+          ? String((error as { code: unknown }).code)
+          : undefined;
+      const entry = code ? ERROR_STRINGS[code] : undefined;
+      if (entry) return entry[lang];
+      if (error instanceof Error && error.message) return error.message;
+      if (fallbackKey) return STRINGS[fallbackKey]?.[lang] ?? fallbackKey;
+      return ERROR_STRINGS.REQUEST_FAILED?.[lang] ?? "";
+    },
+    [lang]
+  );
+}
+
 
 type LangContextValue = {
   lang: Lang;
@@ -749,6 +986,20 @@ export function useLang() {
     };
   }
   return context;
+}
+
+/**
+ * `t` with `{placeholder}` substitution, for copy that carries a name or a
+ * count. A placeholder with no value is left visible rather than blanked, so a
+ * missing variable shows up instead of quietly reading as finished copy.
+ */
+export function useTf() {
+  const { t } = useLang();
+  return useCallback(
+    (key: StringKey, vars: Record<string, string | number>) =>
+      t(key).replace(/\{(\w+)\}/g, (whole, name) => (name in vars ? String(vars[name]) : whole)),
+    [t]
+  );
 }
 
 export function useT() {

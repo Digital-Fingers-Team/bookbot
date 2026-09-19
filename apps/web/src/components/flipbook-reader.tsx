@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { ApiClientError, getBookHeyzine } from "@/lib/api";
 import { useAuth } from "@/components/auth-provider";
-import { useT } from "@/lib/i18n";
+import { useErrorText, useT } from "@/lib/i18n";
 
 type FlipbookReaderProps = {
   bookId: string;
@@ -19,6 +19,7 @@ type FlipbookReaderProps = {
 
 /** Heyzine owns the reader UI and page effect. No local page-turn engine. */
 export function FlipbookReader({ bookId, title, kind, page }: FlipbookReaderProps) {
+  const errorText = useErrorText();
   const { token } = useAuth();
   const t = useT();
   const [url, setUrl] = useState("");
@@ -29,13 +30,13 @@ export function FlipbookReader({ bookId, title, kind, page }: FlipbookReaderProp
     setUrl("");
     setError("");
     if (kind !== "pdf") {
-      setError("Heyzine currently supports PDF books only.");
+      setError(t("reader.pdfOnly"));
       return () => { cancelled = true; };
     }
     getBookHeyzine(bookId, token)
       .then((result) => { if (!cancelled) setUrl(result.url); })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof ApiClientError ? err.message : t("read.notFound"));
+        if (!cancelled) setError(errorText(err, "read.notFound"));
       });
     return () => { cancelled = true; };
   }, [bookId, kind, t, token]);

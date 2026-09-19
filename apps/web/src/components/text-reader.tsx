@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, ChevronLeft, ChevronRight, Download, ExternalLink, Loader2, Lock } from "lucide-react";
 import { ApiClientError, getBookPageText } from "@/lib/api";
 import { useAuth } from "@/components/auth-provider";
-import { useT } from "@/lib/i18n";
+import { useErrorText, useT } from "@/lib/i18n";
 
 type TextReaderProps = {
   bookId: string;
@@ -20,6 +20,7 @@ type TextReaderProps = {
 };
 
 export function TextReader({ bookId, sourceUrl, canDownload, title, page, totalPages, onPageChange }: TextReaderProps) {
+  const errorText = useErrorText();
   const { token } = useAuth();
   const t = useT();
   const pageCount = totalPages ?? 1;
@@ -83,7 +84,7 @@ export function TextReader({ bookId, sourceUrl, canDownload, title, page, totalP
         if (cancelled || (err as Error)?.name === "AbortError") {
           return;
         }
-        setError(err instanceof ApiClientError ? err.message : t("read.notFound"));
+        setError(errorText(err, "read.notFound"));
         setLoading(false);
       });
 
@@ -194,7 +195,7 @@ export function TextReader({ bookId, sourceUrl, canDownload, title, page, totalP
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/70 transition hover:bg-ink/5 hover:text-moss dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-sea"
-                aria-label="Open"
+                aria-label={t("common.open")}
               >
                 <ExternalLink className="h-4 w-4" />
               </a>
@@ -202,7 +203,7 @@ export function TextReader({ bookId, sourceUrl, canDownload, title, page, totalP
                 href={sourceUrl}
                 download={title}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/70 transition hover:bg-ink/5 hover:text-moss dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-sea"
-                aria-label="Download"
+                aria-label={t("common.download")}
               >
                 <Download className="h-4 w-4" />
               </a>

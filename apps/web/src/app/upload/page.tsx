@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { ApiClientError, getCategories, importExcelRows, previewExcel, suggestCategories, type ExcelImportRow, type UploadedBook, uploadPdfs } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { useErrorText, useT, useTf } from "@/lib/i18n";
 
 const ACCEPTED_EXTENSIONS = [".pdf", ".epub", ".docx", ".txt"];
 const ACCEPTED_MIME_TYPES = [
@@ -45,6 +45,8 @@ export default function UploadPage() {
   // This screen needs one specific admin permission, not merely the role.
   const isAdmin = can("books");
   const t = useT();
+  const tf = useTf();
+  const errorText = useErrorText();
   const [files, setFiles] = useState<File[]>([]);
   const [summaryAudioByFile, setSummaryAudioByFile] = useState<Record<string, File>>({});
   const [coverByFile, setCoverByFile] = useState<Record<string, File>>({});
@@ -108,7 +110,7 @@ export default function UploadPage() {
 
   function chooseSummaryAudio(book: File, audio: File | undefined) {
     if (audio && !isAcceptedAudio(audio)) {
-      setError(`"${audio.name}" is not a supported audio file.`);
+      setError(tf("up.audioUnsupported", { name: audio.name }));
       return;
     }
     setError("");
@@ -123,13 +125,13 @@ export default function UploadPage() {
 
   function chooseCover(book: File, cover: File | undefined) {
     if (cover && !isAcceptedCover(cover)) {
-      setError(`"${cover.name}" is not a supported cover file. Use a PNG, JPEG, or WEBP image, or a PDF.`);
+      setError(tf("up.coverUnsupported", { name: cover.name }));
       return;
     }
     // Covers are written into the PDF, so there is nothing to attach them to on
     // an EPUB/DOCX/TXT upload.
     if (cover && !/\.pdf$/i.test(book.name)) {
-      setError(`A cover can only be added to a PDF, and "${book.name}" is not one.`);
+      setError(tf("up.coverPdfOnly", { name: book.name }));
       return;
     }
     setError("");
@@ -160,7 +162,7 @@ export default function UploadPage() {
       setCoverByFile({});
       setPrice("");
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t("up.uploadFailed"));
+      setError(errorText(err, "up.uploadFailed"));
     } finally {
       setLoading(false);
     }
@@ -219,11 +221,11 @@ export default function UploadPage() {
       );
       const added = result.suggestions.filter((item) => item.isNew).length;
       setExcelMessage(
-        `${byRow.size} of ${target.length} books categorised` +
-          (added ? `; ${added} used a new category (admins notified).` : ".")
+        tf("up.excelCategorised", { done: byRow.size, total: target.length }) +
+          (added ? tf("up.excelNewCategory", { count: added }) : ".")
       );
     } catch (err) {
-      setExcelMessage(err instanceof Error ? err.message : "The AI could not categorise these books.");
+      setExcelMessage(errorText(err, "up.categoriseFailed"));
     } finally {
       setSuggesting(false);
     }
@@ -258,9 +260,14 @@ export default function UploadPage() {
         ));
       }
 
-      setExcelMessage(`${queuedCount} books queued${failedCount ? `; ${failedCount} failed${firstError ? ` — ${firstError}` : ""}.` : "."}`);
+      setExcelMessage(
+        tf("up.excelQueued", { count: queuedCount }) +
+          (failedCount
+            ? tf("up.excelFailedSuffix", { count: failedCount }) + (firstError ? ` — ${firstError}` : "") + "."
+            : ".")
+      );
     } catch (err) {
-      setExcelMessage(err instanceof Error ? err.message : "Import failed. Completed batches were kept.");
+      setExcelMessage(errorText(err, "up.importFailed"));
     } finally {
       setExcelLoading(false);
     }
@@ -291,10 +298,10 @@ export default function UploadPage() {
       />
 
       <ExcelImportPanel token={token} rows={excelRows} selected={selectedRows} categories={categories} loading={excelLoading} message={excelMessage} suggesting={suggesting} onSuggest={suggestExcelCategories}
-        onFile={async (file) => { setExcelLoading(true); setExcelMessage(""); try { const [result, categoryResult] = await Promise.all([previewExcel(file, token), getCategories(token)]); setExcelRows(result.rows.map((row) => ({ ...row, price: 0, category: "" }))); setCategories(categoryResult.categories); setSelectedRows(new Set()); setSummaryAudioByRow({}); setExcelMessage(`${result.total} books found. Select books to import; large selections are processed in batches.`); } catch (err) { setExcelMessage(err instanceof Error ? err.message : "The workbook could not be read."); } finally { setExcelLoading(false); } }}
+        onFile={async (file) => { setExcelLoading(true); setExcelMessage(""); try { const [result, categoryResult] = await Promise.all([previewExcel(file, token), getCategories(token)]); setExcelRows(result.rows.map((row) => ({ ...row, price: 0, category: "" }))); setCategories(categoryResult.categories); setSelectedRows(new Set()); setSummaryAudioByRow({}); setExcelMessage(tf("up.excelFound", { total: result.total })); } catch (err) { setExcelMessage(errorText(err, "up.workbookFailed")); } finally { setExcelLoading(false); } }}
         onToggle={(rowNumber) => setSelectedRows((current) => { const next = new Set(current); next.has(rowNumber) ? next.delete(rowNumber) : next.add(rowNumber); return next; })}
         onUpdate={(rowNumber, patch) => setExcelRows((current) => current.map((row) => row.rowNumber === rowNumber ? { ...row, ...patch } : row))}
-        onAudio={(rowNumber, audio) => { if (audio && !isAcceptedAudio(audio)) { setExcelMessage(`"${audio.name}" is not a supported audio file.`); return; } setExcelMessage(""); setSummaryAudioByRow((current) => { const next = { ...current }; if (audio) next[rowNumber] = audio; else delete next[rowNumber]; return next; }); }}
+        onAudio={(rowNumber, audio) => { if (audio && !isAcceptedAudio(audio)) { setExcelMessage(tf("up.audioUnsupported", { name: audio.name })); return; } setExcelMessage(""); setSummaryAudioByRow((current) => { const next = { ...current }; if (audio) next[rowNumber] = audio; else delete next[rowNumber]; return next; }); }}
         audioByRow={summaryAudioByRow}
         onImport={importSelectedExcelRows} />
 
@@ -348,7 +355,7 @@ export default function UploadPage() {
               <p className="mt-0.5 text-xs text-ink/70 dark:text-white/70">
                 {formatBytes(totalBytes)} · {t("up.separateBooks")}
               </p>
-              <p className="mt-1 text-xs text-moss/80 dark:text-sea/80">Summary audio and the cover are optional and can also be added later from Library. A cover is one image or PDF holding both faces of the printed jacket — the front on its left half, the back on its right. A PDF may instead carry the front and back as its first two pages.</p>
+              <p className="mt-1 text-xs text-moss/80 dark:text-sea/80">{t("up.coverHint")}</p>
               <label className="mt-2 flex cursor-pointer items-start gap-2">
                 <input
                   type="checkbox"
@@ -401,7 +408,7 @@ export default function UploadPage() {
                 <span className="shrink-0 text-xs text-ink/70 dark:text-white/70">{formatBytes(file.size)}</span>
                 <label className="inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-line px-2.5 py-1.5 text-xs font-medium text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/70 dark:hover:text-sea">
                   <Music2 className="h-3.5 w-3.5 shrink-0" />
-                  <span className="max-w-36 truncate">{summaryAudioByFile[fileKey(file)]?.name ?? "Add summary audio"}</span>
+                  <span className="max-w-36 truncate">{summaryAudioByFile[fileKey(file)]?.name ?? t("up.addSummaryAudio")}</span>
                   <input
                     type="file"
                     accept={AUDIO_INPUT_ATTR}
@@ -413,10 +420,10 @@ export default function UploadPage() {
                     }}
                   />
                 </label>
-                {summaryAudioByFile[fileKey(file)] ? <span className="text-[11px] text-moss dark:text-sea">Attached</span> : null}
+                {summaryAudioByFile[fileKey(file)] ? <span className="text-[11px] text-moss dark:text-sea">{t("up.attached")}</span> : null}
                 <label className="inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-line px-2.5 py-1.5 text-xs font-medium text-ink/70 transition hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/70 dark:hover:text-sea">
                   <ImageIcon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="max-w-36 truncate">{coverByFile[fileKey(file)]?.name ?? "Add cover"}</span>
+                  <span className="max-w-36 truncate">{coverByFile[fileKey(file)]?.name ?? t("up.addCover")}</span>
                   <input
                     type="file"
                     accept={COVER_INPUT_ATTR}
@@ -428,7 +435,7 @@ export default function UploadPage() {
                     }}
                   />
                 </label>
-                {coverByFile[fileKey(file)] ? <span className="text-[11px] text-moss dark:text-sea">Cover set</span> : null}
+                {coverByFile[fileKey(file)] ? <span className="text-[11px] text-moss dark:text-sea">{t("up.coverSet")}</span> : null}
                 <button
                   type="button"
                   onClick={() => removeFile(file)}
@@ -517,11 +524,13 @@ function ExcelImportPanel({ token, rows, selected, categories, loading, message,
   token?: string; rows: ExcelImportRow[]; selected: Set<number>; categories: string[]; loading: boolean; message: string; audioByRow: Record<number, File>; suggesting: boolean;
   onFile: (file: File) => void; onToggle: (row: number) => void; onUpdate: (row: number, patch: Partial<ExcelImportRow>) => void; onAudio: (row: number, audio: File | undefined) => void; onSuggest: () => void; onImport: () => void;
 }) {
+  const t = useT();
+  const tf = useTf();
   return <section className="rounded-2xl border border-line bg-white p-5 dark:border-white/10 dark:bg-[#0c0c0e]">
-    <div className="flex items-start gap-3"><FileSpreadsheet className="mt-1 h-5 w-5 text-moss dark:text-sea" /><div><h2 className="font-semibold text-ink dark:text-white">Import books from Excel</h2><p className="mt-1 text-xs text-ink/65 dark:text-white/65">Upload the list, choose specific books, then import only those PDFs.</p></div></div>
-    <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-medium dark:border-white/10"><FileSpreadsheet className="h-4 w-4" />{loading ? "Reading…" : "Choose .xlsx"}<input type="file" accept=".xlsx" className="sr-only" disabled={loading} onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} /></label>
+    <div className="flex items-start gap-3"><FileSpreadsheet className="mt-1 h-5 w-5 text-moss dark:text-sea" /><div><h2 className="font-semibold text-ink dark:text-white">{t("up.excelTitle")}</h2><p className="mt-1 text-xs text-ink/65 dark:text-white/65">{t("up.excelDesc")}</p></div></div>
+    <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-medium dark:border-white/10"><FileSpreadsheet className="h-4 w-4" />{loading ? t("up.reading") : t("up.chooseXlsx")}<input type="file" accept=".xlsx" className="sr-only" disabled={loading} onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} /></label>
     {message ? <p className="mt-3 text-sm text-ink/70 dark:text-white/70">{message}</p> : null}
-    {rows.length ? <><div className="mt-4 flex flex-wrap items-center gap-2 text-xs"><button type="button" onClick={() => rows.forEach((row) => !selected.has(row.rowNumber) && onToggle(row.rowNumber))} className="rounded border border-line px-2 py-1 dark:border-white/10">Select all</button><button type="button" onClick={() => rows.forEach((row) => selected.has(row.rowNumber) && onToggle(row.rowNumber))} className="rounded border border-line px-2 py-1 dark:border-white/10">Deselect all</button><span className="text-ink/60 dark:text-white/60">{selected.size} selected</span><button type="button" disabled={suggesting || loading || !rows.length} onClick={onSuggest} className="inline-flex items-center gap-1.5 rounded border border-moss/40 px-2 py-1 font-medium text-moss disabled:opacity-50 dark:border-sea/40 dark:text-sea"><Sparkles className="h-3.5 w-3.5" />{suggesting ? "Categorising…" : selected.size ? "Suggest categories for selected" : "Suggest categories with AI"}</button></div><div className="mt-2 max-h-96 overflow-auto rounded-lg border border-line dark:border-white/10">{rows.map((row) => <div key={row.rowNumber} className="border-b border-line p-3 last:border-0 dark:border-white/10"><div className="flex items-start gap-3"><input type="checkbox" checked={selected.has(row.rowNumber)} onChange={() => onToggle(row.rowNumber)} /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-ink dark:text-white">{row.title}</span><span className="block text-xs text-ink/60 dark:text-white/60">{row.author || "Unknown author"} · row {row.rowNumber}</span></span>{selected.has(row.rowNumber) ? <Check className="h-4 w-4 shrink-0 text-moss dark:text-sea" /> : null}</div><div className="mt-2 grid grid-cols-1 gap-2 pl-6 sm:grid-cols-2"><input type="number" min="0" step="any" value={row.price || ""} onChange={(e) => onUpdate(row.rowNumber, { price: Number(e.target.value) || 0 })} placeholder="Price (optional)" className="h-9 rounded border border-line bg-transparent px-2 text-xs outline-none dark:border-white/10" /><select value={row.category || ""} onChange={(e) => onUpdate(row.rowNumber, { category: e.target.value })} className="h-9 rounded border border-line bg-transparent px-2 text-xs outline-none dark:border-white/10"><option value="">No category</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select><label className="inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded border border-dashed border-line px-2 text-xs font-medium text-ink/70 hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/70 dark:hover:text-sea"><Music2 className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{audioByRow[row.rowNumber]?.name ?? "Add summary audio"}</span><input type="file" accept={AUDIO_INPUT_ATTR} className="sr-only" disabled={loading} onChange={(e) => { onAudio(row.rowNumber, e.target.files?.[0]); e.target.value = ""; }} /></label></div></div>)}</div><button type="button" disabled={!selected.size || loading} onClick={onImport} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-moss px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{loading ? "Importing…" : `Import ${selected.size} selected`}</button></> : null}
+    {rows.length ? <><div className="mt-4 flex flex-wrap items-center gap-2 text-xs"><button type="button" onClick={() => rows.forEach((row) => !selected.has(row.rowNumber) && onToggle(row.rowNumber))} className="rounded border border-line px-2 py-1 dark:border-white/10">{t("up.selectAll")}</button><button type="button" onClick={() => rows.forEach((row) => selected.has(row.rowNumber) && onToggle(row.rowNumber))} className="rounded border border-line px-2 py-1 dark:border-white/10">{t("up.deselectAll")}</button><span className="text-ink/60 dark:text-white/60">{tf("up.selectedCount", { count: selected.size })}</span><button type="button" disabled={suggesting || loading || !rows.length} onClick={onSuggest} className="inline-flex items-center gap-1.5 rounded border border-moss/40 px-2 py-1 font-medium text-moss disabled:opacity-50 dark:border-sea/40 dark:text-sea"><Sparkles className="h-3.5 w-3.5" />{suggesting ? t("up.categorising") : selected.size ? t("up.suggestSelected") : t("up.suggestAi")}</button></div><div className="mt-2 max-h-96 overflow-auto rounded-lg border border-line dark:border-white/10">{rows.map((row) => <div key={row.rowNumber} className="border-b border-line p-3 last:border-0 dark:border-white/10"><div className="flex items-start gap-3"><input type="checkbox" checked={selected.has(row.rowNumber)} onChange={() => onToggle(row.rowNumber)} /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-ink dark:text-white">{row.title}</span><span className="block text-xs text-ink/60 dark:text-white/60">{row.author || t("up.unknownAuthor")} · {tf("up.row", { number: row.rowNumber })}</span></span>{selected.has(row.rowNumber) ? <Check className="h-4 w-4 shrink-0 text-moss dark:text-sea" /> : null}</div><div className="mt-2 grid grid-cols-1 gap-2 pl-6 sm:grid-cols-2"><input type="number" min="0" step="any" value={row.price || ""} onChange={(e) => onUpdate(row.rowNumber, { price: Number(e.target.value) || 0 })} placeholder={t("up.pricePlaceholder")} className="h-9 rounded border border-line bg-transparent px-2 text-xs outline-none dark:border-white/10" /><select value={row.category || ""} onChange={(e) => onUpdate(row.rowNumber, { category: e.target.value })} className="h-9 rounded border border-line bg-transparent px-2 text-xs outline-none dark:border-white/10"><option value="">{t("up.noCategory")}</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select><label className="inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded border border-dashed border-line px-2 text-xs font-medium text-ink/70 hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/70 dark:hover:text-sea"><Music2 className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{audioByRow[row.rowNumber]?.name ?? t("up.addSummaryAudio")}</span><input type="file" accept={AUDIO_INPUT_ATTR} className="sr-only" disabled={loading} onChange={(e) => { onAudio(row.rowNumber, e.target.files?.[0]); e.target.value = ""; }} /></label></div></div>)}</div><button type="button" disabled={!selected.size || loading} onClick={onImport} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-moss px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{loading ? t("up.importing") : tf("up.importSelected", { count: selected.size })}</button></> : null}
   </section>;
 }
 

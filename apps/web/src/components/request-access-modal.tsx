@@ -5,7 +5,7 @@ import { Check, Loader2, Upload, X } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { submitAccessRequest, type CatalogBook, type DiscoveryBook } from "@/lib/api";
 import { BookPicker } from "@/components/book-picker";
-import { useT } from "@/lib/i18n";
+import { useErrorText, useT } from "@/lib/i18n";
 
 type Target = { type: "book" | "category"; value: string; label: string };
 
@@ -22,6 +22,7 @@ export function RequestAccessModal({
   onClose: () => void;
   onSubmitted: () => void;
 }) {
+  const errorText = useErrorText();
   const { token } = useAuth();
   const t = useT();
   const [type, setType] = useState<"book" | "category">(defaultTarget?.type ?? (books.length ? "book" : "category"));
@@ -47,7 +48,7 @@ export function RequestAccessModal({
       setDone(true);
       setTimeout(() => onSubmitted(), 1400);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("req.failed"));
+      setError(errorText(err, "req.failed"));
       setBusy(false);
     }
   }
@@ -61,7 +62,7 @@ export function RequestAccessModal({
       >
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-ink dark:text-white">{t("req.title")}</h3>
-          <button type="button" onClick={onClose} aria-label="Close" className="text-ink/70 hover:text-ink dark:text-white/70">
+          <button type="button" onClick={onClose} aria-label={t("common.close")} className="text-ink/70 hover:text-ink dark:text-white/70">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -98,7 +99,7 @@ export function RequestAccessModal({
                   setValue("");
                   setBookLabel("");
                 }}
-                aria-label="clear"
+                aria-label={t("common.clear")}
                 className="shrink-0 text-ink/70 hover:text-ink dark:text-white/70"
               >
                 <X className="h-4 w-4" />

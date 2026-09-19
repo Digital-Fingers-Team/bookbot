@@ -17,7 +17,7 @@ import {
   type AdminAccount,
   type AdminPermission
 } from "@/lib/api";
-import { useLang } from "@/lib/i18n";
+import { useErrorText, useLang } from "@/lib/i18n";
 
 const inputClass =
   "h-10 w-full rounded-lg border border-line bg-paper px-3 text-sm text-ink outline-none transition placeholder:text-ink/50 focus:border-moss/50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/40";
@@ -28,6 +28,7 @@ const inputClass =
  * is no separate "save" step to forget.
  */
 export default function AdminsPage() {
+  const errorText = useErrorText();
   const router = useRouter();
   const { token, user, loading: authLoading, can } = useAuth();
   const { t } = useLang();
@@ -84,7 +85,7 @@ export default function AdminsPage() {
       await updateAdminAccount(admin.id, { permissions }, token);
     } catch (updateError) {
       setAdmins((previous) => previous.map((row) => (row.id === admin.id ? admin : row)));
-      setError(updateError instanceof ApiClientError ? updateError.message : t("admins.saveFailed"));
+      setError(errorText(updateError, "admins.saveFailed"));
     }
   }
 
@@ -94,7 +95,7 @@ export default function AdminsPage() {
       await demoteAdminAccount(admin.id, token);
       setAdmins((previous) => previous.filter((row) => row.id !== admin.id));
     } catch (demoteError) {
-      setError(demoteError instanceof ApiClientError ? demoteError.message : t("admins.saveFailed"));
+      setError(errorText(demoteError, "admins.saveFailed"));
     } finally {
       setDemoting(null);
     }
@@ -203,6 +204,7 @@ function NewAdminForm({
   onCancel: () => void;
   onCreated: (admin: AdminAccount) => void;
 }) {
+  const errorText = useErrorText();
   const { token } = useAuth();
   const { t } = useLang();
   const [name, setName] = useState("");
@@ -220,7 +222,7 @@ function NewAdminForm({
       const result = await createAdminAccount({ name, email, password, permissions }, token);
       onCreated(result.admin);
     } catch (createError) {
-      setError(createError instanceof ApiClientError ? createError.message : t("admins.saveFailed"));
+      setError(errorText(createError, "admins.saveFailed"));
     } finally {
       setSaving(false);
     }

@@ -33,7 +33,7 @@ import {
   type SupportTopic
 } from "@/lib/api";
 import { useSupportThread, useSupportThreads } from "@/lib/hooks";
-import { useLang } from "@/lib/i18n";
+import { useErrorText, useLang } from "@/lib/i18n";
 
 const MAX_ATTACHMENTS = 5;
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
@@ -623,6 +623,7 @@ function Composer({
   disabled?: boolean;
   onSend: (body: string, attachments: File[]) => Promise<void>;
 }) {
+  const errorText = useErrorText();
   const { t } = useLang();
   const [body, setBody] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -656,7 +657,7 @@ function Composer({
       setBody("");
       setFiles([]);
     } catch (sendError) {
-      setError(sendError instanceof Error ? sendError.message : t("support.sendFailed"));
+      setError(errorText(sendError, "support.sendFailed"));
     } finally {
       setSending(false);
     }

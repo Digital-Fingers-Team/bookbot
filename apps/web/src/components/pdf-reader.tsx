@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { ApiClientError, getBookPageImage } from "@/lib/api";
 import { useAuth } from "@/components/auth-provider";
-import { useT } from "@/lib/i18n";
+import { useErrorText, useT } from "@/lib/i18n";
 
 type PdfReaderProps = {
   bookId: string;
@@ -39,6 +39,7 @@ const maxZoom = 150;
 type FitMode = "width" | "page";
 
 export function PdfReader({ bookId, url, canDownload, title, page, totalPages, onPageChange }: PdfReaderProps) {
+  const errorText = useErrorText();
   const { token } = useAuth();
   const t = useT();
   const pageCount = totalPages ?? 1;
@@ -110,7 +111,7 @@ export function PdfReader({ bookId, url, canDownload, title, page, totalPages, o
         if (cancelled || (err as Error)?.name === "AbortError") {
           return;
         }
-        setError(err instanceof ApiClientError ? err.message : t("read.notFound"));
+        setError(errorText(err, "read.notFound"));
         setLoading(false);
       });
 
@@ -227,7 +228,7 @@ export function PdfReader({ bookId, url, canDownload, title, page, totalPages, o
             disabled={zoom <= minZoom}
             onClick={() => changeZoom(-1)}
             className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/70 transition enabled:hover:bg-ink/5 enabled:hover:text-moss disabled:opacity-30 dark:text-white/70 dark:enabled:hover:bg-white/10 dark:enabled:hover:text-sea"
-            aria-label="Zoom out"
+            aria-label={t("reader.zoomOut")}
           >
             <Minus className="h-4 w-4" />
           </button>
@@ -237,7 +238,7 @@ export function PdfReader({ bookId, url, canDownload, title, page, totalPages, o
             disabled={zoom >= maxZoom}
             onClick={() => changeZoom(1)}
             className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/70 transition enabled:hover:bg-ink/5 enabled:hover:text-moss disabled:opacity-30 dark:text-white/70 dark:enabled:hover:bg-white/10 dark:enabled:hover:text-sea"
-            aria-label="Zoom in"
+            aria-label={t("reader.zoomIn")}
           >
             <Plus className="h-4 w-4" />
           </button>
@@ -259,7 +260,7 @@ export function PdfReader({ bookId, url, canDownload, title, page, totalPages, o
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/70 transition hover:bg-ink/5 hover:text-moss dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-sea"
-                aria-label="Open"
+                aria-label={t("common.open")}
               >
                 <ExternalLink className="h-4 w-4" />
               </a>
@@ -267,7 +268,7 @@ export function PdfReader({ bookId, url, canDownload, title, page, totalPages, o
                 href={url}
                 download={title}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink/70 transition hover:bg-ink/5 hover:text-moss dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-sea"
-                aria-label="Download"
+                aria-label={t("common.download")}
               >
                 <Download className="h-4 w-4" />
               </a>

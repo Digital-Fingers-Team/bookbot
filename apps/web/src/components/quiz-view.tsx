@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { QuizQuestion } from "@/lib/quiz";
+import { useT } from "@/lib/i18n";
 
 export function QuizView({
   questions,
@@ -12,6 +13,7 @@ export function QuizView({
   selectedAnswers: Record<number, string>;
   onSelect: (index: number, answer: string) => void;
 }) {
+  const t = useT();
   return (
     <div className="space-y-4">
       {questions.map((question, index) => {
@@ -49,7 +51,7 @@ export function QuizView({
             </div>
             {selected ? (
               <p className="mt-3 text-xs leading-5 text-ink/70 dark:text-white/70">
-                {selected === question.answer ? "Correct. " : "The correct answer is " + question.answer + ". "}
+                {selected === question.answer ? t("quiz.correct") + " " : t("quiz.correctAnswerIs") + " " + question.answer + ". "}
                 {question.explanation}
               </p>
             ) : null}
@@ -61,6 +63,7 @@ export function QuizView({
 }
 
 function EssayQuestion({ question, index }: { question: Extract<QuizQuestion, { type: "essay" }>; index: number }) {
+  const t = useT();
   const [showAnswer, setShowAnswer] = useState(false);
   return (
     <div className="rounded-xl border border-line bg-paper/70 p-3 dark:border-white/10 dark:bg-white/5">
@@ -70,7 +73,7 @@ function EssayQuestion({ question, index }: { question: Extract<QuizQuestion, { 
         onClick={() => setShowAnswer((visible) => !visible)}
         className="mt-3 rounded-full border border-moss/30 px-3 py-1.5 text-xs font-semibold text-moss dark:border-sea/30 dark:text-sea"
       >
-        {showAnswer ? "Hide sample answer" : "Show sample answer"}
+        {showAnswer ? t("quiz.hideSample") : t("quiz.showSample")}
       </button>
       {showAnswer ? <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-ink/80 dark:text-white/80">{question.sampleAnswer}</p> : null}
     </div>

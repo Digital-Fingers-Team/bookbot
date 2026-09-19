@@ -29,7 +29,7 @@ import { RequestAccessModal } from "@/components/request-access-modal";
 import { MyRequestsPanel } from "@/components/my-requests-panel";
 import { ApiClientError, addCategory, cancelBook, deleteBook, deleteFailedBooks, deleteBookCover, deleteSummaryAudio, getCategories, getStats, listBooks, retryFailedBooks, setFavorite, updateBook, uploadBookCover, uploadSummaryAudio } from "@/lib/api";
 import type { Book, Stats } from "@/lib/types";
-import { useLang, useT, type StringKey } from "@/lib/i18n";
+import { useErrorText, useLang, useT, useTf, type StringKey } from "@/lib/i18n";
 
 type ViewMode = "grid" | "list";
 type StatusFilter = "all" | "ready" | "processing" | "failed";
@@ -60,6 +60,7 @@ function formatDate(value: string | null | undefined, lang: string) {
 }
 
 export default function LibraryPage() {
+  const errorText = useErrorText();
   const router = useRouter();
   const { token, user, isAdmin, loading: authLoading } = useAuth();
   const t = useT();
@@ -101,7 +102,7 @@ export default function LibraryPage() {
       setStats(statsResult);
       setCategoryList(catResult.categories);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t("lib.loadError"));
+      setError(errorText(err, "lib.loadError"));
     } finally {
       setLoading(false);
     }
@@ -143,7 +144,7 @@ export default function LibraryPage() {
         await cancelBook(book.id, token);
         await refresh();
       } catch (err) {
-        setError(err instanceof ApiClientError ? err.message : t("lib.cancelError"));
+        setError(errorText(err, "lib.cancelError"));
       } finally {
         setDeletingId("");
       }
@@ -165,7 +166,7 @@ export default function LibraryPage() {
       await deleteBook(book.id, token);
       await refresh();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t("lib.deleteError"));
+      setError(errorText(err, "lib.deleteError"));
     } finally {
       setDeletingId("");
     }
@@ -190,7 +191,7 @@ export default function LibraryPage() {
     try {
       await updateBook(book.id, { categories: nextCategories }, token);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t("lib.deleteError"));
+      setError(errorText(err, "lib.deleteError"));
       await refresh();
     }
   }
@@ -237,7 +238,7 @@ export default function LibraryPage() {
       try {
         await updateBook(book.id, { price }, token);
       } catch (err) {
-        setError(err instanceof ApiClientError ? err.message : t("lib.deleteError"));
+        setError(errorText(err, "lib.deleteError"));
         await refresh();
       }
       return;
@@ -247,7 +248,7 @@ export default function LibraryPage() {
       await updateBook(book.id, { [field]: value.trim() }, token);
       await refresh();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t("lib.deleteError"));
+      setError(errorText(err, "lib.deleteError"));
     }
   }
 
@@ -279,7 +280,7 @@ export default function LibraryPage() {
 
   async function removeSummaryAudioFromBook() {
     const current = audioBook;
-    if (!current || !window.confirm("Remove this summary audio from the book?")) return;
+    if (!current || !window.confirm(t("lib.audioRemoveConfirm"))) return;
     await deleteSummaryAudio(current.id, token);
     setBooks((prev) => prev.map((item) => item.id === current.id ? { ...item, summaryAudio: null } : item));
     setAudioBook(null);
@@ -301,7 +302,7 @@ export default function LibraryPage() {
 
   async function removeCoverFromBook() {
     const current = coverBook;
-    if (!current || !window.confirm("Remove this cover? Its two pages come back out of the PDF.")) return;
+    if (!current || !window.confirm(t("lib.coverRemoveConfirm"))) return;
     await deleteBookCover(current.id, token);
     setBooks((prev) => prev.map((item) => item.id === current.id ? { ...item, cover: null } : item));
     setCoverBook(null);
@@ -353,7 +354,7 @@ export default function LibraryPage() {
         setError(`${result.requeued} re-queued; ${result.unrecoverable} could not be recovered.`);
       }
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t("lib.retryFailedError"));
+      setError(errorText(err, "lib.retryFailedError"));
     } finally {
       setRetryingFailed(false);
     }
@@ -374,7 +375,7 @@ export default function LibraryPage() {
       await deleteFailedBooks(token);
       setBooks((prev) => prev.filter((book) => book.status !== "failed"));
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t("lib.deleteFailedError"));
+      setError(errorText(err, "lib.deleteFailedError"));
     } finally {
       setDeletingFailed(false);
     }
@@ -523,7 +524,7 @@ export default function LibraryPage() {
                 type="button"
                 onClick={() => setSearch("")}
                 className="absolute end-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-ink/70 transition hover:bg-ink/5 hover:text-ink dark:text-white/70 dark:hover:bg-white/10"
-                aria-label="Clear"
+                aria-label={t("common.clear")}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -558,10 +559,10 @@ export default function LibraryPage() {
             </select>
 
             <div className="flex items-center rounded-lg border border-line bg-white p-1 dark:border-white/10 dark:bg-white/5">
-              <ViewButton active={view === "grid"} onClick={() => setView("grid")} label="Grid view">
+              <ViewButton active={view === "grid"} onClick={() => setView("grid")} label={t("lib.gridView")}>
                 <LayoutGrid className="h-4 w-4" />
               </ViewButton>
-              <ViewButton active={view === "list"} onClick={() => setView("list")} label="List view">
+              <ViewButton active={view === "list"} onClick={() => setView("list")} label={t("lib.listView")}>
                 <ListIcon className="h-4 w-4" />
               </ViewButton>
             </div>
@@ -847,6 +848,7 @@ function BookCard({
   onToggleFeatured: () => void;
 }) {
   const t = useT();
+  const tf = useTf();
   const { lang } = useLang();
   const locked = !((book.price ?? 0) <= 0 || book.accessible !== false);
   const uploadedOn = formatDate(book.createdAt, lang);
@@ -889,8 +891,8 @@ function BookCard({
             }}
             disabled={deleting}
             className="absolute end-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-white/90 text-ink/70 opacity-0 backdrop-blur transition hover:border-red-300 hover:text-red-600 focus:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-[#0c0c0e]/80 dark:text-white/70 dark:hover:border-red-500/40 dark:hover:text-red-300"
-            aria-label={book.status === "processing" ? t("lib.cancelProcessing") : `Delete ${book.title}`}
-            title={book.status === "processing" ? t("lib.cancelProcessing") : `Delete ${book.title}`}
+            aria-label={book.status === "processing" ? t("lib.cancelProcessing") : tf("lib.deleteBook", { title: book.title })}
+            title={book.status === "processing" ? t("lib.cancelProcessing") : tf("lib.deleteBook", { title: book.title })}
           >
             {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : book.status === "processing" ? <X className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
           </button>
@@ -1030,6 +1032,7 @@ function BookRow({
   onToggleFeatured: () => void;
 }) {
   const t = useT();
+  const tf = useTf();
   const locked = !((book.price ?? 0) <= 0 || book.accessible !== false);
   return (
     <div
@@ -1107,8 +1110,8 @@ function BookRow({
           }}
           disabled={deleting}
           className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink/70 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:text-white/70 dark:hover:bg-red-500/10 dark:hover:text-red-300"
-          aria-label={book.status === "processing" ? t("lib.cancelProcessing") : `Delete ${book.title}`}
-          title={book.status === "processing" ? t("lib.cancelProcessing") : `Delete ${book.title}`}
+          aria-label={book.status === "processing" ? t("lib.cancelProcessing") : tf("lib.deleteBook", { title: book.title })}
+          title={book.status === "processing" ? t("lib.cancelProcessing") : tf("lib.deleteBook", { title: book.title })}
         >
           {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : book.status === "processing" ? <X className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
         </button>
@@ -1158,6 +1161,7 @@ function EmptyState({ filtering, isAdmin, onClear }: { filtering: boolean; isAdm
 }
 
 function FavoriteButton({ favorite, onToggle }: { favorite: boolean; onToggle: () => void }) {
+  const t = useT();
   return (
     <button
       type="button"
@@ -1165,7 +1169,7 @@ function FavoriteButton({ favorite, onToggle }: { favorite: boolean; onToggle: (
         event.stopPropagation();
         onToggle();
       }}
-      aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
+      aria-label={t(favorite ? "lib.favoriteRemove" : "lib.favoriteAdd")}
       aria-pressed={favorite}
       className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-white/90 backdrop-blur transition dark:border-white/10 dark:bg-[#0c0c0e]/80 ${
         favorite
@@ -1194,18 +1198,19 @@ function SummaryAudioControl({
   onManage: () => void;
   compact?: boolean;
 }) {
+  const t = useT();
   if (!isAdmin) {
-    return <span className="inline-flex items-center gap-1 rounded-full border border-moss/20 bg-moss/[0.06] px-2.5 py-1 text-xs font-medium text-moss dark:border-sea/25 dark:bg-sea/10 dark:text-sea" title="Summary audio available"><Music2 className="h-3 w-3" />{compact ? "Audio" : "Summary audio"}</span>;
+    return <span className="inline-flex items-center gap-1 rounded-full border border-moss/20 bg-moss/[0.06] px-2.5 py-1 text-xs font-medium text-moss dark:border-sea/25 dark:bg-sea/10 dark:text-sea" title={t("lib.audioAvailable")}><Music2 className="h-3 w-3" />{t(compact ? "lib.audioBadge" : "lib.audioLabel")}</span>;
   }
   return (
     <button
       type="button"
       onClick={(event) => { event.stopPropagation(); onManage(); }}
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition ${audio ? "border-moss/20 bg-moss/[0.06] text-moss dark:border-sea/25 dark:bg-sea/10 dark:text-sea" : "border-dashed border-line text-ink/70 hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/70 dark:hover:text-sea"}`}
-      title={audio ? "Replace or remove summary audio" : "Add summary audio"}
+      title={t(audio ? "lib.audioReplaceOrRemove" : "lib.audioAdd")}
     >
       <Music2 className="h-3 w-3" />
-      {compact ? (audio ? "Audio" : "Add audio") : (audio ? "Summary audio" : "Add audio")}
+      {compact ? t(audio ? "lib.audioBadge" : "lib.audioAddShort") : t(audio ? "lib.audioLabel" : "lib.audioAddShort")}
     </button>
   );
 }
@@ -1220,15 +1225,16 @@ function CoverControl({
   onManage: () => void;
   compact?: boolean;
 }) {
+  const t = useT();
   return (
     <button
       type="button"
       onClick={(event) => { event.stopPropagation(); onManage(); }}
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition ${cover ? "border-moss/20 bg-moss/[0.06] text-moss dark:border-sea/25 dark:bg-sea/10 dark:text-sea" : "border-dashed border-line text-ink/70 hover:border-moss/40 hover:text-moss dark:border-white/10 dark:text-white/70 dark:hover:text-sea"}`}
-      title={cover ? "Replace or remove the cover" : "Add a cover"}
+      title={t(cover ? "lib.coverReplaceOrRemove" : "lib.coverAdd")}
     >
       <ImageIcon className="h-3 w-3" />
-      {cover ? "Cover" : compact ? "Add cover" : "Add cover"}
+      {t(cover ? "lib.coverShort" : "lib.coverAddShort")}
     </button>
   );
 }
@@ -1249,6 +1255,8 @@ function CoverModal({
   onSave: (file: File) => Promise<void>;
   onRemove?: () => Promise<void>;
 }) {
+  const t = useT();
+  const errorText = useErrorText();
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -1261,7 +1269,7 @@ function CoverModal({
     try {
       await onSave(file);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "The cover could not be uploaded.");
+      setError(errorText(err, "lib.coverUploadFailed"));
     } finally {
       setBusy(false);
     }
@@ -1274,7 +1282,7 @@ function CoverModal({
     try {
       await onRemove();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "The cover could not be removed.");
+      setError(errorText(err, "lib.coverRemoveFailed"));
     } finally {
       setBusy(false);
     }
@@ -1286,10 +1294,10 @@ function CoverModal({
         <div className="flex items-start gap-3">
           <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-moss/10 text-moss dark:bg-sea/15 dark:text-sea"><ImageIcon className="h-5 w-5" /></span>
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-semibold text-ink dark:text-white">Book cover</h3>
+            <h3 className="text-sm font-semibold text-ink dark:text-white">{t("lib.coverAlt")}</h3>
             <p dir="auto" className="mt-1 truncate text-xs text-ink/70 dark:text-white/70">{book.title}</p>
           </div>
-          <button type="button" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-ink/70 hover:bg-ink/5 dark:text-white/70 dark:hover:bg-white/10" aria-label="Close"><X className="h-4 w-4" /></button>
+          <button type="button" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-ink/70 hover:bg-ink/5 dark:text-white/70 dark:hover:bg-white/10" aria-label={t("common.close")}><X className="h-4 w-4" /></button>
         </div>
 
         <div className="rounded-xl border border-line bg-paper/60 p-3.5 dark:border-white/10 dark:bg-white/[0.03]">
@@ -1298,20 +1306,20 @@ function CoverModal({
               <ImageIcon className="h-4 w-4 shrink-0 text-moss dark:text-sea" />
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-ink dark:text-white">{book.cover.fileName}</p><p className="mt-0.5 text-xs text-ink/60 dark:text-white/60">{formatBytes(book.cover.size)} · Front and back are in the PDF</p></div>
             </div>
-          ) : <p className="text-sm text-ink/70 dark:text-white/70">No cover has been added yet. The library shows the book&rsquo;s first page instead.</p>}
+          ) : <p className="text-sm text-ink/70 dark:text-white/70">{t("lib.coverNoneYet")}</p>}
         </div>
 
         <label className="block cursor-pointer rounded-xl border-2 border-dashed border-line p-4 text-center transition hover:border-moss/40 dark:border-white/10 dark:hover:border-sea/40">
           <ImageIcon className="mx-auto h-5 w-5 text-moss dark:text-sea" />
-          <span className="mt-2 block text-sm font-medium text-ink dark:text-white">{file ? file.name : book.cover ? "Choose a replacement cover" : "Choose a cover file"}</span>
-          <span className="mt-1 block text-xs text-ink/60 dark:text-white/60">One image holding both faces &mdash; front on the left half, back on the right. PNG, JPEG, or WEBP. A PDF works too: one page holding the spread, or front and back as its first two pages.</span>
+          <span className="mt-2 block text-sm font-medium text-ink dark:text-white">{file ? file.name : t(book.cover ? "lib.coverChooseReplacement" : "lib.coverChoose")}</span>
+          <span className="mt-1 block text-xs text-ink/60 dark:text-white/60">{t("lib.coverHint")}</span>
           <input type="file" accept=".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf" className="sr-only" disabled={busy} onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
         </label>
         {error ? <p className="text-sm text-red-600 dark:text-red-300">{error}</p> : null}
 
         <div className="flex items-center justify-between gap-2">
-          {onRemove ? <button type="button" onClick={remove} disabled={busy} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-500/10"><Trash2 className="h-4 w-4" />Remove</button> : <span />}
-          <div className="flex items-center gap-2"><button type="button" onClick={onClose} className="inline-flex h-9 items-center rounded-lg border border-line px-3.5 text-sm font-medium text-ink/70 dark:border-white/10 dark:text-white/70">Cancel</button><button type="submit" disabled={!file || busy} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-moss px-3.5 text-sm font-medium text-white hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}{book.cover ? "Replace cover" : "Add cover"}</button></div>
+          {onRemove ? <button type="button" onClick={remove} disabled={busy} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-500/10"><Trash2 className="h-4 w-4" />{t("common.remove")}</button> : <span />}
+          <div className="flex items-center gap-2"><button type="button" onClick={onClose} className="inline-flex h-9 items-center rounded-lg border border-line px-3.5 text-sm font-medium text-ink/70 dark:border-white/10 dark:text-white/70">{t("common.cancel")}</button><button type="submit" disabled={!file || busy} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-moss px-3.5 text-sm font-medium text-white hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}{t(book.cover ? "lib.coverReplaceButton" : "lib.coverAddShort")}</button></div>
         </div>
       </form>
     </div>
@@ -1422,7 +1430,7 @@ function CategoryPickerModal({
             type="button"
             onClick={onClose}
             className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-ink/70 transition hover:bg-ink/5 hover:text-ink dark:text-white/70 dark:hover:bg-white/10"
-            aria-label="Close"
+            aria-label={t("common.close")}
           >
             <X className="h-4 w-4" />
           </button>
@@ -1539,6 +1547,8 @@ function SummaryAudioModal({
   onSave: (file: File) => Promise<void>;
   onRemove?: () => Promise<void>;
 }) {
+  const t = useT();
+  const errorText = useErrorText();
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -1551,7 +1561,7 @@ function SummaryAudioModal({
     try {
       await onSave(file);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "The summary audio could not be uploaded.");
+      setError(errorText(err, "lib.audioUploadFailed"));
     } finally {
       setBusy(false);
     }
@@ -1564,7 +1574,7 @@ function SummaryAudioModal({
     try {
       await onRemove();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "The summary audio could not be removed.");
+      setError(errorText(err, "lib.audioRemoveFailed"));
     } finally {
       setBusy(false);
     }
@@ -1576,10 +1586,10 @@ function SummaryAudioModal({
         <div className="flex items-start gap-3">
           <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-moss/10 text-moss dark:bg-sea/15 dark:text-sea"><Music2 className="h-5 w-5" /></span>
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-semibold text-ink dark:text-white">Summary audio</h3>
+            <h3 className="text-sm font-semibold text-ink dark:text-white">{t("lib.audioLabel")}</h3>
             <p dir="auto" className="mt-1 truncate text-xs text-ink/70 dark:text-white/70">{book.title}</p>
           </div>
-          <button type="button" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-ink/70 hover:bg-ink/5 dark:text-white/70 dark:hover:bg-white/10" aria-label="Close"><X className="h-4 w-4" /></button>
+          <button type="button" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-ink/70 hover:bg-ink/5 dark:text-white/70 dark:hover:bg-white/10" aria-label={t("common.close")}><X className="h-4 w-4" /></button>
         </div>
 
         <div className="rounded-xl border border-line bg-paper/60 p-3.5 dark:border-white/10 dark:bg-white/[0.03]">
@@ -1588,20 +1598,20 @@ function SummaryAudioModal({
               <Music2 className="h-4 w-4 shrink-0 text-moss dark:text-sea" />
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-ink dark:text-white">{book.summaryAudio.fileName}</p><p className="mt-0.5 text-xs text-ink/60 dark:text-white/60">{formatBytes(book.summaryAudio.size)} · Ready for readers</p></div>
             </div>
-          ) : <p className="text-sm text-ink/70 dark:text-white/70">No summary audio has been added yet.</p>}
+          ) : <p className="text-sm text-ink/70 dark:text-white/70">{t("lib.audioNoneYet")}</p>}
         </div>
 
         <label className="block cursor-pointer rounded-xl border-2 border-dashed border-line p-4 text-center transition hover:border-moss/40 dark:border-white/10 dark:hover:border-sea/40">
           <Music2 className="mx-auto h-5 w-5 text-moss dark:text-sea" />
-          <span className="mt-2 block text-sm font-medium text-ink dark:text-white">{file ? file.name : book.summaryAudio ? "Choose replacement audio" : "Choose an audio file"}</span>
-          <span className="mt-1 block text-xs text-ink/60 dark:text-white/60">MP3, M4A, WAV, OGG, WEBM, AAC, or FLAC</span>
+          <span className="mt-2 block text-sm font-medium text-ink dark:text-white">{file ? file.name : t(book.summaryAudio ? "lib.audioChooseReplacement" : "lib.audioChoose")}</span>
+          <span className="mt-1 block text-xs text-ink/60 dark:text-white/60">{t("lib.audioFormats")}</span>
           <input type="file" accept=".mp3,.m4a,.wav,.ogg,.webm,.aac,.flac,audio/*" className="sr-only" disabled={busy} onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
         </label>
         {error ? <p className="text-sm text-red-600 dark:text-red-300">{error}</p> : null}
 
         <div className="flex items-center justify-between gap-2">
-          {onRemove ? <button type="button" onClick={remove} disabled={busy} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-500/10"><Trash2 className="h-4 w-4" />Remove</button> : <span />}
-          <div className="flex items-center gap-2"><button type="button" onClick={onClose} className="inline-flex h-9 items-center rounded-lg border border-line px-3.5 text-sm font-medium text-ink/70 dark:border-white/10 dark:text-white/70">Cancel</button><button type="submit" disabled={!file || busy} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-moss px-3.5 text-sm font-medium text-white hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Music2 className="h-4 w-4" />}{book.summaryAudio ? "Replace audio" : "Add audio"}</button></div>
+          {onRemove ? <button type="button" onClick={remove} disabled={busy} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-500/10"><Trash2 className="h-4 w-4" />{t("common.remove")}</button> : <span />}
+          <div className="flex items-center gap-2"><button type="button" onClick={onClose} className="inline-flex h-9 items-center rounded-lg border border-line px-3.5 text-sm font-medium text-ink/70 dark:border-white/10 dark:text-white/70">{t("common.cancel")}</button><button type="submit" disabled={!file || busy} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-moss px-3.5 text-sm font-medium text-white hover:bg-moss/90 disabled:cursor-not-allowed disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Music2 className="h-4 w-4" />}{t(book.summaryAudio ? "lib.audioReplaceButton" : "lib.audioAddShort")}</button></div>
         </div>
       </form>
     </div>
@@ -1650,7 +1660,7 @@ function FieldEditModal({
             type="button"
             onClick={onClose}
             className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-ink/70 transition hover:bg-ink/5 hover:text-ink dark:text-white/70 dark:hover:bg-white/10"
-            aria-label="Close"
+            aria-label={t("common.close")}
           >
             <X className="h-4 w-4" />
           </button>

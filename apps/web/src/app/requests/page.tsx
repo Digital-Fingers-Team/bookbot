@@ -268,7 +268,7 @@ export default function RequestsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={closeReceipt}>
           <div className="max-h-[85vh] max-w-2xl overflow-auto rounded-xl bg-white p-2 dark:bg-[#0c0c0e]" onClick={(e) => e.stopPropagation()}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={receipt.url} alt="receipt" className="max-h-[80vh] w-auto rounded-lg" />
+            <img src={receipt.url} alt={t("reader.receiptAlt")} className="max-h-[80vh] w-auto rounded-lg" />
           </div>
         </div>
       ) : null}
