@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { EffectCoverflow, Navigation, Pagination } from "swiper/modules";
+import { Autoplay, EffectCoverflow, Navigation, Pagination } from "swiper/modules";
 import { BookOpenText } from "lucide-react";
 import { getShowcaseBooks, bookCoverUrl, type ShowcaseBook } from "@/lib/api";
 import { useT } from "@/lib/i18n";
@@ -25,13 +25,57 @@ type BooksCarouselProps = {
   heading?: string | null;
 };
 
+/** How long each book sits centred before the carousel moves on. */
+const AUTOPLAY_DELAY_MS = 4000;
+
+/**
+ * Swiper's loop needs more slides than fit on screen at once, or it leaves
+ * gaps and jumps as it wraps. With `slidesPerView="auto"` a handful of books
+ * is not enough, so the list is repeated until there are this many slides —
+ * the reader never notices, because it is looping anyway.
+ */
+const MIN_SLIDES_FOR_LOOP = 8;
+
+/** A slide carries its source book plus which repetition it came from. */
+type CarouselSlide = { book: ShowcaseBook; key: string };
+
+function buildSlides(books: ShowcaseBook[]): CarouselSlide[] {
+  const repeats = Math.max(1, Math.ceil(MIN_SLIDES_FOR_LOOP / books.length));
+  const slides: CarouselSlide[] = [];
+  for (let pass = 0; pass < repeats; pass += 1) {
+    for (const book of books) {
+      slides.push({ book, key: `${book.id}#${pass}` });
+    }
+  }
+  return slides;
+}
+
+/** Honour the reader's "reduce motion" setting: no carousel moving on its own. */
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(query.matches);
+    const onChange = (event: MediaQueryListEvent) => setReduced(event.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+
+  return reduced;
+}
+
 /**
  * 3D coverflow books carousel. Pulls the public showcase (no auth) unless it
  * is handed books, and shows real cover images, themed green.
+ *
+ * It advances on its own and wraps forever, so the shelf keeps moving past the
+ * last book back to the first.
  */
 export function BooksCarousel({ books: provided, linkTo, heading }: BooksCarouselProps = {}) {
   const t = useT();
   const [fetched, setFetched] = useState<ShowcaseBook[]>([]);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
     if (provided) {
@@ -54,6 +98,8 @@ export function BooksCarousel({ books: provided, linkTo, heading }: BooksCarouse
     return null;
   }
 
+  const slides = buildSlides(books);
+
   return (
     <section className="pb-12 pt-2">
       {title ? (
@@ -64,20 +110,31 @@ export function BooksCarousel({ books: provided, linkTo, heading }: BooksCarouse
       ) : null}
 
       <Swiper
-        modules={[EffectCoverflow, Navigation, Pagination]}
+        modules={[Autoplay, EffectCoverflow, Navigation, Pagination]}
         effect="coverflow"
         grabCursor
         centeredSlides
         slidesPerView="auto"
-        loop={books.length > 3}
+        loop
+        autoplay={
+          prefersReducedMotion
+            ? false
+            : {
+                delay: AUTOPLAY_DELAY_MS,
+                // Keep moving after a swipe or an arrow click; stopping for good
+                // on the first touch is what makes most carousels feel broken.
+                disableOnInteraction: false,
+                pauseOnMouseEnter: true
+              }
+        }
         spaceBetween={0}
         coverflowEffect={{ rotate: 38, stretch: 0, depth: 130, modifier: 1, slideShadows: true }}
         navigation
         pagination={{ clickable: true }}
         className="books-coverflow"
       >
-        {books.map((book) => (
-          <SwiperSlide key={book.id} className="books-coverflow__slide">
+        {slides.map(({ book, key }) => (
+          <SwiperSlide key={key} className="books-coverflow__slide">
             <Link href={href(book.id)} className="block">
               <CoverImage id={book.id} title={book.title} />
               <p dir="auto" className="mt-3 line-clamp-2 text-center text-xs font-medium leading-5 text-ink dark:text-white">
