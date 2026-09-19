@@ -36,7 +36,9 @@ export async function buildOmpLoginUrl(userId: string): Promise<string> {
   const payload = b64url(JSON.stringify(claims));
   const sig = b64url(createHmac("sha256", env.OMP_SSO_SECRET).update(payload).digest());
   const token = `${payload}.${sig}`;
-  return `${env.OMP_BASE_URL}/index.php/${env.OMP_CONTEXT_PATH}/bbsso/login?token=${token}`;
+  // This URL is opened by the browser, so it must be the public one.
+  const base = env.OMP_PUBLIC_URL ?? env.OMP_BASE_URL;
+  return `${base}/index.php/${env.OMP_CONTEXT_PATH}/bbsso/login?token=${token}`;
 }
 
 export interface OmpAuthorLink {

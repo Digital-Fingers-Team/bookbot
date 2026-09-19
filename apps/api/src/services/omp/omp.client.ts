@@ -134,7 +134,12 @@ export async function fetchOmpCatalog(params: { count?: number } = {}): Promise<
 // (password hashing, role bootstrap); the Author role is then granted
 // automatically the first time the user starts a submission.
 
-const webPath = (suffix: string): string => `${env.OMP_BASE_URL}/index.php/${env.OMP_CONTEXT_PATH}/${suffix}`;
+const OMP_WEB_LOCALE = "en";
+
+// OMP 3.5 requires a locale segment in web (non-API) URLs; without it the
+// request 302s to the locale-prefixed URL without being processed.
+const webPath = (suffix: string, locale = OMP_WEB_LOCALE): string =>
+  `${env.OMP_BASE_URL}/index.php/${env.OMP_CONTEXT_PATH}/${locale}/${suffix}`;
 
 /** Parse the csrfToken hidden input out of an OMP page. */
 function extractCsrf(html: string): string | null {

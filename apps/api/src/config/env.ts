@@ -130,6 +130,10 @@ const schema = z.object({
   // --- OMP (Open Monograph Press) integration ---
   // Base URL of the OMP install whose catalog/API we read from.
   OMP_BASE_URL: z.string().url().default("http://localhost:8091"),
+  // Browser-facing base URL of the same OMP install. OMP_BASE_URL is the
+  // server-to-server address (loopback) and is not resolvable from a client,
+  // so links handed to the browser must use this instead.
+  OMP_PUBLIC_URL: z.string().url().optional(),
   // Press path inside OMP ("index" = site-wide; otherwise the press's path).
   OMP_CONTEXT_PATH: z.string().default("index"),
   // API token generated in OMP (admin Profile → API Key). Optional until set.

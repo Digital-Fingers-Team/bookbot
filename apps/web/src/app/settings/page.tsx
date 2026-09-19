@@ -8,9 +8,7 @@ import {
   ApiClientError,
   activateOmpAuthorAccount,
   changePassword,
-  getOmpAuthorAccount,
-  getOmpLoginLink,
-  type OmpAuthorLink
+  getOmpLoginLink
 } from "@/lib/api";
 import { buttonClass } from "@/components/ui/button";
 import { PushToggle } from "@/components/push-toggle";
@@ -224,63 +222,34 @@ export default function SettingsPage() {
 
 function OmpPublishingCard({ token }: { token: string | null }) {
   const t = useT();
-  const [link, setLink] = useState<OmpAuthorLink | null>(null);
-  const [loadingLink, setLoadingLink] = useState(true);
-  const [activating, setActivating] = useState(false);
+  // Admins go to OMP to manage the press; everyone else goes there to submit.
+  const { isAdmin } = useAuth();
   const [opening, setOpening] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!token) {
-      return;
-    }
-    let active = true;
-    getOmpAuthorAccount(token)
-      .then((result) => {
-        if (active) {
-          setLink(result);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setLink({ linked: false });
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setLoadingLink(false);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [token]);
-
-  async function activate() {
-    if (!token || activating) {
-      return;
-    }
-    setActivating(true);
-    setError("");
-    try {
-      setLink(await activateOmpAuthorAccount(token));
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t("omp.activateError"));
-    } finally {
-      setActivating(false);
-    }
-  }
-
-  async function openOmp() {
+  // Publishing is one step. The author account is created on demand -
+  // activateOmpAuthorAccount is idempotent and returns the existing link when
+  // there is one - so the user never sees an "activation" stage.
+  async function publish() {
     if (!token || opening) {
       return;
     }
     setOpening(true);
     setError("");
+    // Opened up front: browsers block window.open once an await has resolved,
+    // and there are two round trips to make before the URL is known.
+    const tab = window.open("", "_blank");
     try {
+      await activateOmpAuthorAccount(token);
       const { url } = await getOmpLoginLink(token);
-      window.open(url, "_blank", "noopener");
+      if (tab) {
+        tab.opener = null;
+        tab.location.href = url;
+      } else {
+        window.open(url, "_blank", "noopener");
+      }
     } catch (err) {
+      tab?.close();
       setError(err instanceof ApiClientError ? err.message : t("omp.openError"));
     } finally {
       setOpening(false);
@@ -296,25 +265,10 @@ function OmpPublishingCard({ token }: { token: string | null }) {
         </div>
       ) : null}
 
-      {loadingLink ? (
-        <div className="flex items-center gap-3 text-sm font-medium text-ink/70 dark:text-white/70">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          {t("set.loadingProfile")}
-        </div>
-      ) : link?.linked ? (
-        <div className="space-y-4">
-          <StatusMessage>{t("omp.linked")}</StatusMessage>
-          <button type="button" onClick={openOmp} disabled={opening} className={buttonClass("primary", "w-fit")}>
-            {opening ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
-            {opening ? t("omp.opening") : t("omp.enter")}
-          </button>
-        </div>
-      ) : (
-        <button type="button" onClick={activate} disabled={activating} className={buttonClass("primary", "w-fit")}>
-          {activating ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />}
-          {activating ? t("omp.activating") : t("omp.activate")}
-        </button>
-      )}
+      <button type="button" onClick={publish} disabled={opening} className={buttonClass("primary", "w-fit")}>
+        {opening ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
+        {opening ? t("omp.opening") : isAdmin ? t("omp.enter") : t("omp.publishBook")}
+      </button>
     </SectionCard>
   );
 }
