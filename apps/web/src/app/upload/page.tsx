@@ -123,7 +123,7 @@ export default function UploadPage() {
 
   function chooseCover(book: File, cover: File | undefined) {
     if (cover && !isAcceptedCover(cover)) {
-      setError(`"${cover.name}" is not a supported image file.`);
+      setError(`"${cover.name}" is not a supported cover file. Use a PNG, JPEG, or WEBP image, or a PDF.`);
       return;
     }
     // Covers are written into the PDF, so there is nothing to attach them to on
@@ -348,7 +348,7 @@ export default function UploadPage() {
               <p className="mt-0.5 text-xs text-ink/70 dark:text-white/70">
                 {formatBytes(totalBytes)} · {t("up.separateBooks")}
               </p>
-              <p className="mt-1 text-xs text-moss/80 dark:text-sea/80">Summary audio and the cover are optional and can also be added later from Library. A cover is one image holding both faces of the printed jacket — the front on its left half, the back on its right.</p>
+              <p className="mt-1 text-xs text-moss/80 dark:text-sea/80">Summary audio and the cover are optional and can also be added later from Library. A cover is one image or PDF holding both faces of the printed jacket — the front on its left half, the back on its right. A PDF may instead carry the front and back as its first two pages.</p>
               <label className="mt-2 flex cursor-pointer items-start gap-2">
                 <input
                   type="checkbox"
@@ -502,7 +502,11 @@ function chunkRows<T>(rows: T[], size: number): T[][] {
 }
 
 function isAcceptedCover(file: File) {
-  return file.type.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(file.name);
+  return (
+    file.type.startsWith("image/") ||
+    file.type === "application/pdf" ||
+    /\.(png|jpe?g|webp|pdf)$/i.test(file.name)
+  );
 }
 
 function isAcceptedAudio(file: File) {
