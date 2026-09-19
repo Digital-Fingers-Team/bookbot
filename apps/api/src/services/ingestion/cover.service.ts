@@ -6,6 +6,7 @@ import { Book } from "../../models/book.model.js";
 import { Chunk } from "../../models/chunk.model.js";
 import { BookPage } from "../../models/book-page.model.js";
 import { storage } from "../storage/storage.service.js";
+import { PdfJsRenderer } from "./renderers/pdfjs.renderer.js";
 
 export const COVER_IMAGE_TYPES: Record<string, string> = {
   "image/png": ".png",
@@ -14,8 +15,16 @@ export const COVER_IMAGE_TYPES: Record<string, string> = {
   "image/webp": ".webp"
 };
 
+export const COVER_PDF_MIME = "application/pdf";
+
 /** Front and back are stored as PNG regardless of what was uploaded. */
 const HALF_MIME = "image/png";
+
+/**
+ * Scale the cover PDF is rasterized at. A cover is display art rather than
+ * something to read text off, so this sits above the OCR render scale.
+ */
+const COVER_PDF_RENDER_SCALE = 3;
 
 export type CoverInput = {
   buffer: Buffer;
@@ -28,6 +37,16 @@ export type CoverHalves = { front: Buffer; back: Buffer };
 export function isCoverImage(fileName: string, mimeType: string) {
   const normalized = (mimeType.toLowerCase().split(";")[0] ?? "").trim();
   return Boolean(COVER_IMAGE_TYPES[normalized]) || /\.(png|jpe?g|webp)$/i.test(fileName);
+}
+
+export function isCoverPdf(fileName: string, mimeType: string) {
+  const normalized = (mimeType.toLowerCase().split(";")[0] ?? "").trim();
+  return normalized === COVER_PDF_MIME || /\.pdf$/i.test(fileName);
+}
+
+/** Every file the cover upload accepts: a flat image spread, or a PDF. */
+export function isCoverUpload(fileName: string, mimeType: string) {
+  return isCoverImage(fileName, mimeType) || isCoverPdf(fileName, mimeType);
 }
 
 /**
@@ -56,6 +75,38 @@ export async function splitCoverSpread(buffer: Buffer): Promise<CoverHalves> {
     front: cropToPng(image, 0, frontWidth, height),
     back: cropToPng(image, frontWidth, backWidth, height)
   };
+}
+
+/**
+ * Read the two cover faces out of a PDF.
+ *
+ * A single-page PDF holds the same flat spread the image path expects, so it is
+ * rasterized and split down the middle. A PDF with more pages carries the faces
+ * as separate pages the way a print shop usually exports them - front first,
+ * back second - and any page after those two is ignored.
+ */
+export async function coverHalvesFromPdf(buffer: Buffer): Promise<CoverHalves> {
+  const opened = await new PdfJsRenderer().open(buffer);
+  try {
+    if (!opened.pageCount) {
+      throw new Error("The cover PDF has no pages.");
+    }
+    const front = await opened.renderPage(1, COVER_PDF_RENDER_SCALE);
+    if (opened.pageCount === 1) {
+      return splitCoverSpread(front.image);
+    }
+    const back = await opened.renderPage(2, COVER_PDF_RENDER_SCALE);
+    return { front: front.image, back: back.image };
+  } finally {
+    await opened.close?.();
+  }
+}
+
+/** Resolve an uploaded cover - image spread or PDF - to its two faces. */
+export async function coverHalvesFromInput(input: CoverInput): Promise<CoverHalves> {
+  return isCoverPdf(input.originalFileName, input.mimeType)
+    ? coverHalvesFromPdf(input.buffer)
+    : splitCoverSpread(input.buffer);
 }
 
 function cropToPng(image: Awaited<ReturnType<typeof loadImage>>, sourceX: number, cropWidth: number, height: number) {
@@ -150,7 +201,7 @@ export async function attachCover(bookId: string, input: CoverInput) {
     throw new Error("This book has no stored PDF to attach a cover to.");
   }
 
-  const halves = await splitCoverSpread(input.buffer);
+  const halves = await coverHalvesFromInput(input);
   const previousFront = book.coverFrontPath;
   const previousBack = book.coverBackPath;
   const alreadyEmbedded = book.coverPagesInPdf === true;
@@ -263,7 +314,9 @@ export function coverMeta(book: {
 function normalizeCoverMime(mimeType: string, fileName: string) {
   const normalized = (mimeType.toLowerCase().split(";")[0] ?? "").trim();
   if (COVER_IMAGE_TYPES[normalized]) return normalized;
-  const extension = fileName.toLowerCase().match(/\.(png|jpe?g|webp)$/)?.[1];
+  if (normalized === COVER_PDF_MIME) return COVER_PDF_MIME;
+  const extension = fileName.toLowerCase().match(/\.(png|jpe?g|webp|pdf)$/)?.[1];
   if (!extension) return "application/octet-stream";
+  if (extension === "pdf") return COVER_PDF_MIME;
   return extension.startsWith("jp") ? "image/jpeg" : `image/${extension}`;
 }

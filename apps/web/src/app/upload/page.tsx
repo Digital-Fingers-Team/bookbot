@@ -32,7 +32,7 @@ const ACCEPTED_MIME_TYPES = [
 ];
 const ACCEPTED_INPUT_ATTR = [...ACCEPTED_EXTENSIONS, ...ACCEPTED_MIME_TYPES].join(",");
 const AUDIO_INPUT_ATTR = ".mp3,.m4a,.wav,.ogg,.webm,.aac,.flac,audio/*";
-const COVER_INPUT_ATTR = ".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp";
+const COVER_INPUT_ATTR = ".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf";
 const EXCEL_IMPORT_BATCH_SIZE = 100;
 
 function isAcceptedFile(file: File) {

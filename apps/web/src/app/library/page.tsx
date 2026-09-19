@@ -1303,9 +1303,9 @@ function CoverModal({
 
         <label className="block cursor-pointer rounded-xl border-2 border-dashed border-line p-4 text-center transition hover:border-moss/40 dark:border-white/10 dark:hover:border-sea/40">
           <ImageIcon className="mx-auto h-5 w-5 text-moss dark:text-sea" />
-          <span className="mt-2 block text-sm font-medium text-ink dark:text-white">{file ? file.name : book.cover ? "Choose a replacement cover" : "Choose a cover image"}</span>
-          <span className="mt-1 block text-xs text-ink/60 dark:text-white/60">One image holding both faces &mdash; front on the left half, back on the right. PNG, JPEG, or WEBP.</span>
-          <input type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" className="sr-only" disabled={busy} onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+          <span className="mt-2 block text-sm font-medium text-ink dark:text-white">{file ? file.name : book.cover ? "Choose a replacement cover" : "Choose a cover file"}</span>
+          <span className="mt-1 block text-xs text-ink/60 dark:text-white/60">One image holding both faces &mdash; front on the left half, back on the right. PNG, JPEG, or WEBP. A PDF works too: one page holding the spread, or front and back as its first two pages.</span>
+          <input type="file" accept=".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf" className="sr-only" disabled={busy} onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
         </label>
         {error ? <p className="text-sm text-red-600 dark:text-red-300">{error}</p> : null}
 

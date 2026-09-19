@@ -10,7 +10,7 @@ import { normalizeUploadedFileName } from "../utils/file-name.js";
 import { detectSourceFormat } from "../utils/source-format.js";
 import { matchesBookSourceFormat } from "../utils/file-signature.js";
 import { attachSummaryAudio, isSummaryAudio } from "../services/storage/summary-audio.service.js";
-import { isCoverImage } from "../services/ingestion/cover.service.js";
+import { isCoverUpload } from "../services/ingestion/cover.service.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -28,8 +28,8 @@ const upload = multer({
       return;
     }
     if (file.fieldname === "covers") {
-      if (!isCoverImage(file.originalname, file.mimetype)) {
-        cb(new ApiError(400, "INVALID_COVER_TYPE", "Please upload a PNG, JPEG, or WEBP cover image."));
+      if (!isCoverUpload(file.originalname, file.mimetype)) {
+        cb(new ApiError(400, "INVALID_COVER_TYPE", "Please upload a PNG, JPEG, or WEBP image, or a PDF, as the cover."));
         return;
       }
       cb(null, true);

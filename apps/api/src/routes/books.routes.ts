@@ -23,7 +23,7 @@ import { PdfJsRenderer } from "../services/ingestion/renderers/pdfjs.renderer.js
 import { renderPlaceholderCover } from "../services/ingestion/placeholder-cover.service.js";
 import { SOURCE_CONTENT_TYPES, type SourceFormat } from "../utils/source-format.js";
 import { attachSummaryAudio, isSummaryAudio, removeSummaryAudio, summaryAudioMeta } from "../services/storage/summary-audio.service.js";
-import { attachCover, coverMeta, isCoverImage, removeCover } from "../services/ingestion/cover.service.js";
+import { attachCover, coverMeta, isCoverUpload, removeCover } from "../services/ingestion/cover.service.js";
 
 const summaryAudioUpload = multer({
   storage: multer.memoryStorage(),
@@ -41,8 +41,8 @@ const coverUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 25 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => {
-    if (!isCoverImage(file.originalname, file.mimetype)) {
-      cb(new ApiError(400, "INVALID_COVER_TYPE", "Please upload a PNG, JPEG, or WEBP cover image."));
+    if (!isCoverUpload(file.originalname, file.mimetype)) {
+      cb(new ApiError(400, "INVALID_COVER_TYPE", "Please upload a PNG, JPEG, or WEBP image, or a PDF, as the cover."));
       return;
     }
     cb(null, true);

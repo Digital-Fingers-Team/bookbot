@@ -17,7 +17,7 @@ import { storage } from "../storage/storage.service.js";
 import { chunkPages } from "./chunker.service.js";
 import { extractDocument } from "./extraction.service.js";
 import { storePdfSource } from "./pdf-storage.service.js";
-import { applyCoverToPdf, splitCoverSpread, storeCoverHalves, type CoverInput } from "./cover.service.js";
+import { applyCoverToPdf, coverHalvesFromInput, storeCoverHalves, type CoverInput } from "./cover.service.js";
 import { pushBookToOmp } from "../omp/omp-push.service.js";
 import type { SourceFormat } from "../../utils/source-format.js";
 import { notifyAdmins } from "../notifications/notification.service.js";
@@ -62,7 +62,7 @@ export async function createProcessingBook(input: {
   // A cover supplied at upload time is written into the PDF before it is
   // stored, so extraction counts and numbers the pages the reader will see and
   // nothing needs shifting afterwards.
-  const halves = input.cover && input.format === "pdf" ? await splitCoverSpread(input.cover.buffer) : null;
+  const halves = input.cover && input.format === "pdf" ? await coverHalvesFromInput(input.cover) : null;
   const storedPdf = await storePdfSource(
     halves ? { ...input, buffer: await applyCoverToPdf(input.buffer, halves) } : input
   );
