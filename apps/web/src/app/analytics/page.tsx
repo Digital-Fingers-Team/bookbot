@@ -22,6 +22,7 @@ import {
   XCircle
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
+import { ReadingLogPanel } from "@/components/reading-log-panel";
 import { ApiClientError, getStats } from "@/lib/api";
 import type { Stats } from "@/lib/types";
 import { useErrorText, useT } from "@/lib/i18n";
@@ -230,6 +231,8 @@ export default function AnalyticsPage() {
               </div>
             </div>
           </section>
+
+          <ReadingLogPanel />
         </>
       )}
     </div>

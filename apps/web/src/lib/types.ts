@@ -20,6 +20,9 @@ export type User = {
   adminPermissions?: string[];
   // Set for org_admins and students belonging to a subscribing organization.
   organizationId?: string;
+  // False until the reader has accepted the reading agreement. The reader shows
+  // the agreement and refuses to open a book while this is false.
+  readingTermsAccepted?: boolean;
 };
 
 export type AuthSession = {

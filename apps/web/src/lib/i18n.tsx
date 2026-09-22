@@ -811,6 +811,30 @@ export const STRINGS = {
   "org.testIpFailed": { ar: "تعذّر اختبار العنوان.", en: "Could not test IP." },
 
   // Readers
+  "an.readingLog": { ar: "سجلّ القراءة", en: "Reading log" },
+  "an.readingLogNote": {
+    ar: "كل فتح لكتاب، مع القارئ ووقت الفتح وعنوان الشبكة. يُستخدم عند التحقق من تسريب.",
+    en: "Every book open, with the reader, the time, and the network address. Used to investigate a leak."
+  },
+  "an.readingLogEmpty": { ar: "لا يوجد نشاط قراءة بعد.", en: "No reading activity yet." },
+  "an.logReader": { ar: "القارئ", en: "Reader" },
+  "an.logBook": { ar: "الكتاب", en: "Book" },
+  "an.logWhen": { ar: "الوقت", en: "When" },
+  "an.logIp": { ar: "عنوان الشبكة", en: "IP address" },
+  "guard.hidden": { ar: "أُخفي الكتاب", en: "Book hidden" },
+  "guard.hiddenHint": {
+    ar: "يُخفى محتوى الكتاب عند مغادرة الصفحة أو محاولة التقاط الشاشة. انقر للمتابعة.",
+    en: "The book is hidden when you leave the page or attempt a screen capture. Click to continue."
+  },
+  "guard.resume": { ar: "متابعة القراءة", en: "Resume reading" },
+  "terms.title": { ar: "اتفاقية القراءة", en: "Reading agreement" },
+  "terms.body": {
+    ar: "هذه الكتب محميّة بحقوق النشر ومرخّصة لك للقراءة الشخصية فقط. يُمنع نسخها أو تصويرها أو طباعتها أو إعادة نشرها أو مشاركتها بأي صورة. يُسجَّل كل فتح لكتاب مع هويتك ووقت الفتح وعنوان الشبكة، ويجوز استخدام هذا السجل عند التحقق من أي تسريب.",
+    en: "These books are copyrighted and licensed to you for personal reading only. Copying, photographing, printing, republishing, or sharing them in any form is prohibited. Every time a book is opened we record your identity, the time, and your network address, and this record may be used to investigate a leak."
+  },
+  "terms.agree": { ar: "أوافق", en: "I agree" },
+  "terms.decline": { ar: "رجوع", en: "Go back" },
+  "terms.failed": { ar: "تعذّر حفظ موافقتك. حاول مرّة أخرى.", en: "Could not save your acceptance. Please try again." },
   "reader.zoomIn": { ar: "تكبير", en: "Zoom in" },
   "reader.zoomOut": { ar: "تصغير", en: "Zoom out" },
   "reader.pdfOnly": { ar: "يدعم Heyzine ملفات PDF فقط حاليًا.", en: "Heyzine currently supports PDF books only." },

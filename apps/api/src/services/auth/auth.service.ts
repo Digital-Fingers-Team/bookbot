@@ -32,6 +32,10 @@ export type PublicUser = {
   adminPermissions: AdminPermission[];
   // Set for org_admins and students belonging to a subscribing organization.
   organizationId?: string;
+  // False until the reader has accepted the reading agreement. The web reader
+  // blocks on this, so it ships with every session rather than needing a
+  // second round trip before a book can open.
+  readingTermsAccepted: boolean;
 };
 
 export async function seedDefaultAdmin() {
@@ -147,6 +151,22 @@ export async function changeUserPassword(userId: string, input: { currentPasswor
   await user.save();
 }
 
+export async function acceptReadingTerms(userId: string): Promise<PublicUser> {
+  const user = await User.findOneAndUpdate(
+    { _id: userId, readingTermsAcceptedAt: { $exists: false } },
+    { $set: { readingTermsAcceptedAt: new Date() } },
+    { new: true }
+  );
+
+  // Already accepted: the filter matched nothing, so read the record as it is.
+  const current = user ?? (await User.findById(userId));
+  if (!current) {
+    throw new ApiError(401, "UNAUTHORIZED", "Your session is no longer valid.");
+  }
+
+  return await toPublicUser(current);
+}
+
 function buildSession(user: PublicUser) {
   const token = jwt.sign(
     {
@@ -171,6 +191,7 @@ async function toPublicUser(user: {
   allowedCategories?: unknown[];
   organizationId?: unknown;
   adminPermissions?: unknown;
+  readingTermsAcceptedAt?: unknown;
 }): Promise<PublicUser> {
   let hasAccess =
     user.role === "admin" || Boolean(user.allowedBookIds?.length) || Boolean(user.allowedCategories?.length);
@@ -186,6 +207,7 @@ async function toPublicUser(user: {
     language: user.language === "ar" ? "ar" : "en",
     hasAccess,
     adminPermissions: user.role === "admin" ? normalizeAdminPermissions(user.adminPermissions) : [],
-    organizationId: user.organizationId ? String(user.organizationId) : undefined
+    organizationId: user.organizationId ? String(user.organizationId) : undefined,
+    readingTermsAccepted: Boolean(user.readingTermsAcceptedAt)
   };
 }

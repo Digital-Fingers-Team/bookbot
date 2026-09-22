@@ -12,6 +12,7 @@ import { Category } from "../models/category.model.js";
 import { BookState } from "../models/book-state.model.js";
 import { BookPage } from "../models/book-page.model.js";
 import { Chunk } from "../models/chunk.model.js";
+import { ReadingEvent } from "../models/reading-event.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { normalizeUploadedFileName, readableBookTitle } from "../utils/file-name.js";
@@ -783,6 +784,29 @@ async function isArabicBook(bookId: unknown, title: string): Promise<boolean> {
   return arabic > latin;
 }
 
+/**
+ * Write one audit row for a reader opening a book.
+ *
+ * Never allowed to break the open: a reader whose page fails to load because
+ * the audit write failed is a worse outcome than a missing row, so a failure is
+ * logged and swallowed. Anonymous opens are skipped — there is no one to name.
+ */
+async function recordReadingEvent(req: { user?: { id: string } }, bookId: unknown): Promise<void> {
+  const userId = req.user?.id;
+  if (!userId) return;
+  try {
+    await ReadingEvent.create({
+      userId,
+      bookId,
+      page: 1,
+      ip: resolveClientIp(req as never),
+      userAgent: String((req as { headers?: Record<string, unknown> }).headers?.["user-agent"] ?? "").slice(0, 512)
+    });
+  } catch (error) {
+    console.warn("[books] could not record reading event:", error);
+  }
+}
+
 /** Return the Heyzine reader URL, creating it on first use for PDF books. */
 booksRouter.get(
   "/:id/heyzine",
@@ -792,6 +816,7 @@ booksRouter.get(
     const bookId = requireBookId(routeId(req.params.id));
     const book = await Book.findById(bookId, { title: 1, sourceFormat: 1, heyzineUrl: 1, heyzineId: 1, status: 1 }).lean();
     if (!book) throw new ApiError(404, "BOOK_NOT_FOUND", "This book was not found.");
+    await recordReadingEvent(req, bookId);
     if (book.sourceFormat !== "pdf") throw new ApiError(400, "HEYZINE_PDF_REQUIRED", "Heyzine integration currently supports PDF books only.");
     if (book.heyzineUrl) {
       res.json({ url: book.heyzineUrl });
@@ -814,6 +839,9 @@ booksRouter.get(
         rtl: await isArabicBook(bookId, book.title),
         prev_next: true,
         show_info: false,
+        // Heyzine's share button publishes the flipbook URL, which would let a
+        // reader hand the book to someone our access checks never saw.
+        share: false,
         // Downloads are gated by requireDownloadAccess on our own routes; Heyzine
         // would serve the PDF straight from its servers, bypassing that check.
         download: false

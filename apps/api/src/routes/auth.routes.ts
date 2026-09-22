@@ -1,7 +1,7 @@
 import { Router, type Router as ExpressRouter } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth.middleware.js";
-import { changeUserPassword, loginUser, registerUser, updateUserProfile } from "../services/auth/auth.service.js";
+import { acceptReadingTerms, changeUserPassword, loginUser, registerUser, updateUserProfile } from "../services/auth/auth.service.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 
@@ -94,5 +94,25 @@ authRouter.patch(
 
     await changeUserPassword(user.id, parsed.data);
     res.json({ changed: true });
+  })
+);
+
+/**
+ * Record that the reader accepted the reading agreement.
+ *
+ * There is no body: acceptance is the act of calling this, and the timestamp is
+ * the server's, never the client's. Safe to call twice — the first acceptance
+ * is the one that is kept.
+ */
+authRouter.post(
+  "/reading-terms",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const user = req.user;
+    if (!user) {
+      throw new ApiError(401, "UNAUTHORIZED", "Please sign in to continue.");
+    }
+
+    res.json({ user: await acceptReadingTerms(user.id) });
   })
 );

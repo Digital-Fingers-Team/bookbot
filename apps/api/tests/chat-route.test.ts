@@ -39,7 +39,7 @@ describe("chat route", () => {
         email: "admin@example.com",
         language: "ar",
         adminPermissions: [],
-        hasAccess: true
+        hasAccess: true, readingTermsAccepted: true
       };
       next();
     });

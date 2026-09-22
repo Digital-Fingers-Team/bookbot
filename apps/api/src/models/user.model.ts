@@ -55,7 +55,13 @@ const userSchema = new Schema(
     ompUserId: { type: Number },
     ompUsername: { type: String, trim: true },
     ompPasswordEnc: { type: String, select: false },
-    ompLinkedAt: { type: Date }
+    ompLinkedAt: { type: Date },
+    // --- Reading agreement ---
+    // Set the first time the reader accepts the terms shown before a book
+    // opens. Absent means "never shown it", so the modal appears once and then
+    // never again. Re-showing the terms after a wording change is a matter of
+    // clearing this field.
+    readingTermsAcceptedAt: { type: Date }
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );

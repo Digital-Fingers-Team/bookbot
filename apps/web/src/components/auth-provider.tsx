@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { ApiClientError, login as loginRequest, me, register as registerRequest, updateProfile as updateProfileRequest } from "@/lib/api";
+import { ApiClientError, acceptReadingTerms as acceptReadingTermsRequest, login as loginRequest, me, register as registerRequest, updateProfile as updateProfileRequest } from "@/lib/api";
 import type { AdminPermission } from "@/lib/api";
 import type { AuthSession, User } from "@/lib/types";
 
@@ -20,6 +20,8 @@ type AuthContextValue = {
   login: (input: { email: string; password: string }) => Promise<void>;
   register: (input: { name: string; email: string; password: string }) => Promise<void>;
   updateProfile: (input: { name: string; language: "en" | "ar" }) => Promise<void>;
+  /** Record acceptance of the reading agreement and refresh the cached session. */
+  acceptTerms: () => Promise<void>;
   logout: () => void;
 };
 
@@ -97,6 +99,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     saveSession(session);
   }
 
+  async function acceptTerms() {
+    const result = await acceptReadingTermsRequest(token);
+    saveSession({ token, user: result.user });
+  }
+
   function saveSession(session: AuthSession) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     setToken(session.token);
@@ -121,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       register,
       updateProfile,
+      acceptTerms,
       logout
     }),
     [token, user, loading]

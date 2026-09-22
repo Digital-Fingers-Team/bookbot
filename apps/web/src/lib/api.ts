@@ -220,6 +220,14 @@ export function updateProfile(input: { name: string; language: "en" | "ar" }, to
   });
 }
 
+/** Record that the reader accepted the reading agreement. Returns the updated user. */
+export function acceptReadingTerms(token: string) {
+  return request<{ user: User }>("/api/auth/reading-terms", {
+    method: "POST",
+    token
+  });
+}
+
 export function changePassword(input: { currentPassword: string; newPassword: string }, token: string) {
   return request<{ changed: true }>("/api/auth/password", {
     method: "PATCH",
@@ -737,6 +745,27 @@ export async function getBookPageImage(id: string, page: number, token?: string,
 
 export function getStats(token?: string) {
   return request<Stats>("/api/stats", { token });
+}
+
+export type ReadingLogEntry = {
+  userId: string | null;
+  userName: string;
+  userEmail: string;
+  bookId: string | null;
+  bookTitle: string;
+  ip: string;
+  userAgent: string;
+  createdAt: string;
+};
+
+/** The reading audit trail, newest first. Admin-only (analytics permission). */
+export function getReadingLog(token?: string, limit = 50, bookId?: string) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (bookId) params.set("bookId", bookId);
+  return request<{ events: ReadingLogEntry[]; nextCursor: string | null }>(
+    `/api/stats/reading-log?${params.toString()}`,
+    { token }
+  );
 }
 
 export type ShowcaseBook = { id: string; title: string; author: string };

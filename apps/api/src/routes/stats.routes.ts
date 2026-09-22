@@ -4,6 +4,7 @@ import { AccessRequest } from "../models/access-request.model.js";
 import { Book } from "../models/book.model.js";
 import { Chunk } from "../models/chunk.model.js";
 import { Feedback } from "../models/feedback.model.js";
+import { ReadingEvent } from "../models/reading-event.model.js";
 import { UsageEvent } from "../models/usage-event.model.js";
 import { asyncHandler } from "../utils/async-handler.js";
 
@@ -103,6 +104,60 @@ statsRouter.get(
         };
         return acc;
       }, {})
+    });
+  })
+);
+
+/**
+ * The reading audit trail: who opened which book, when, and from where.
+ *
+ * Paged rather than aggregated — the point is to trace one leak back to one
+ * reader, so the raw rows are what an admin needs. Optionally narrowed to a
+ * single book. Gated on "analytics" like the rest of this router.
+ */
+statsRouter.get(
+  "/reading-log",
+  requirePermission("analytics"),
+  asyncHandler(async (req, res) => {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
+    const filter: Record<string, unknown> = {};
+    if (typeof req.query.bookId === "string" && req.query.bookId) {
+      filter.bookId = req.query.bookId;
+    }
+    // Cursor is the createdAt of the last row already shown, so paging stays
+    // stable as new opens arrive at the top.
+    if (typeof req.query.before === "string" && req.query.before) {
+      const before = new Date(req.query.before);
+      if (!Number.isNaN(before.getTime())) {
+        filter.createdAt = { $lt: before };
+      }
+    }
+
+    const events = await ReadingEvent.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate("userId", "name email")
+      .populate("bookId", "title")
+      .lean();
+
+    res.json({
+      events: events.map((event) => {
+        const reader = event.userId as { _id?: unknown; name?: string; email?: string } | null;
+        const book = event.bookId as { _id?: unknown; title?: string } | null;
+        return {
+          // The reader or book may since have been deleted; the row still
+          // matters, so report what is left rather than dropping it.
+          userId: reader?._id ? String(reader._id) : null,
+          userName: reader?.name ?? "",
+          userEmail: reader?.email ?? "",
+          bookId: book?._id ? String(book._id) : null,
+          bookTitle: book?.title ?? "",
+          ip: event.ip ?? "",
+          userAgent: event.userAgent ?? "",
+          createdAt: event.createdAt
+        };
+      }),
+      nextCursor: events.length === limit ? events[events.length - 1]?.createdAt ?? null : null
     });
   })
 );

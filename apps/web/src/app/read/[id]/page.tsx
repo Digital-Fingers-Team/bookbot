@@ -7,6 +7,8 @@ import { useAuth } from "@/components/auth-provider";
 import { ApiClientError, getBook, getBookPdf, getBookSource, getBookSummaryAudio, setFavorite, setProgress, type MyBook } from "@/lib/api";
 import { BookAssistant } from "@/components/book-assistant";
 import { FlipbookReader } from "@/components/flipbook-reader";
+import { ReaderGuard } from "@/components/reader-guard";
+import { ReadingTermsGate } from "@/components/reading-terms-gate";
 import { SummaryAudioPlayer } from "@/components/summary-audio-player";
 import { AI_NAME, useErrorText, useT } from "@/lib/i18n";
 
@@ -123,7 +125,8 @@ export default function ReadPage() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-7rem)] min-h-[28rem] flex-col overflow-hidden rounded-2xl border border-line bg-white dark:border-white/10 dark:bg-[#0c0c0e]">
+    <div className="relative flex h-[calc(100dvh-7rem)] min-h-[28rem] flex-col overflow-hidden rounded-2xl border border-line bg-white dark:border-white/10 dark:bg-[#0c0c0e]">
+      <ReadingTermsGate />
       <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 dark:border-white/10">
         <div className="flex min-w-0 items-center gap-2">
           <button
@@ -180,16 +183,18 @@ export default function ReadPage() {
                 </div>
               </div>
             ) : book ? (
-              <FlipbookReader
-                bookId={id}
-                sourceUrl={url}
-                canDownload={Boolean(book.canDownload)}
-                title={book.title}
-                page={page}
-                totalPages={book.pageCount}
-                kind={book.sourceFormat === "pdf" ? "pdf" : "text"}
-                onPageChange={jumpTo}
-              />
+              <ReaderGuard>
+                <FlipbookReader
+                  bookId={id}
+                  sourceUrl={url}
+                  canDownload={Boolean(book.canDownload)}
+                  title={book.title}
+                  page={page}
+                  totalPages={book.pageCount}
+                  kind={book.sourceFormat === "pdf" ? "pdf" : "text"}
+                  onPageChange={jumpTo}
+                />
+              </ReaderGuard>
             ) : null}
           </div>
         </div>

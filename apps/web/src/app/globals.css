@@ -358,3 +358,23 @@ body {
   outline-offset: 2px;
 }
 .dark .summary-audio-range:focus-visible { outline-color: #4f9a5f; }
+
+/*
+ * reader-print-guard: printing a book page is a capture by another name, and
+ * "print to PDF" would hand over a clean copy. The reader marks the document
+ * while a book is open; everything under it is withheld from the printed page.
+ * Print is also intercepted in ReaderGuard — this closes the paths that never
+ * reach a keydown (the browser menu, window.print from devtools).
+ */
+@media print {
+  body[data-reading="true"] * {
+    display: none !important;
+  }
+
+  body[data-reading="true"]::after {
+    content: attr(data-print-notice);
+    display: block !important;
+    padding: 2rem;
+    font-size: 14px;
+  }
+}
