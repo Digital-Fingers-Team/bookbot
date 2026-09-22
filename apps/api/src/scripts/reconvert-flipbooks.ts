@@ -17,7 +17,11 @@ import { Book } from "../models/book.model.js";
  * Run with:  npx tsx src/scripts/reconvert-flipbooks.ts   (in apps/api)
  */
 async function main() {
-  await mongoose.connect(env.MONGODB_URI);
+  // directConnection: Mongo runs in a container and advertises itself to the
+  // replica set as "mongo", a name that resolves inside the container network
+  // but not on the host. Without this the driver follows that advertised name
+  // after connecting to the seed and fails with ReplicaSetNoPrimary.
+  await mongoose.connect(env.MONGODB_URI, { directConnection: true });
   try {
     const result = await Book.updateMany(
       { heyzineUrl: { $exists: true, $nin: [null, ""] } },
