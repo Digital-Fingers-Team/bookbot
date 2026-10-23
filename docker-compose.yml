@@ -6,8 +6,11 @@ services:
     hostname: mongo
     container_name: aradobotd-mongo
     restart: unless-stopped
+    # Root credentials (D-27, 2026-09-26). With them set the image enforces
+    # auth; the users already exist. The app uses its own readWrite user.
+    env_file: .mongo-root.env
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     volumes:
       - aradobotd-mongo-data:/data/db
       - aradobotd-mongo-config:/data/configdb

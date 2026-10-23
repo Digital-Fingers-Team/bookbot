@@ -28,7 +28,7 @@ export async function connectDatabase() {
 }
 
 function isLocalMongoUri(uri: string) {
-  return /^mongodb(?:\+srv)?:\/\/(?:127\.0\.0\.1|localhost)(?::|\/)/i.test(uri);
+  return /^mongodb(?:\+srv)?:\/\/(?:[^@/]*@)?(?:127\.0\.0\.1|localhost)(?::|\/)/i.test(uri);
 }
 
 /**
